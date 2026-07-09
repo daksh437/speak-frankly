@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../services/gamification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dictionary_sheet.dart';
 
@@ -65,6 +66,8 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.add(ChatMessage(role: 'model', text: reply.reply));
         _suggestions = reply.suggestions;
       });
+      // Reward practice: advances daily streak + adds XP.
+      GamificationService.instance.recordActivity();
     } on DailyLimitException {
       setState(() => _limitReached = true);
     } catch (_) {

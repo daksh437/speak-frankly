@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../services/gamification_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 import 'chat_screen.dart';
@@ -120,13 +121,20 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              _StatChip(icon: Icons.bar_chart_rounded, label: 'Level', value: session.level),
-              const SizedBox(width: 10),
-              if (session.goal.isNotEmpty)
-                Expanded(child: _StatChip(icon: Icons.flag_rounded, label: 'Goal', value: session.goal)),
-            ],
+          AnimatedBuilder(
+            animation: GamificationService.instance,
+            builder: (context, _) {
+              final g = GamificationService.instance;
+              return Row(
+                children: [
+                  Expanded(child: _StatChip(icon: Icons.local_fire_department_rounded, label: 'Streak', value: '${g.streak}')),
+                  const SizedBox(width: 10),
+                  Expanded(child: _StatChip(icon: Icons.star_rounded, label: 'XP', value: '${g.xp}')),
+                  const SizedBox(width: 10),
+                  Expanded(child: _StatChip(icon: Icons.bar_chart_rounded, label: 'Level', value: session.level)),
+                ],
+              );
+            },
           ),
         ],
       ),

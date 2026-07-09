@@ -79,6 +79,13 @@ class ApiService {
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
 
+  /// The learner's plan + remaining daily messages (server is authoritative).
+  Future<Map<String, dynamic>> fetchAccess() async {
+    final res = await _client.get(_u('/access'), headers: _headers).timeout(_timeout);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return (body['data'] as Map<String, dynamic>?) ?? {};
+  }
+
   /// Dictionary card for a word, optionally translated into [target] language.
   Future<DictionaryCard?> lookupWord(String word, {String? target}) async {
     final res = await _client

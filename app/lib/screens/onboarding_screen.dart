@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/user_session.dart';
-import 'home_screen.dart';
+import 'main_shell.dart';
 
 /// A friendly, step-by-step onboarding (BRD §6.1 / §7): one decision per screen,
 /// big tap targets, minimal text, a welcome hero, and a progress bar.
@@ -74,7 +74,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) => const MainShell()),
     );
   }
 

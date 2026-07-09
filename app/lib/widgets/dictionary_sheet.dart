@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/user_session.dart';
+import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
 
 /// Tap-a-word → dictionary card (meaning, phonetic, audio, L1 translation).
@@ -86,7 +87,22 @@ class _DictionarySheetState extends State<_DictionarySheet> {
                         ],
                       ),
                     ),
-                    if (card.audio != null)
+                    AnimatedBuilder(
+                      animation: VocabularyService.instance,
+                      builder: (context, _) {
+                        final saved = VocabularyService.instance.isSaved(card.word);
+                        return IconButton(
+                          onPressed: () => VocabularyService.instance.toggle(card),
+                          tooltip: saved ? 'Saved' : 'Save word',
+                          icon: Icon(
+                            saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                            color: saved ? AppTheme.seed : scheme.onSurfaceVariant,
+                          ),
+                        );
+                      },
+                    ),
+                    if (card.audio != null) ...[
+                      const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () => _player.play(UrlSource(card.audio!)),
                         child: Container(
@@ -96,6 +112,7 @@ class _DictionarySheetState extends State<_DictionarySheet> {
                           child: const Icon(Icons.volume_up_rounded, color: Colors.white),
                         ),
                       ),
+                    ],
                   ],
                 ),
                 if (card.translation != null && card.translation!.isNotEmpty) ...[

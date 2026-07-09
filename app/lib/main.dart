@@ -1,15 +1,19 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import 'screens/home_screen.dart';
+import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
+import 'services/gamification_service.dart';
 import 'services/user_session.dart';
+import 'services/vocabulary_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await UserSession.instance.load();
+  await GamificationService.instance.load();
+  await VocabularyService.instance.load();
 
   // Firebase is optional at boot: if google-services.json isn't in place yet
   // (or init fails), the app still runs using the local session id, so
@@ -36,7 +40,7 @@ class SpeakFranklyApp extends StatelessWidget {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       // OnboardingGate: show onboarding until the learner has set language/goal/level.
-      home: UserSession.instance.onboarded ? const HomeScreen() : const OnboardingScreen(),
+      home: UserSession.instance.onboarded ? const MainShell() : const OnboardingScreen(),
     );
   }
 }

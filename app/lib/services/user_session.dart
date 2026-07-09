@@ -11,11 +11,13 @@ class UserSession {
   static const _kGoal = 'sf_goal';
   static const _kLevel = 'sf_level';
   static const _kOnboarded = 'sf_onboarded';
+  static const _kName = 'sf_display_name';
 
   String uid = '';
   String nativeLanguage = '';
   String goal = '';
   String level = 'A2';
+  String displayName = 'Learner';
   bool onboarded = false;
 
   static final UserSession instance = UserSession._();
@@ -31,7 +33,21 @@ class UserSession {
     nativeLanguage = p.getString(_kNativeLang) ?? '';
     goal = p.getString(_kGoal) ?? '';
     level = p.getString(_kLevel) ?? 'A2';
+    displayName = p.getString(_kName) ?? 'Learner';
     onboarded = p.getBool(_kOnboarded) ?? false;
+  }
+
+  Future<void> setDisplayName(String name) async {
+    final trimmed = name.trim();
+    displayName = trimmed.isEmpty ? 'Learner' : trimmed;
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kName, displayName);
+  }
+
+  Future<void> setLevel(String newLevel) async {
+    level = newLevel;
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kLevel, newLevel);
   }
 
   /// Adopt the Firebase UID as the authoritative id once anonymous auth resolves.
