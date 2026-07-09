@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dictionary_sheet.dart';
+import 'session_report_screen.dart';
 
 /// The core experience: a real-life conversation with the AI tutor.
 /// Premium chat UI — accent-colored per scenario, tap-any-word dictionary,
@@ -22,9 +23,30 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scroll = ScrollController();
   List<String> _suggestions = [];
   bool _sending = false;
+  bool _finishing = false;
   bool _limitReached = false;
 
   Color get _accent => AppColors.forScenario(widget.scenario.theme);
+
+  bool get _hasSpoken => _messages.any((m) => m.isUser);
+
+  /// End the session: fetch a feedback report, award completion XP, show the report.
+  Future<void> _finish() async {
+    if (_finishing) return;
+    setState(() => _finishing = true);
+    Map<String, dynamic> feedback;
+    try {
+      feedback = await ApiService.instance.sendFeedback(scenarioId: widget.scenario.id, messages: _messages);
+    } catch (_) {
+      feedback = {};
+    }
+    await GamificationService.instance.completeScenario();
+    if (!mounted) return;
+    setState(() => _finishing = false);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SessionReportScreen(feedback: feedback, xpEarned: 20)),
+    );
+  }
 
   @override
   void initState() {
@@ -116,6 +138,18 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(width: 8),
           ],
         ),
+        actions: [
+          if (_hasSpoken)
+            _finishing
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 18),
+                    child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: TextButton(onPressed: _finish, child: const Text('Finish')),
+                  ),
+        ],
       ),
       body: Column(
         children: [

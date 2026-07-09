@@ -3,29 +3,45 @@ import 'package:flutter/material.dart';
 
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
+import 'review_screen.dart';
 
-/// Saved vocabulary — words the learner bookmarked from the dictionary.
-/// (Phase 2: spaced-repetition review games will build on this list.)
+/// Saved vocabulary — words the learner bookmarked from the dictionary, plus a
+/// flashcard review session (spaced-repetition groundwork).
 class VocabScreen extends StatelessWidget {
   const VocabScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Saved Words')),
-      body: AnimatedBuilder(
-        animation: VocabularyService.instance,
-        builder: (context, _) {
-          final words = VocabularyService.instance.words;
-          if (words.isEmpty) return const _EmptyVocab();
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: words.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _WordCard(word: words[i]),
-          );
-        },
-      ),
+    return AnimatedBuilder(
+      animation: VocabularyService.instance,
+      builder: (context, _) {
+        final words = VocabularyService.instance.words;
+        final canReview = words.length >= 2;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Saved Words'),
+            actions: [
+              if (canReview)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: TextButton.icon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReviewScreen())),
+                    icon: const Icon(Icons.style_rounded, size: 18),
+                    label: const Text('Review'),
+                  ),
+                ),
+            ],
+          ),
+          body: words.isEmpty
+              ? const _EmptyVocab()
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  itemCount: words.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (_, i) => _WordCard(word: words[i]),
+                ),
+        );
+      },
     );
   }
 }
