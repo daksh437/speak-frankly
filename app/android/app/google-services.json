@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "805127280447",
+    "project_id": "speakfrankly-cdddf",
+    "storage_bucket": "speakfrankly-cdddf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:805127280447:android:7b5a13eddcd6b0e0fba58a",
+        "android_client_info": {
+          "package_name": "com.speakfrankly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoTxrec3fWWkyipfePFUSkLcgbMaD6QaA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,22 @@
+# ---- Secrets (NEVER commit) ----
+backend/.env
+backend/.env.*
+backend/serviceAccount*.json
+**/serviceAccount*.json
+*-firebase-adminsdk-*.json
+RENDER_ENV_VALUES.txt
+
+# ---- Node ----
+**/node_modules/
+*.log
+
+# ---- Flutter/Dart (app/ also has its own .gitignore) ----
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+**/*.iml
+
+# ---- OS ----
+.DS_Store
+Thumbs.db

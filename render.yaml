@@ -1,0 +1,30 @@
+# Render blueprint for the Speak Frankly backend (a NEW service — not InstaFlow's).
+# In Render: New → Blueprint → point at this repo. Set the secret env vars in the
+# dashboard (they're marked sync:false so they are NOT committed).
+# This is a monorepo (backend + app); Render only builds the `backend` folder.
+services:
+  - type: web
+    name: speak-frankly-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_MODEL
+        value: gemini-3-flash-preview
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: DAILY_MESSAGES_FREE
+        value: "25"
+      - key: TRIAL_DAYS
+        value: "7"
