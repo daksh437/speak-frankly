@@ -5,6 +5,7 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
 import 'services/user_session.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,10 +32,9 @@ class SpeakFranklyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Speak Frankly',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4F46E5)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
       // OnboardingGate: show onboarding until the learner has set language/goal/level.
       home: UserSession.instance.onboarded ? const HomeScreen() : const OnboardingScreen(),
     );
