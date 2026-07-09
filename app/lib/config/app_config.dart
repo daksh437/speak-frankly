@@ -11,6 +11,6 @@
 class AppConfig {
   static const String baseUrl = String.fromEnvironment(
     'SPEAKFLOW_API',
-    defaultValue: 'https://speak-frankly-backend.onrender.com',
+    defaultValue: 'https://speak-frankly.onrender.com',
   );
 }
