@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
+import '../services/speech_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dictionary_sheet.dart';
 import 'session_report_screen.dart';
@@ -321,40 +322,75 @@ class _SuggestionBar extends StatelessWidget {
   }
 }
 
-class _InputBar extends StatelessWidget {
+class _InputBar extends StatefulWidget {
   final TextEditingController controller;
   final Color accent;
   final void Function(String) onSend;
   final bool enabled;
   const _InputBar({required this.controller, required this.accent, required this.onSend, required this.enabled});
+  @override
+  State<_InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<_InputBar> {
+  Future<void> _toggleMic() async {
+    final s = SpeechService.instance;
+    if (s.isListening) {
+      await s.stopListening();
+      return;
+    }
+    final ok = await s.startListening(onResult: (text, isFinal) {
+      widget.controller.text = text;
+      widget.controller.selection = TextSelection.collapsed(offset: text.length);
+      if (isFinal) s.stopListening();
+    });
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Speech recognition is not available on this device.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+        padding: const EdgeInsets.fromLTRB(6, 6, 12, 10),
         child: Row(
           children: [
+            AnimatedBuilder(
+              animation: SpeechService.instance,
+              builder: (context, _) {
+                final listening = SpeechService.instance.isListening;
+                return IconButton(
+                  onPressed: widget.enabled ? _toggleMic : null,
+                  tooltip: 'Speak your reply',
+                  icon: Icon(listening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                      color: listening ? const Color(0xFFEF4444) : scheme.onSurfaceVariant),
+                );
+              },
+            ),
             Expanded(
               child: TextField(
-                controller: controller,
-                enabled: enabled,
+                controller: widget.controller,
+                enabled: widget.enabled,
                 textInputAction: TextInputAction.send,
-                onSubmitted: onSend,
-                decoration: const InputDecoration(hintText: 'Type your reply…'),
+                onSubmitted: widget.onSend,
+                decoration: const InputDecoration(hintText: 'Type or speak…'),
               ),
             ),
             const SizedBox(width: 8),
             GestureDetector(
-              onTap: enabled ? () => onSend(controller.text) : null,
+              onTap: widget.enabled ? () => widget.onSend(widget.controller.text) : null,
               child: Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  gradient: AppColors.gradient(accent),
+                  gradient: AppColors.gradient(widget.accent),
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(color: widget.accent.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))],
                 ),
                 child: const Icon(Icons.arrow_upward_rounded, color: Colors.white),
               ),

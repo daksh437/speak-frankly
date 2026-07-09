@@ -32,8 +32,8 @@ android {
         applicationId = "com.speakfrankly"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // firebase_auth requires minSdk 23 (Flutter's default is 21).
-        minSdk = 23
+        // firebase_auth needs minSdk 23; flutter_tts needs 24 → use 24.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

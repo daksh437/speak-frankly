@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
 import 'profile_screen.dart';
+import 'speak_screen.dart';
 import 'vocab_screen.dart';
 
 /// Root shell with bottom navigation: Practice (scenarios), Words (saved vocab),
@@ -22,6 +23,7 @@ class _MainShellState extends State<MainShell> {
         index: _index,
         children: const [
           HomeScreen(),
+          SpeakScreen(),
           VocabScreen(),
           ProfileScreen(),
         ],
@@ -31,6 +33,7 @@ class _MainShellState extends State<MainShell> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.chat_bubble_outline_rounded), selectedIcon: Icon(Icons.chat_bubble_rounded), label: 'Practice'),
+          NavigationDestination(icon: Icon(Icons.mic_none_rounded), selectedIcon: Icon(Icons.mic_rounded), label: 'Speak'),
           NavigationDestination(icon: Icon(Icons.bookmark_border_rounded), selectedIcon: Icon(Icons.bookmark_rounded), label: 'Words'),
           NavigationDestination(icon: Icon(Icons.person_outline_rounded), selectedIcon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
