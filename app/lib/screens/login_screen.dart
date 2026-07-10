@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config/app_config.dart';
 import '../services/auth_service.dart';
 
 /// First screen for signed-out users: a branded hero + "Continue with Google".
@@ -12,6 +14,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
+
+  Future<void> _open(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   Future<void> _signIn() async {
     if (_busy) return;
@@ -91,10 +100,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text(
-                  'We use your Google account to save your progress.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text('By continuing you agree to our ', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
+                    GestureDetector(
+                      onTap: () => _open(AppConfig.termsUrl),
+                      child: Text('Terms', style: TextStyle(color: scheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    ),
+                    Text(' & ', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
+                    GestureDetector(
+                      onTap: () => _open(AppConfig.privacyUrl),
+                      child: Text('Privacy Policy', style: TextStyle(color: scheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
               ],

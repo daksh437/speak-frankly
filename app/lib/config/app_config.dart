@@ -13,4 +13,7 @@ class AppConfig {
     'SPEAKFLOW_API',
     defaultValue: 'https://speak-frankly.onrender.com',
   );
+
+  static const String privacyUrl = '$baseUrl/privacy';
+  static const String termsUrl = '$baseUrl/terms';
 }

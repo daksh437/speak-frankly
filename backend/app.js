@@ -53,6 +53,8 @@ if (!IS_PROD) {
 app.get('/', (_req, res) => res.json({ success: true, message: 'Speak Frankly Backend API' }));
 app.get('/health', (_req, res) => res.json({ status: 'ok', success: true }));
 
+app.use('/', require('./routes/legal')); // GET /privacy, /terms (public HTML)
+
 app.use('/scenarios', scenarioRoutes);
 app.use('/dictionary', dictionaryRoutes);
 app.use('/access', accessRoutes);

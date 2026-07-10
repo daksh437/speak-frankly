@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config/app_config.dart';
 import '../l10n/app_localizations.dart';
 import '../services/achievements.dart';
 import '../services/auth_service.dart';
@@ -53,6 +55,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _takePlacement() async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlacementTestScreen()));
     if (mounted) setState(() {});
+  }
+
+  Future<void> _open(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _signOut() async {
@@ -146,6 +155,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _InfoRow(icon: Icons.quiz_outlined, label: loc.testMyLevel, value: '', onTap: _takePlacement, trailingArrow: true),
               if (FirebaseAuth.instance.currentUser?.email != null)
                 _InfoRow(icon: Icons.account_circle_outlined, label: 'Account', value: FirebaseAuth.instance.currentUser!.email!),
+              _InfoRow(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy', value: '', onTap: () => _open(AppConfig.privacyUrl), trailingArrow: true),
+              _InfoRow(icon: Icons.description_outlined, label: 'Terms of Service', value: '', onTap: () => _open(AppConfig.termsUrl), trailingArrow: true),
               _InfoRow(icon: Icons.info_outline_rounded, label: loc.aboutLabel, value: 'Speak Frankly', onTap: () => _showAbout(context)),
               _InfoRow(icon: Icons.logout_rounded, label: 'Sign out', value: '', onTap: _signOut),
             ],
