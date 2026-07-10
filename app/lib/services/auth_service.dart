@@ -1,20 +1,34 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'user_session.dart';
 
-/// Signs the learner in anonymously so every device gets a stable Firebase UID.
-/// That UID becomes UserSession.uid (sent to the backend as x-user-uid), which
-/// keys the Firestore user doc and server-side usage limits.
-///
-/// Later this can be upgraded to email/password or Google sign-in by *linking*
-/// the anonymous account, so progress is preserved.
+/// Google Sign-In → Firebase. The Firebase UID becomes UserSession.uid (sent to
+/// the backend as x-user-uid), which keys the Firestore user doc, progress, and
+/// server-side usage limits — so the learner's data follows their Google account
+/// across devices.
 class AuthService {
-  static Future<void> ensureSignedIn() async {
-    final auth = FirebaseAuth.instance;
-    var user = auth.currentUser;
-    user ??= (await auth.signInAnonymously()).user;
-    if (user != null) {
-      await UserSession.instance.setUid(user.uid);
-    }
+  /// Launches the Google sign-in flow. Returns the signed-in [User], or null if
+  /// the user cancelled. Throws on real errors (the caller shows a message).
+  static Future<User?> signInWithGoogle() async {
+    final googleUser = await GoogleSignIn().signIn();
+    if (googleUser == null) return null; // user cancelled
+
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    final result = await FirebaseAuth.instance.signInWithCredential(credential);
+    final user = result.user;
+    if (user != null) await UserSession.instance.setUid(user.uid);
+    return user;
+  }
+
+  static Future<void> signOut() async {
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
+    await FirebaseAuth.instance.signOut();
   }
 }

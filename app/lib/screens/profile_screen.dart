@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/achievements.dart';
+import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../services/user_session.dart';
@@ -51,6 +53,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _takePlacement() async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlacementTestScreen()));
     if (mounted) setState(() {});
+  }
+
+  Future<void> _signOut() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text('Your progress is saved to your Google account.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign out')),
+        ],
+      ),
+    );
+    if (confirm == true) await AuthService.signOut();
+    // AuthGate reacts to sign-out and shows the login screen.
   }
 
   Future<void> _changeLevel() async {
@@ -126,7 +144,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _InfoRow(icon: Icons.person_outline_rounded, label: loc.nameLabel, value: UserSession.instance.displayName, onTap: _editName, trailingArrow: true),
               _InfoRow(icon: Icons.quiz_outlined, label: loc.testMyLevel, value: '', onTap: _takePlacement, trailingArrow: true),
+              if (FirebaseAuth.instance.currentUser?.email != null)
+                _InfoRow(icon: Icons.account_circle_outlined, label: 'Account', value: FirebaseAuth.instance.currentUser!.email!),
               _InfoRow(icon: Icons.info_outline_rounded, label: loc.aboutLabel, value: 'Speak Frankly', onTap: () => _showAbout(context)),
+              _InfoRow(icon: Icons.logout_rounded, label: 'Sign out', value: '', onTap: _signOut),
             ],
           ),
           const SizedBox(height: 24),

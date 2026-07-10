@@ -2,10 +2,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'l10n/app_localizations.dart';
-import 'screens/main_shell.dart';
-import 'screens/onboarding_screen.dart';
+import 'screens/auth_gate.dart';
 import 'services/analytics_service.dart';
-import 'services/auth_service.dart';
 import 'services/gamification_service.dart';
 import 'services/locale_controller.dart';
 import 'services/sync_service.dart';
@@ -20,15 +18,13 @@ Future<void> main() async {
   await GamificationService.instance.load();
   await VocabularyService.instance.load();
 
-  // Firebase is optional at boot: if google-services.json isn't in place yet
-  // (or init fails), the app still runs using the local session id, so
-  // development is never blocked. Once wired, we adopt the real Firebase UID.
+  // Initialize Firebase (needed for Google sign-in + Firestore). If it fails,
+  // AuthGate shows the login screen (the user can't proceed without an account).
   try {
     await Firebase.initializeApp();
-    await AuthService.ensureSignedIn();
     AnalyticsService.init();
   } catch (e) {
-    debugPrint('[Firebase] not configured yet, using local session id: $e');
+    debugPrint('[Firebase] init failed: $e');
   }
 
   // Best-effort cloud sync of progress + saved words (non-blocking).
@@ -53,8 +49,8 @@ class SpeakFranklyApp extends StatelessWidget {
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        // OnboardingGate: show onboarding until the learner has set language/goal/level.
-        home: UserSession.instance.onboarded ? const MainShell() : const OnboardingScreen(),
+        // AuthGate: login (Google) → onboarding → app.
+        home: const AuthGate(),
       ),
     );
   }

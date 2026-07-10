@@ -44,10 +44,11 @@ dependencies:
   shared_preferences: ^2.3.2
   audioplayers: ^6.1.0
 
-  # Firebase: anonymous auth gives each learner a real UID the backend trusts.
+  # Firebase: Google sign-in gives each learner an account-backed UID.
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
   firebase_analytics: ^11.3.3
+  google_sign_in: ^6.2.1
 
   # Speaking practice: on-device speech recognition + text-to-speech.
   speech_to_text: ^7.0.0
