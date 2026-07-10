@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import '../models/models.dart';
+import 'offline_scenarios.dart';
 import 'user_session.dart';
 
 /// All backend calls funnel through here (mirrors InstaFlow's ApiService).
@@ -25,12 +26,17 @@ class ApiService {
         queryParameters: query?.map((k, v) => MapEntry(k, v.toString())),
       );
 
-  /// Scenario library.
+  /// Scenario library. Falls back to a bundled copy when offline.
   Future<List<Scenario>> fetchScenarios() async {
-    final res = await _client.get(_u('/scenarios'), headers: _headers).timeout(_timeout);
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final data = (body['data'] as List?) ?? [];
-    return data.whereType<Map<String, dynamic>>().map(Scenario.fromJson).toList();
+    try {
+      final res = await _client.get(_u('/scenarios'), headers: _headers).timeout(_timeout);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final data = (body['data'] as List?) ?? [];
+      final list = data.whereType<Map<String, dynamic>>().map(Scenario.fromJson).toList();
+      return list.isNotEmpty ? list : offlineScenarios();
+    } catch (_) {
+      return offlineScenarios();
+    }
   }
 
   /// Build a chat-ready scenario from a free-text topic (Context Generator).

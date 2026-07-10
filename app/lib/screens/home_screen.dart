@@ -7,6 +7,7 @@ import '../services/gamification_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 import 'chat_screen.dart';
+import 'picture_match_screen.dart';
 
 /// XP needed to unlock the scenario at [index] (first two are always open).
 int _unlockXp(int index) => index < 2 ? 0 : (index - 1) * 60;
@@ -115,6 +116,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _TalkAboutAnythingCard(onTap: _startCustom)),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                      sliver: SliverToBoxAdapter(
+                        child: _MiniGameCard(
+                          emoji: '🖼️',
+                          title: 'Picture match',
+                          subtitle: 'Match the scene to the sentence',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const PictureMatchScreen()),
+                          ),
+                        ),
+                      ),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
@@ -288,6 +302,52 @@ class _TalkAboutAnythingCard extends StatelessWidget {
                 ),
               ),
               const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniGameCard extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  const _MiniGameCard({required this.emoji, required this.title, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    return Material(
+      color: isLight ? Colors.white : const Color(0xFF1E1B26),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(14)),
+                child: Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    Text(subtitle, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
             ],
           ),
         ),

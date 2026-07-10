@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 
 /// End-of-conversation report (from backend /tutor/feedback): phrases the learner
@@ -8,7 +9,10 @@ import '../theme/app_theme.dart';
 class SessionReportScreen extends StatelessWidget {
   final Map<String, dynamic> feedback;
   final int xpEarned;
-  const SessionReportScreen({super.key, required this.feedback, required this.xpEarned});
+
+  /// Optional adaptive-difficulty nudge: (suggested level, isLevelUp, reason).
+  final (String, bool, String)? levelSuggestion;
+  const SessionReportScreen({super.key, required this.feedback, required this.xpEarned, this.levelSuggestion});
 
   List<String> get _phrases =>
       (feedback['phrases_learned'] as List?)?.map((e) => e.toString()).where((s) => s.trim().isNotEmpty).toList() ?? [];
@@ -85,6 +89,10 @@ class SessionReportScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (levelSuggestion != null) ...[
+                    const SizedBox(height: 16),
+                    _LevelSuggestionCard(suggestion: levelSuggestion!),
+                  ],
                 ],
               ),
             ),
@@ -141,6 +149,64 @@ class _TipCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4, left: 25),
               child: Text(tip, style: TextStyle(fontSize: 13.5, color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.3)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LevelSuggestionCard extends StatefulWidget {
+  final (String, bool, String) suggestion;
+  const _LevelSuggestionCard({required this.suggestion});
+  @override
+  State<_LevelSuggestionCard> createState() => _LevelSuggestionCardState();
+}
+
+class _LevelSuggestionCardState extends State<_LevelSuggestionCard> {
+  bool _applied = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final (level, up, reason) = widget.suggestion;
+    final scheme = Theme.of(context).colorScheme;
+    final color = up ? AppColors.success : const Color(0xFF4C9AFF);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(up ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(up ? 'Level up?' : 'Adjust level?', style: TextStyle(fontWeight: FontWeight.w800, color: color)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(reason, style: TextStyle(fontSize: 13.5, color: scheme.onSurface)),
+          const SizedBox(height: 12),
+          if (_applied)
+            Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: color, size: 18),
+                const SizedBox(width: 6),
+                Text('Level set to $level', style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+              ],
+            )
+          else
+            FilledButton(
+              onPressed: () async {
+                await UserSession.instance.setLevel(level);
+                if (mounted) setState(() => _applied = true);
+              },
+              style: FilledButton.styleFrom(backgroundColor: color),
+              child: Text('Switch to $level'),
             ),
         ],
       ),

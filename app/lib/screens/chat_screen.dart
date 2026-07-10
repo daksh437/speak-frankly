@@ -5,9 +5,21 @@ import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../services/speech_service.dart';
+import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dictionary_sheet.dart';
 import 'session_report_screen.dart';
+
+const _cefrLevels = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1'];
+String _nextLevel(String l) {
+  final i = _cefrLevels.indexOf(l);
+  return (i >= 0 && i < _cefrLevels.length - 1) ? _cefrLevels[i + 1] : l;
+}
+
+String _prevLevel(String l) {
+  final i = _cefrLevels.indexOf(l);
+  return i > 0 ? _cefrLevels[i - 1] : l;
+}
 
 /// The core experience: a real-life conversation with the AI tutor.
 /// Premium chat UI — accent-colored per scenario, tap-any-word dictionary,
@@ -44,10 +56,26 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     await GamificationService.instance.completeScenario();
     AnalyticsService.log('scenario_completed', {'scenario': widget.scenario.id});
+
+    // Adaptive difficulty: suggest a level change based on this session's
+    // correction density (few mistakes → level up; many → level down).
+    (String, bool, String)? suggestion;
+    final userMsgs = _messages.where((m) => m.isUser).toList();
+    if (userMsgs.length >= 4) {
+      final corrections = userMsgs.fold<int>(0, (s, m) => s + m.corrections.length);
+      final ratio = corrections / userMsgs.length;
+      final cur = UserSession.instance.level;
+      if (ratio < 0.3 && _nextLevel(cur) != cur) {
+        suggestion = (_nextLevel(cur), true, 'You made very few mistakes — ready to level up?');
+      } else if (ratio > 1.3 && _prevLevel(cur) != cur) {
+        suggestion = (_prevLevel(cur), false, 'This felt challenging — an easier level might help.');
+      }
+    }
+
     if (!mounted) return;
     setState(() => _finishing = false);
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => SessionReportScreen(feedback: feedback, xpEarned: 20)),
+      MaterialPageRoute(builder: (_) => SessionReportScreen(feedback: feedback, xpEarned: 20, levelSuggestion: suggestion)),
     );
   }
 
