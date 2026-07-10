@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/locale_controller.dart';
+import '../services/sync_service.dart';
 import '../services/user_session.dart';
 import 'main_shell.dart';
 
@@ -63,6 +64,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       goal: _goal!,
       level: _level,
     );
+    SyncService.push(); // save this account's profile to the cloud
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const MainShell()),

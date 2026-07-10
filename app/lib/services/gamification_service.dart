@@ -29,6 +29,17 @@ class GamificationService extends ChangeNotifier {
     _lastActive = p.getString(_kLastActive) ?? '';
   }
 
+  /// Clear all local gamification state (e.g. when a different account signs in).
+  Future<void> reset() async {
+    streak = 0;
+    xp = 0;
+    scenariosCompleted = 0;
+    speakingReps = 0;
+    _lastActive = '';
+    await _persist();
+    notifyListeners();
+  }
+
   /// A completed speaking-practice rep (counts toward the fluency map + streak/XP).
   Future<void> recordSpeaking({int xpGain = 5}) async {
     speakingReps += 1;

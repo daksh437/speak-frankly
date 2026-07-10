@@ -75,6 +75,46 @@ class UserSession {
     await p.setBool(_kOnboarded, true);
   }
 
+  /// Clear the per-account profile (when a different account signs in). Keeps uid.
+  Future<void> resetProfile() async {
+    nativeLanguage = '';
+    goal = '';
+    level = 'A2';
+    displayName = 'Learner';
+    onboarded = false;
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_kNativeLang);
+    await p.remove(_kGoal);
+    await p.remove(_kLevel);
+    await p.remove(_kName);
+    await p.remove(_kOnboarded);
+  }
+
+  /// Profile snapshot for cloud sync (so onboarding/level follow the account).
+  Map<String, dynamic> profileToCloud() => {
+        'onboarded': onboarded,
+        'level': level,
+        'goal': goal,
+        'nativeLanguage': nativeLanguage,
+        'displayName': displayName,
+      };
+
+  /// Apply a cloud profile (only if that account has completed onboarding).
+  Future<void> applyCloudProfile(Map<String, dynamic> m) async {
+    if (m['onboarded'] != true) return;
+    onboarded = true;
+    level = (m['level'] ?? level).toString();
+    goal = (m['goal'] ?? goal).toString();
+    nativeLanguage = (m['nativeLanguage'] ?? nativeLanguage).toString();
+    displayName = (m['displayName'] ?? displayName).toString();
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_kOnboarded, true);
+    await p.setString(_kLevel, level);
+    await p.setString(_kGoal, goal);
+    await p.setString(_kNativeLang, nativeLanguage);
+    await p.setString(_kName, displayName);
+  }
+
   String _generateUid() {
     final r = Random.secure();
     final ts = DateTime.now().millisecondsSinceEpoch;

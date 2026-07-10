@@ -2,46 +2,47 @@ import 'dart:async';
 
 import 'api_service.dart';
 import 'gamification_service.dart';
+import 'user_session.dart';
 import 'vocabulary_service.dart';
 
-/// Two-way cloud sync of progress + saved words. On start it pulls the cloud
-/// copy, merges it with local (no data loss), pushes the merged truth back, then
-/// debounce-pushes on any later change. Best-effort — offline/errors are ignored,
-/// so the app works fully without connectivity.
-///
-/// Cross-device sync becomes meaningful once Anonymous auth gives a stable
-/// Firebase UID; with the local fallback id it still backs up this device.
+/// Cloud sync of progress + saved words + profile, keyed by the signed-in
+/// account's Firebase UID. The pull happens on sign-in (see AccountService);
+/// after that, local changes are debounce-pushed. Best-effort — offline/errors
+/// are ignored so the app works without connectivity.
 class SyncService {
   static Timer? _debounce;
   static bool _started = false;
 
-  static Future<void> start() async {
+  /// Set up push-on-change listeners (call once at boot).
+  static void start() {
     if (_started) return;
     _started = true;
-    await _pull();
     GamificationService.instance.addListener(_schedulePush);
     VocabularyService.instance.addListener(_schedulePush);
   }
 
-  static Future<void> _pull() async {
+  /// Pull the current account's cloud data and apply it. After an account
+  /// switch (local reset) this is effectively a clean load of that account.
+  static Future<void> pullAndApply() async {
     try {
       final data = await ApiService.instance.fetchProgress();
       if (data.isEmpty) return;
       await GamificationService.instance.mergeFrom(data);
       await VocabularyService.instance.mergeFrom(data['savedWords'] as List?);
-      await _push(); // persist the merged result to the cloud
-    } catch (_) {/* offline / not deployed yet → no-op */}
+      await UserSession.instance.applyCloudProfile(data);
+    } catch (_) {/* offline / not deployed → no-op */}
   }
 
   static void _schedulePush() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(seconds: 4), _push);
+    _debounce = Timer(const Duration(seconds: 4), push);
   }
 
-  static Future<void> _push() async {
+  static Future<void> push() async {
     try {
       final payload = GamificationService.instance.toMap();
       payload['savedWords'] = VocabularyService.instance.toJsonList();
+      payload.addAll(UserSession.instance.profileToCloud());
       await ApiService.instance.saveProgress(payload);
     } catch (_) {/* best-effort */}
   }

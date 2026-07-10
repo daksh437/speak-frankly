@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'account_service.dart';
 import 'user_session.dart';
 
 /// Google Sign-In → Firebase. The Firebase UID becomes UserSession.uid (sent to
@@ -29,6 +30,7 @@ class AuthService {
     try {
       await GoogleSignIn().signOut();
     } catch (_) {}
+    await AccountService.onSignedOut(); // clear this device's local data
     await FirebaseAuth.instance.signOut();
   }
 }

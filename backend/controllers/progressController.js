@@ -21,6 +21,12 @@ async function getProgress(uid) {
       speakingReps: d.speakingReps || 0,
       lastActive: d.lastActive || '',
       savedWords: Array.isArray(d.savedWords) ? d.savedWords : [],
+      // Per-account profile so onboarding/level follow the Google account.
+      onboarded: d.onboarded === true,
+      level: d.level || '',
+      goal: d.goal || '',
+      nativeLanguage: d.nativeLanguage || '',
+      displayName: d.displayName || '',
     };
   } catch (e) {
     console.warn('[progress] get error:', e.message);
@@ -40,6 +46,11 @@ async function saveProgress(uid, body) {
     lastActive: String(data.lastActive || ''),
     savedWords: Array.isArray(data.savedWords) ? data.savedWords.slice(0, 500) : [],
   };
+  if (typeof data.onboarded === 'boolean') update.onboarded = data.onboarded;
+  if (data.level != null) update.level = String(data.level);
+  if (data.goal != null) update.goal = String(data.goal);
+  if (data.nativeLanguage != null) update.nativeLanguage = String(data.nativeLanguage);
+  if (data.displayName != null) update.displayName = String(data.displayName);
   try {
     await db.collection(USERS).doc(uid).set(update, { merge: true });
     return { ok: true };

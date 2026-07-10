@@ -90,6 +90,13 @@ class VocabularyService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clear all saved words (e.g. when a different account signs in).
+  Future<void> reset() async {
+    _words.clear();
+    await _persist();
+    notifyListeners();
+  }
+
   List<Map<String, dynamic>> toJsonList() => _words.map((w) => w.toJson()).toList();
 
   /// Union server-saved words into the local list (dedupe by word) for cloud sync.
