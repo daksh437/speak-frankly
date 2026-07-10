@@ -71,7 +71,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
     _scored = true;
     final score = pronunciationScore(_phrase, said);
     final xp = score >= 85 ? 10 : (score >= 60 ? 6 : 2);
-    GamificationService.instance.recordActivity(xpGain: xp);
+    GamificationService.instance.recordSpeaking(xpGain: xp);
     setState(() => _score = score);
   }
 

@@ -12,6 +12,10 @@ class Scenario {
   final String starter;
   final List<String> keywords;
 
+  /// Only present for custom (context-generated) scenarios — the tutor role
+  /// prompt, sent to /tutor/chat as `context`. Empty for library scenarios.
+  final String setup;
+
   Scenario({
     required this.id,
     required this.title,
@@ -22,7 +26,10 @@ class Scenario {
     required this.goals,
     required this.starter,
     required this.keywords,
+    this.setup = '',
   });
+
+  bool get isCustom => setup.isNotEmpty;
 
   factory Scenario.fromJson(Map<String, dynamic> j) => Scenario(
         id: j['id'] ?? '',
@@ -34,6 +41,7 @@ class Scenario {
         goals: (j['goals'] as List?)?.map((e) => e.toString()).toList() ?? [],
         starter: j['starter'] ?? '',
         keywords: (j['keywords'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        setup: j['setup'] ?? '',
       );
 }
 

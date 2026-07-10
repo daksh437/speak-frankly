@@ -33,9 +33,27 @@ class ApiService {
     return data.whereType<Map<String, dynamic>>().map(Scenario.fromJson).toList();
   }
 
+  /// Build a chat-ready scenario from a free-text topic (Context Generator).
+  Future<Scenario> fetchCustomScenario(String topic) async {
+    final res = await _client
+        .post(
+          _u('/custom/scenario'),
+          headers: _headers,
+          body: jsonEncode({'topic': topic, 'level': UserSession.instance.level}),
+        )
+        .timeout(const Duration(seconds: 45));
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final data = (body['data'] as Map<String, dynamic>?) ?? {};
+    final scenario = (data['scenario'] as Map<String, dynamic>?) ?? {};
+    return Scenario.fromJson(scenario);
+  }
+
   /// One conversation turn. `messages` is the full history (oldest → newest).
+  /// [context] carries a custom scenario's tutor-role setup (library scenarios
+  /// pass only [scenarioId]).
   Future<TutorReply> sendChat({
     String? scenarioId,
+    String? context,
     required List<ChatMessage> messages,
   }) async {
     final res = await _client
@@ -44,6 +62,7 @@ class ApiService {
           headers: _headers,
           body: jsonEncode({
             'scenarioId': scenarioId,
+            'context': context,
             'level': UserSession.instance.level,
             'nativeLanguage': UserSession.instance.nativeLanguage,
             'messages': messages.map((m) => m.toApi()).toList(),

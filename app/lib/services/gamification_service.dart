@@ -11,11 +11,13 @@ class GamificationService extends ChangeNotifier {
   static const _kStreak = 'sf_streak';
   static const _kXp = 'sf_xp';
   static const _kScenarios = 'sf_scenarios_done';
+  static const _kSpeaking = 'sf_speaking_reps';
   static const _kLastActive = 'sf_last_active';
 
   int streak = 0;
   int xp = 0;
   int scenariosCompleted = 0;
+  int speakingReps = 0;
   String _lastActive = '';
 
   Future<void> load() async {
@@ -23,7 +25,14 @@ class GamificationService extends ChangeNotifier {
     streak = p.getInt(_kStreak) ?? 0;
     xp = p.getInt(_kXp) ?? 0;
     scenariosCompleted = p.getInt(_kScenarios) ?? 0;
+    speakingReps = p.getInt(_kSpeaking) ?? 0;
     _lastActive = p.getString(_kLastActive) ?? '';
+  }
+
+  /// A completed speaking-practice rep (counts toward the fluency map + streak/XP).
+  Future<void> recordSpeaking({int xpGain = 5}) async {
+    speakingReps += 1;
+    await recordActivity(xpGain: xpGain);
   }
 
   static String _dateStr(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -61,6 +70,7 @@ class GamificationService extends ChangeNotifier {
     await p.setInt(_kStreak, streak);
     await p.setInt(_kXp, xp);
     await p.setInt(_kScenarios, scenariosCompleted);
+    await p.setInt(_kSpeaking, speakingReps);
     await p.setString(_kLastActive, _lastActive);
   }
 }

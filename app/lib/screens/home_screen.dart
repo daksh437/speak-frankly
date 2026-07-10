@@ -26,6 +26,49 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _reload() => setState(() => _future = ApiService.instance.fetchScenarios());
 
+  /// Context Generator: ask for any topic, build a scenario, start chatting.
+  Future<void> _startCustom() async {
+    final controller = TextEditingController();
+    final topic = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Talk about anything'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Type any topic and the tutor will start a conversation about it.',
+                style: TextStyle(fontSize: 13)),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(hintText: 'e.g. cricket, my job interview, ordering pizza'),
+              onSubmitted: (v) => Navigator.pop(ctx, v),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text('Start')),
+        ],
+      ),
+    );
+    if (topic == null || topic.trim().isEmpty || !mounted) return;
+
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    try {
+      final scenario = await ApiService.instance.fetchCustomScenario(topic.trim());
+      if (!mounted) return;
+      Navigator.pop(context); // close loader
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChatScreen(scenario: scenario)));
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not start that topic. Try again.')));
+    }
+  }
+
   String get _greeting {
     final h = DateTime.now().hour;
     if (h < 12) return 'Good morning';
@@ -54,6 +97,10 @@ class _HomeScreenState extends State<HomeScreen> {
             return CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(child: _Header(greeting: _greeting)),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                  sliver: SliverToBoxAdapter(child: _TalkAboutAnythingCard(onTap: _startCustom)),
+                ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                   sliver: SliverToBoxAdapter(
@@ -173,6 +220,52 @@ class _StatChip extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TalkAboutAnythingCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _TalkAboutAnythingCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: AppColors.gradient(AppTheme.seed),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: AppTheme.seed.withValues(alpha: 0.3), blurRadius: 18, offset: const Offset(0, 8))],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), shape: BoxShape.circle),
+                child: const Center(child: Text('🎙️', style: TextStyle(fontSize: 22))),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Talk about anything', style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w800)),
+                    SizedBox(height: 2),
+                    Text('Type any topic — the tutor starts a chat', style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -97,6 +97,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
           const SizedBox(height: 18),
+          const _FluencyMap(),
+          const SizedBox(height: 18),
           _PlanCard(access: _access),
           const SizedBox(height: 18),
           _SectionCard(
@@ -261,6 +263,91 @@ class _PlanCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Fluency map — skill progress bars from real (local) stats (BRD §8).
+class _FluencyMap extends StatelessWidget {
+  const _FluencyMap();
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    return AnimatedBuilder(
+      animation: Listenable.merge([GamificationService.instance, VocabularyService.instance]),
+      builder: (context, _) {
+        final g = GamificationService.instance;
+        final skills = <(String, String, int, int, Color)>[
+          ('Conversations', '💬', g.scenariosCompleted, 20, const Color(0xFF4C9AFF)),
+          ('Speaking', '🎤', g.speakingReps, 30, const Color(0xFFFF7A5A)),
+          ('Vocabulary', '📚', VocabularyService.instance.count, 30, const Color(0xFF00C2A8)),
+          ('Consistency', '🔥', g.streak, 30, const Color(0xFFF59E0B)),
+        ];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 4, bottom: 8),
+              child: Text('Fluency map', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isLight ? Colors.white : const Color(0xFF1E1B26),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: isLight ? [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 5))] : null,
+              ),
+              child: Column(
+                children: [
+                  for (int i = 0; i < skills.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 14),
+                    _SkillBar(label: skills[i].$1, emoji: skills[i].$2, value: skills[i].$3, cap: skills[i].$4, color: skills[i].$5),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SkillBar extends StatelessWidget {
+  final String label;
+  final String emoji;
+  final int value;
+  final int cap;
+  final Color color;
+  const _SkillBar({required this.label, required this.emoji, required this.value, required this.cap, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (value / cap).clamp(0.0, 1.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 15)),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Text('$value', style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

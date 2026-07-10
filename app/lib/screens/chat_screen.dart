@@ -76,6 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final reply = await ApiService.instance.sendChat(
         scenarioId: widget.scenario.id,
+        context: widget.scenario.isCustom ? widget.scenario.setup : null,
         messages: _messages,
       );
       setState(() {
@@ -154,6 +155,8 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          if (widget.scenario.keywords.isNotEmpty)
+            _KeywordsStrip(keywords: widget.scenario.keywords, accent: _accent),
           Expanded(
             child: ListView.builder(
               controller: _scroll,
@@ -316,6 +319,63 @@ class _SuggestionBar extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Words to learn" — the scenario's key vocabulary as tappable chips
+/// (tap → dictionary card → save). Smart-vocab surfacing (BRD §5.2).
+class _KeywordsStrip extends StatelessWidget {
+  final List<String> keywords;
+  final Color accent;
+  const _KeywordsStrip({required this.keywords, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 6),
+            child: Row(
+              children: [
+                Icon(Icons.school_rounded, size: 14, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text('Words to learn — tap to look up',
+                    style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                for (final w in keywords)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Material(
+                      color: accent.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(20),
+                      child: InkWell(
+                        onTap: () => showDictionarySheet(context, w),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          child: Text(w, style: TextStyle(color: accent, fontWeight: FontWeight.w600, fontSize: 12.5)),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );

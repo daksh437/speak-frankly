@@ -83,15 +83,21 @@ async function chat(req, res) {
   const nativeLanguage = body.nativeLanguage;
   const messages = Array.isArray(body.messages) ? body.messages : [];
 
+  // Custom (context-generated) scenarios send their setup as `context` since the
+  // server can't look them up by id.
+  const customContext = typeof body.context === 'string' ? body.context.trim() : '';
+  const effectiveScenario = scenario
+    || (customContext ? { setup: customContext, goals: [], title: 'Chat', keywords: [], starter: '' } : null);
+
   const lastUser = [...messages].reverse().find((m) => (m.role || 'user') === 'user');
 
   if (!hasKey()) {
     // MOCK mode: still record usage so limit behavior can be tested end-to-end.
     if (req.uid) recordAiUsage(req.uid).catch(() => {});
-    return mockReply(scenario, lastUser && lastUser.text);
+    return mockReply(effectiveScenario, lastUser && lastUser.text);
   }
 
-  const systemPrompt = buildSystemPrompt(scenario, level, nativeLanguage);
+  const systemPrompt = buildSystemPrompt(effectiveScenario, level, nativeLanguage);
   const chatMessages = messages.length > 0
     ? messages
     : [{ role: 'user', text: 'Hello!' }];
@@ -226,4 +232,69 @@ Variety seed: ${seed}`;
   return { phrases: FALLBACK_SPEAKING_PHRASES.slice(0, count), fallback: true };
 }
 
-module.exports = { chat, feedback, speakingPhrases };
+/**
+ * POST /custom/scenario -> { scenario } — turn any topic the learner types into
+ * a ready-to-chat scenario (title, emoji, opening line, goals, key words, and an
+ * internal `setup` the chat endpoint uses as context). Not metered; the chat
+ * that follows is metered normally.
+ */
+function _fallbackCustomScenario(topic, level) {
+  return {
+    id: 'custom',
+    theme: 'custom',
+    level,
+    title: topic.slice(0, 40) || 'Free chat',
+    emoji: '💬',
+    description: `Practice talking about ${topic}.`,
+    goals: [`Talk about ${topic}`, 'Ask and answer questions'],
+    starter: `Sure! Let's talk about ${topic}. What would you like to say?`,
+    keywords: [],
+    setup: `You are a friendly English conversation partner chatting about "${topic}" with a ${level} learner. Keep it natural and encouraging.`,
+  };
+}
+
+async function customScenario(req) {
+  const body = req.body || {};
+  const topic = (body.topic || '').toString().trim().slice(0, 200);
+  const level = (body.level || 'A2').toString();
+  if (!topic) return { error: 'topic_required' };
+  if (!hasKey()) return { scenario: _fallbackCustomScenario(topic, level) };
+
+  const prompt = `Create a short English conversation practice scenario about the topic: "${topic}".
+Learner level: ${level} (CEFR).
+Return ONLY JSON with these keys:
+{
+  "title": "short title (max 5 words)",
+  "emoji": "one relevant emoji",
+  "description": "one short line describing the practice",
+  "goals": ["2-3 short learner goals"],
+  "starter": "the tutor's friendly opening line, in character, matched to the level",
+  "keywords": ["5-7 useful words/phrases for this topic"],
+  "setup": "one paragraph telling the AI tutor what role to play and how to run this conversation at level ${level}"
+}`;
+  try {
+    const raw = await runGeminiChat([{ role: 'user', text: prompt }], { temperature: 0.8, maxTokens: 1500 });
+    const parsed = extractJson(raw);
+    if (parsed && parsed.setup) {
+      return {
+        scenario: {
+          id: 'custom',
+          theme: 'custom',
+          level,
+          title: String(parsed.title || topic).slice(0, 60),
+          emoji: String(parsed.emoji || '💬').slice(0, 4),
+          description: String(parsed.description || `Talk about ${topic}.`),
+          goals: Array.isArray(parsed.goals) ? parsed.goals.map(String).slice(0, 4) : [],
+          starter: String(parsed.starter || `Let's talk about ${topic}!`),
+          keywords: Array.isArray(parsed.keywords) ? parsed.keywords.map(String).slice(0, 8) : [],
+          setup: String(parsed.setup),
+        },
+      };
+    }
+  } catch (e) {
+    console.warn('[customScenario] error:', e.message);
+  }
+  return { scenario: _fallbackCustomScenario(topic, level) };
+}
+
+module.exports = { chat, feedback, speakingPhrases, customScenario };
