@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
+import 'services/analytics_service.dart';
 import 'services/auth_service.dart';
 import 'services/gamification_service.dart';
+import 'services/sync_service.dart';
 import 'services/user_session.dart';
 import 'services/vocabulary_service.dart';
 import 'theme/app_theme.dart';
@@ -21,9 +23,13 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp();
     await AuthService.ensureSignedIn();
+    AnalyticsService.init();
   } catch (e) {
     debugPrint('[Firebase] not configured yet, using local session id: $e');
   }
+
+  // Best-effort cloud sync of progress + saved words (non-blocking).
+  SyncService.start();
 
   runApp(const SpeakFranklyApp());
 }

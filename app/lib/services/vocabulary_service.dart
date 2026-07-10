@@ -81,6 +81,25 @@ class VocabularyService extends ChangeNotifier {
     notifyListeners();
   }
 
+  List<Map<String, dynamic>> toJsonList() => _words.map((w) => w.toJson()).toList();
+
+  /// Union server-saved words into the local list (dedupe by word) for cloud sync.
+  Future<void> mergeFrom(List? serverWords) async {
+    if (serverWords == null || serverWords.isEmpty) return;
+    final existing = _words.map((w) => w.word.toLowerCase()).toSet();
+    for (final e in serverWords) {
+      if (e is Map<String, dynamic>) {
+        final sw = SavedWord.fromJson(e);
+        if (sw.word.isNotEmpty && !existing.contains(sw.word.toLowerCase())) {
+          _words.add(sw);
+          existing.add(sw.word.toLowerCase());
+        }
+      }
+    }
+    await _persist();
+    notifyListeners();
+  }
+
   Future<void> _persist() async {
     final p = await SharedPreferences.getInstance();
     await p.setString(_kWords, jsonEncode(_words.map((w) => w.toJson()).toList()));

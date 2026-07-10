@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../services/speech_service.dart';
@@ -42,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
       feedback = {};
     }
     await GamificationService.instance.completeScenario();
+    AnalyticsService.log('scenario_completed', {'scenario': widget.scenario.id});
     if (!mounted) return;
     setState(() => _finishing = false);
     Navigator.of(context).push(
@@ -53,6 +55,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _messages.add(ChatMessage(role: 'model', text: widget.scenario.starter));
+    AnalyticsService.log('scenario_started', {'scenario': widget.scenario.id});
   }
 
   @override

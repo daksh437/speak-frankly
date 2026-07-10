@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/analytics_service.dart';
 import '../services/gamification_service.dart';
 import '../services/speaking_phrases.dart';
 import '../services/speech_service.dart';
@@ -72,6 +73,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
     final score = pronunciationScore(_phrase, said);
     final xp = score >= 85 ? 10 : (score >= 60 ? 6 : 2);
     GamificationService.instance.recordSpeaking(xpGain: xp);
+    AnalyticsService.log('speaking_attempt', {'score': score});
     setState(() => _score = score);
   }
 

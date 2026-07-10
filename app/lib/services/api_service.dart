@@ -112,6 +112,17 @@ class ApiService {
     return ((data['phrases'] as List?) ?? []).map((e) => e.toString()).where((s) => s.trim().isNotEmpty).toList();
   }
 
+  /// Cloud-synced progress (gamification + saved words).
+  Future<Map<String, dynamic>> fetchProgress() async {
+    final res = await _client.get(_u('/progress'), headers: _headers).timeout(_timeout);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return (body['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<void> saveProgress(Map<String, dynamic> data) async {
+    await _client.post(_u('/progress'), headers: _headers, body: jsonEncode(data)).timeout(_timeout);
+  }
+
   /// The learner's plan + remaining daily messages (server is authoritative).
   Future<Map<String, dynamic>> fetchAccess() async {
     final res = await _client.get(_u('/access'), headers: _headers).timeout(_timeout);

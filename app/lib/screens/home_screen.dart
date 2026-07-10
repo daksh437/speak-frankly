@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 import 'chat_screen.dart';
+
+/// XP needed to unlock the scenario at [index] (first two are always open).
+int _unlockXp(int index) => index < 2 ? 0 : (index - 1) * 60;
+
+void _showLocked(BuildContext context, int needed, int xp) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Locked — earn $needed XP to unlock (you have $xp). Keep practicing! 🔥')),
+  );
+}
 
 /// Home = the scenario library ("worlds"). Premium card layout with a friendly
 /// header and per-scenario accent colors.
@@ -59,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
     try {
       final scenario = await ApiService.instance.fetchCustomScenario(topic.trim());
+      AnalyticsService.log('custom_scenario');
       if (!mounted) return;
       Navigator.pop(context); // close loader
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChatScreen(scenario: scenario)));
@@ -94,34 +105,48 @@ class _HomeScreenState extends State<HomeScreen> {
             if (scenarios.isEmpty) {
               return _ErrorState(onRetry: _reload, message: 'No scenarios yet.');
             }
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _Header(greeting: _greeting)),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                  sliver: SliverToBoxAdapter(child: _TalkAboutAnythingCard(onTap: _startCustom)),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                  sliver: SliverToBoxAdapter(
-                    child: Text('Choose a scenario',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: scheme.onSurface)),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                  sliver: SliverList.separated(
-                    itemCount: scenarios.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
-                    itemBuilder: (_, i) => _ScenarioCard(
-                      scenario: scenarios[i],
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => ChatScreen(scenario: scenarios[i])),
+            return AnimatedBuilder(
+              animation: GamificationService.instance,
+              builder: (context, _) {
+                final xp = GamificationService.instance.xp;
+                return CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(child: _Header(greeting: _greeting)),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                      sliver: SliverToBoxAdapter(child: _TalkAboutAnythingCard(onTap: _startCustom)),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                      sliver: SliverToBoxAdapter(
+                        child: Text('Choose a scenario',
+                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: scheme.onSurface)),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      sliver: SliverList.separated(
+                        itemCount: scenarios.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
+                        itemBuilder: (_, i) {
+                          final needed = _unlockXp(i);
+                          final locked = xp < needed;
+                          return _ScenarioCard(
+                            scenario: scenarios[i],
+                            locked: locked,
+                            requiredXp: needed,
+                            onTap: locked
+                                ? () => _showLocked(context, needed, xp)
+                                : () => Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (_) => ChatScreen(scenario: scenarios[i])),
+                                    ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
             );
           },
         ),
@@ -274,7 +299,9 @@ class _TalkAboutAnythingCard extends StatelessWidget {
 class _ScenarioCard extends StatelessWidget {
   final Scenario scenario;
   final VoidCallback onTap;
-  const _ScenarioCard({required this.scenario, required this.onTap});
+  final bool locked;
+  final int requiredXp;
+  const _ScenarioCard({required this.scenario, required this.onTap, this.locked = false, this.requiredXp = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -331,7 +358,7 @@ class _ScenarioCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(scenario.description,
+                      Text(locked ? '🔒 Unlock at $requiredXp XP' : scenario.description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13, height: 1.3)),
@@ -343,7 +370,7 @@ class _ScenarioCard extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: Icon(Icons.arrow_forward_rounded, size: 18, color: accent),
+                  child: Icon(locked ? Icons.lock_rounded : Icons.arrow_forward_rounded, size: 18, color: accent),
                 ),
               ],
             ),

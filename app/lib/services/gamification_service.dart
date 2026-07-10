@@ -65,6 +65,33 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Snapshot for cloud sync.
+  Map<String, dynamic> toMap() => {
+        'streak': streak,
+        'xp': xp,
+        'scenariosCompleted': scenariosCompleted,
+        'speakingReps': speakingReps,
+        'lastActive': _lastActive,
+      };
+
+  /// Merge cloud state in (take the higher of each counter, later lastActive)
+  /// so nothing is lost when syncing across devices/reinstalls.
+  Future<void> mergeFrom(Map<String, dynamic> m) async {
+    int higher(int a, dynamic b) {
+      final bi = b is num ? b.toInt() : 0;
+      return a > bi ? a : bi;
+    }
+
+    streak = higher(streak, m['streak']);
+    xp = higher(xp, m['xp']);
+    scenariosCompleted = higher(scenariosCompleted, m['scenariosCompleted']);
+    speakingReps = higher(speakingReps, m['speakingReps']);
+    final serverLast = (m['lastActive'] ?? '').toString();
+    if (serverLast.compareTo(_lastActive) > 0) _lastActive = serverLast;
+    await _persist();
+    notifyListeners();
+  }
+
   Future<void> _persist() async {
     final p = await SharedPreferences.getInstance();
     await p.setInt(_kStreak, streak);
