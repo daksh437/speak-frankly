@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/models.dart';
 import '../services/analytics_service.dart';
 import '../services/api_service.dart';
@@ -81,16 +82,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
         child: FutureBuilder<List<Scenario>>(
@@ -100,11 +95,11 @@ class _HomeScreenState extends State<HomeScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snap.hasError) {
-              return _ErrorState(onRetry: _reload, message: "Couldn't reach the server.\nCheck your connection and retry.");
+              return _ErrorState(onRetry: _reload, message: loc.couldntReachServer);
             }
             final scenarios = snap.data ?? [];
             if (scenarios.isEmpty) {
-              return _ErrorState(onRetry: _reload, message: 'No scenarios yet.');
+              return _ErrorState(onRetry: _reload, message: loc.couldntReachServer);
             }
             return AnimatedBuilder(
               animation: GamificationService.instance,
@@ -112,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 final xp = GamificationService.instance.xp;
                 return CustomScrollView(
                   slivers: [
-                    SliverToBoxAdapter(child: _Header(greeting: _greeting)),
+                    const SliverToBoxAdapter(child: _Header()),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _TalkAboutAnythingCard(onTap: _startCustom)),
@@ -122,8 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       sliver: SliverToBoxAdapter(
                         child: _MiniGameCard(
                           emoji: '🖼️',
-                          title: 'Picture match',
-                          subtitle: 'Match the scene to the sentence',
+                          title: loc.pictureMatch,
+                          subtitle: loc.pictureMatchSub,
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const PictureMatchScreen()),
                           ),
@@ -133,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                       sliver: SliverToBoxAdapter(
-                        child: Text('Choose a scenario',
+                        child: Text(loc.chooseScenario,
                             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: scheme.onSurface)),
                       ),
                     ),
@@ -170,12 +165,19 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _Header extends StatelessWidget {
-  final String greeting;
-  const _Header({required this.greeting});
+  const _Header();
+
+  String _greeting(AppLocalizations loc) {
+    final h = DateTime.now().hour;
+    if (h < 12) return loc.goodMorning;
+    if (h < 17) return loc.goodAfternoon;
+    return loc.goodEvening;
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
     final session = UserSession.instance;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
@@ -188,9 +190,9 @@ class _Header extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('$greeting 👋', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14)),
+                    Text('${_greeting(loc)} 👋', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14)),
                     const SizedBox(height: 2),
-                    Text("Let's speak English",
+                    Text(loc.letsSpeak,
                         style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: scheme.onSurface)),
                   ],
                 ),
@@ -213,11 +215,11 @@ class _Header extends StatelessWidget {
               final g = GamificationService.instance;
               return Row(
                 children: [
-                  Expanded(child: _StatChip(icon: Icons.local_fire_department_rounded, label: 'Streak', value: '${g.streak}')),
+                  Expanded(child: _StatChip(icon: Icons.local_fire_department_rounded, label: loc.statStreak, value: '${g.streak}')),
                   const SizedBox(width: 10),
-                  Expanded(child: _StatChip(icon: Icons.star_rounded, label: 'XP', value: '${g.xp}')),
+                  Expanded(child: _StatChip(icon: Icons.star_rounded, label: loc.statXp, value: '${g.xp}')),
                   const SizedBox(width: 10),
-                  Expanded(child: _StatChip(icon: Icons.bar_chart_rounded, label: 'Level', value: session.level)),
+                  Expanded(child: _StatChip(icon: Icons.bar_chart_rounded, label: loc.statLevel, value: session.level)),
                 ],
               );
             },
@@ -270,6 +272,7 @@ class _TalkAboutAnythingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -291,13 +294,13 @@ class _TalkAboutAnythingCard extends StatelessWidget {
                 child: const Center(child: Text('🎙️', style: TextStyle(fontSize: 22))),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Talk about anything', style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w800)),
-                    SizedBox(height: 2),
-                    Text('Type any topic — the tutor starts a chat', style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+                    Text(loc.talkAnything, style: const TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(loc.talkAnythingSub, style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
                   ],
                 ),
               ),

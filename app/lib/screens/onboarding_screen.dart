@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+import '../services/locale_controller.dart';
 import '../services/user_session.dart';
 import 'main_shell.dart';
 
@@ -27,17 +29,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ('🇧🇷', 'Portuguese'),
     ('🇫🇷', 'French'),
     ('🌐', 'Other'),
-  ];
-  static const _goals = [
-    ('💼', 'Job / Interview', 'Job / Interview'),
-    ('✈️', 'Travel', 'Travel'),
-    ('🎓', 'Study abroad', 'Study abroad'),
-    ('💬', 'Just talking', 'Just talking'),
-  ];
-  static const _levels = [
-    ('🌱', 'Beginner', 'I am just starting', 'A0'),
-    ('🌿', 'Some words', 'I know a few words & phrases', 'A2'),
-    ('🌳', 'Conversational', 'I can already hold a chat', 'B1'),
   ];
 
   bool get _canContinue {
@@ -87,6 +78,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
+    final goals = [
+      ('💼', loc.goalJob, 'Job / Interview'),
+      ('✈️', loc.goalTravel, 'Travel'),
+      ('🎓', loc.goalStudy, 'Study abroad'),
+      ('💬', loc.goalTalking, 'Just talking'),
+    ];
+    final levels = [
+      ('🌱', loc.levelBeginner, loc.levelBeginnerSub, 'A0'),
+      ('🌿', loc.levelSomeWords, loc.levelSomeWordsSub, 'A2'),
+      ('🌳', loc.levelConversational, loc.levelConversationalSub, 'B1'),
+    ];
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -128,23 +131,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   children: [
                     _WelcomePage(onStart: _next),
                     _ChoicePage(
-                      title: 'What language do you speak?',
-                      subtitle: "We'll translate and explain in your language.",
+                      title: loc.qLanguage,
+                      subtitle: loc.qLanguageSub,
                       children: [
-                        for (final l in _languages)
+                        for (final lang in _languages)
                           _OptionCard(
-                            emoji: l.$1,
-                            label: l.$2,
-                            selected: _lang == l.$2,
-                            onTap: () => setState(() => _lang = l.$2),
+                            emoji: lang.$1,
+                            label: lang.$2,
+                            selected: _lang == lang.$2,
+                            onTap: () => setState(() {
+                              _lang = lang.$2;
+                              LocaleController.setFromLanguage(lang.$2); // switch UI language live
+                            }),
                           ),
                       ],
                     ),
                     _ChoicePage(
-                      title: 'Why do you want English?',
-                      subtitle: "We'll pick scenarios that fit your goal.",
+                      title: loc.qGoal,
+                      subtitle: loc.qGoalSub,
                       children: [
-                        for (final g in _goals)
+                        for (final g in goals)
                           _OptionCard(
                             emoji: g.$1,
                             label: g.$2,
@@ -154,10 +160,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ],
                     ),
                     _ChoicePage(
-                      title: "What's your level?",
-                      subtitle: "No test needed — just pick what feels right.",
+                      title: loc.qLevel,
+                      subtitle: loc.qLevelSub,
                       children: [
-                        for (final lv in _levels)
+                        for (final lv in levels)
                           _OptionCard(
                             emoji: lv.$1,
                             label: lv.$2,
@@ -183,7 +189,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: Text(
-                        _index == 3 ? 'Start learning  🎉' : 'Continue',
+                        _index == 3 ? '${loc.startLearning}  🎉' : loc.continueLabel,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -232,6 +238,7 @@ class _WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       child: Column(
@@ -261,7 +268,7 @@ class _WelcomePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Learn English by talking —\nno fear, just real conversation.',
+            loc.welcomeSubtitle,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant, height: 1.4),
           ),
@@ -270,10 +277,10 @@ class _WelcomePage extends StatelessWidget {
             alignment: WrapAlignment.center,
             spacing: 8,
             runSpacing: 8,
-            children: const [
-              _Pill('🎭 Real-life scenarios'),
-              _Pill('👆 Tap any word'),
-              _Pill('💬 Gentle corrections'),
+            children: [
+              _Pill('🎭 ${loc.featureScenarios}'),
+              _Pill('👆 ${loc.featureTapWord}'),
+              _Pill('💬 ${loc.featureCorrections}'),
             ],
           ),
           const Spacer(flex: 3),
@@ -285,11 +292,11 @@ class _WelcomePage extends StatelessWidget {
               style: FilledButton.styleFrom(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: const Text('Get started', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Text(loc.getStarted, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 8),
-          Text('Takes 30 seconds', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
+          Text(loc.takesSeconds, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
         ],
       ),
     );

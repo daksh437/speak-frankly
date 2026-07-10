@@ -1,11 +1,13 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import 'l10n/app_localizations.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/analytics_service.dart';
 import 'services/auth_service.dart';
 import 'services/gamification_service.dart';
+import 'services/locale_controller.dart';
 import 'services/sync_service.dart';
 import 'services/user_session.dart';
 import 'services/vocabulary_service.dart';
@@ -14,6 +16,7 @@ import 'theme/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await UserSession.instance.load();
+  LocaleController.setFromLanguage(UserSession.instance.nativeLanguage);
   await GamificationService.instance.load();
   await VocabularyService.instance.load();
 
@@ -39,14 +42,20 @@ class SpeakFranklyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Speak Frankly',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
-      // OnboardingGate: show onboarding until the learner has set language/goal/level.
-      home: UserSession.instance.onboarded ? const MainShell() : const OnboardingScreen(),
+    return ValueListenableBuilder<Locale?>(
+      valueListenable: LocaleController.locale,
+      builder: (context, locale, _) => MaterialApp(
+        title: 'Speak Frankly',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ThemeMode.system,
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        // OnboardingGate: show onboarding until the learner has set language/goal/level.
+        home: UserSession.instance.onboarded ? const MainShell() : const OnboardingScreen(),
+      ),
     );
   }
 }

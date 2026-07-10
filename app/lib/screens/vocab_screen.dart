@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
 import 'import_text_screen.dart';
@@ -62,16 +63,17 @@ class VocabScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: VocabularyService.instance,
       builder: (context, _) {
+        final l = AppLocalizations.of(context)!;
         final words = VocabularyService.instance.words;
         final canReview = words.length >= 2;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Saved Words'),
+            title: Text(l.savedWords),
             actions: [
               IconButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ImportTextScreen())),
                 icon: const Icon(Icons.post_add_rounded),
-                tooltip: 'Import text',
+                tooltip: l.importText,
               ),
               if (canReview)
                 Padding(
@@ -79,7 +81,7 @@ class VocabScreen extends StatelessWidget {
                   child: TextButton.icon(
                     onPressed: () => _showReviewModes(context),
                     icon: const Icon(Icons.style_rounded, size: 18),
-                    label: const Text('Review'),
+                    label: Text(l.review),
                   ),
                 ),
             ],

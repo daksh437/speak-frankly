@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/achievements.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
@@ -81,8 +82,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: Text(loc.navProfile)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
         children: [
@@ -111,20 +113,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _PlanCard(access: _access),
           const SizedBox(height: 18),
           _SectionCard(
-            title: 'Your learning',
+            title: loc.yourLearning,
             children: [
-              _InfoRow(icon: Icons.translate_rounded, label: 'Native language', value: UserSession.instance.nativeLanguage.isEmpty ? '—' : UserSession.instance.nativeLanguage),
-              _InfoRow(icon: Icons.flag_rounded, label: 'Goal', value: UserSession.instance.goal.isEmpty ? '—' : UserSession.instance.goal),
-              _InfoRow(icon: Icons.bar_chart_rounded, label: 'Level', value: UserSession.instance.level, onTap: _changeLevel, trailingArrow: true),
+              _InfoRow(icon: Icons.translate_rounded, label: loc.nativeLanguage, value: UserSession.instance.nativeLanguage.isEmpty ? '—' : UserSession.instance.nativeLanguage),
+              _InfoRow(icon: Icons.flag_rounded, label: loc.goalLabel, value: UserSession.instance.goal.isEmpty ? '—' : UserSession.instance.goal),
+              _InfoRow(icon: Icons.bar_chart_rounded, label: loc.levelLabel, value: UserSession.instance.level, onTap: _changeLevel, trailingArrow: true),
             ],
           ),
           const SizedBox(height: 14),
           _SectionCard(
-            title: 'Settings',
+            title: loc.settings,
             children: [
-              _InfoRow(icon: Icons.person_outline_rounded, label: 'Name', value: UserSession.instance.displayName, onTap: _editName, trailingArrow: true),
-              _InfoRow(icon: Icons.quiz_outlined, label: 'Test my level', value: '', onTap: _takePlacement, trailingArrow: true),
-              _InfoRow(icon: Icons.info_outline_rounded, label: 'About', value: 'Speak Frankly', onTap: () => _showAbout(context)),
+              _InfoRow(icon: Icons.person_outline_rounded, label: loc.nameLabel, value: UserSession.instance.displayName, onTap: _editName, trailingArrow: true),
+              _InfoRow(icon: Icons.quiz_outlined, label: loc.testMyLevel, value: '', onTap: _takePlacement, trailingArrow: true),
+              _InfoRow(icon: Icons.info_outline_rounded, label: loc.aboutLabel, value: 'Speak Frankly', onTap: () => _showAbout(context)),
             ],
           ),
           const SizedBox(height: 24),
@@ -287,19 +289,20 @@ class _FluencyMap extends StatelessWidget {
     return AnimatedBuilder(
       animation: Listenable.merge([GamificationService.instance, VocabularyService.instance]),
       builder: (context, _) {
+        final loc = AppLocalizations.of(context)!;
         final g = GamificationService.instance;
         final skills = <(String, String, int, int, Color)>[
-          ('Conversations', '💬', g.scenariosCompleted, 20, const Color(0xFF4C9AFF)),
-          ('Speaking', '🎤', g.speakingReps, 30, const Color(0xFFFF7A5A)),
-          ('Vocabulary', '📚', VocabularyService.instance.count, 30, const Color(0xFF00C2A8)),
-          ('Consistency', '🔥', g.streak, 30, const Color(0xFFF59E0B)),
+          (loc.skillConversations, '💬', g.scenariosCompleted, 20, const Color(0xFF4C9AFF)),
+          (loc.skillSpeaking, '🎤', g.speakingReps, 30, const Color(0xFFFF7A5A)),
+          (loc.skillVocabulary, '📚', VocabularyService.instance.count, 30, const Color(0xFF00C2A8)),
+          (loc.skillConsistency, '🔥', g.streak, 30, const Color(0xFFF59E0B)),
         ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 4, bottom: 8),
-              child: Text('Fluency map', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(loc.fluencyMap, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             ),
             Container(
               padding: const EdgeInsets.all(16),
@@ -381,7 +384,7 @@ class _Badges extends StatelessWidget {
               padding: const EdgeInsets.only(left: 4, bottom: 8),
               child: Row(
                 children: [
-                  const Text('Badges', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text(AppLocalizations.of(context)!.badges, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   const Spacer(),
                   Text('$earned/${items.length} earned',
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12.5)),
