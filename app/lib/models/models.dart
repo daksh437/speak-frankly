@@ -119,11 +119,13 @@ class DictMeaning {
   final String partOfSpeech;
   final String definition;
   final String example;
-  DictMeaning({required this.partOfSpeech, required this.definition, required this.example});
+  final List<String> synonyms;
+  DictMeaning({required this.partOfSpeech, required this.definition, required this.example, this.synonyms = const []});
 
   factory DictMeaning.fromJson(Map<String, dynamic> j) => DictMeaning(
         partOfSpeech: j['partOfSpeech'] ?? '',
         definition: j['definition'] ?? '',
         example: j['example'] ?? '',
+        synonyms: (j['synonyms'] as List?)?.map((e) => e.toString()).toList() ?? [],
       );
 }

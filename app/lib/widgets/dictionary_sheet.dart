@@ -156,6 +156,22 @@ class _DictionarySheetState extends State<_DictionarySheet> {
                               child: Text('"${m.example}"',
                                   style: TextStyle(color: scheme.onSurfaceVariant, fontStyle: FontStyle.italic, fontSize: 13.5)),
                             ),
+                          if (m.synonyms.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: m.synonyms
+                                    .take(5)
+                                    .map((s) => Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(10)),
+                                          child: Text(s, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                                        ))
+                                    .toList(),
+                              ),
+                            ),
                         ],
                       ),
                     )),

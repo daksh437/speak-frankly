@@ -352,4 +352,50 @@ Variety seed: ${seed}`;
   return { items: FALLBACK_PICTURE_MATCH.slice(0, count), fallback: true };
 }
 
-module.exports = { chat, feedback, speakingPhrases, customScenario, pictureMatch };
+function _simpleExtract(text) {
+  const stop = new Set(['the', 'and', 'for', 'are', 'with', 'this', 'that', 'have', 'from', 'your', 'you', 'was', 'were', 'they', 'their', 'what', 'when', 'where', 'which', 'will', 'would', 'about', 'there', 'here', 'been', 'them', 'then', 'than', 'some', 'into', 'more', 'over']);
+  const seen = new Set();
+  const out = [];
+  for (const w of (text.toLowerCase().match(/[a-z]+/g) || [])) {
+    if (w.length >= 5 && !stop.has(w) && !seen.has(w)) {
+      seen.add(w);
+      out.push({ word: w, meaning: '' });
+      if (out.length >= 8) break;
+    }
+  }
+  return out;
+}
+
+/**
+ * POST /vocab/extract -> { words: [{word, meaning}] } — pull useful vocabulary
+ * out of pasted text (Content import, BRD §9). Not metered. Falls back to a
+ * simple keyword extraction if AI is unavailable.
+ */
+async function extractVocab(req) {
+  const body = req.body || {};
+  const text = (body.text || '').toString().slice(0, 3000);
+  const level = (body.level || 'A2').toString();
+  if (!text.trim()) return { words: [] };
+  if (!hasKey()) return { words: _simpleExtract(text) };
+
+  const prompt = `From this text, choose 5-10 useful English vocabulary words or short phrases for a learner (level ${level} CEFR). For each, give the word and a short, simple meaning (max 10 words).
+Text:
+"""${text}"""
+Return ONLY a JSON array: [{"word":"...","meaning":"..."}]`;
+  try {
+    const raw = await runGeminiChat([{ role: 'user', text: prompt }], { temperature: 0.5, maxTokens: 1500 });
+    const arr = extractJsonArray(raw);
+    if (Array.isArray(arr)) {
+      const words = arr
+        .filter((x) => x && x.word)
+        .map((x) => ({ word: String(x.word).slice(0, 60), meaning: String(x.meaning || '').slice(0, 140) }))
+        .slice(0, 10);
+      if (words.length) return { words };
+    }
+  } catch (e) {
+    console.warn('[extractVocab] error:', e.message);
+  }
+  return { words: _simpleExtract(text) };
+}
+
+module.exports = { chat, feedback, speakingPhrases, customScenario, pictureMatch, extractVocab };

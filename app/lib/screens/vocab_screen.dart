@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
+import 'import_text_screen.dart';
 import 'match_game_screen.dart';
 import 'review_screen.dart';
+import 'word_guess_screen.dart';
 
 void _showReviewModes(BuildContext context) {
   showModalBottomSheet(
@@ -33,6 +35,16 @@ void _showReviewModes(BuildContext context) {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MatchGameScreen()));
             },
           ),
+          if (VocabularyService.instance.count >= 4)
+            ListTile(
+              leading: Icon(Icons.psychology_rounded, color: AppTheme.seed),
+              title: const Text('Guess the word'),
+              subtitle: const Text('Read a meaning, pick the word'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WordGuessScreen()));
+              },
+            ),
           const SizedBox(height: 8),
         ],
       ),
@@ -56,6 +68,11 @@ class VocabScreen extends StatelessWidget {
           appBar: AppBar(
             title: const Text('Saved Words'),
             actions: [
+              IconButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ImportTextScreen())),
+                icon: const Icon(Icons.post_add_rounded),
+                tooltip: 'Import text',
+              ),
               if (canReview)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),

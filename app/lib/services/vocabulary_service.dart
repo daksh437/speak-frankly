@@ -75,6 +75,15 @@ class VocabularyService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Add a word with a meaning (e.g. from content import). No-op if already saved.
+  Future<void> addWord(String word, String meaning) async {
+    final w = word.trim();
+    if (w.isEmpty || isSaved(w)) return;
+    _words.add(SavedWord(word: w, definition: meaning.trim()));
+    await _persist();
+    notifyListeners();
+  }
+
   Future<void> remove(String word) async {
     _words.removeWhere((w) => w.word.toLowerCase() == word.toLowerCase());
     await _persist();

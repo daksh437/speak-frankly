@@ -128,6 +128,16 @@ class ApiService {
     return ((data['items'] as List?) ?? []).whereType<Map<String, dynamic>>().toList();
   }
 
+  /// Extract useful vocabulary (word + meaning) from pasted text.
+  Future<List<Map<String, dynamic>>> extractVocab(String text) async {
+    final res = await _client
+        .post(_u('/vocab/extract'), headers: _headers, body: jsonEncode({'text': text, 'level': UserSession.instance.level}))
+        .timeout(const Duration(seconds: 45));
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final data = (body['data'] as Map<String, dynamic>?) ?? {};
+    return ((data['words'] as List?) ?? []).whereType<Map<String, dynamic>>().toList();
+  }
+
   /// Cloud-synced progress (gamification + saved words).
   Future<Map<String, dynamic>> fetchProgress() async {
     final res = await _client.get(_u('/progress'), headers: _headers).timeout(_timeout);

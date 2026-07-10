@@ -24,6 +24,7 @@ const speakingRoutes = require('./routes/speaking');
 const customRoutes = require('./routes/custom');
 const progressRoutes = require('./routes/progress');
 const gamesRoutes = require('./routes/games');
+const vocabRoutes = require('./routes/vocab');
 const { hasKey, MODEL } = require('./utils/geminiClient');
 const { getInitStatus } = require('./utils/firestoreAdmin');
 const { DEV_SKIP_LIMITS, DAILY_MESSAGES_FREE, TRIAL_DAYS } = require('./middleware/aiAccess');
@@ -59,6 +60,7 @@ app.use('/speaking', speakingRoutes);
 app.use('/custom', customRoutes);
 app.use('/progress', progressRoutes);
 app.use('/games', gamesRoutes);
+app.use('/vocab', vocabRoutes);
 app.use('/tutor', tutorRoutes);
 
 // Graceful catch-all for AI paths so a learner never sees a raw 500 mid-chat.
