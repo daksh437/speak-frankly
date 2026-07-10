@@ -118,6 +118,16 @@ class ApiService {
     return ((data['phrases'] as List?) ?? []).map((e) => e.toString()).where((s) => s.trim().isNotEmpty).toList();
   }
 
+  /// Fresh, level-aware picture-match items (emoji scene + sentences).
+  Future<List<Map<String, dynamic>>> fetchPictureMatch({required String level, int count = 10}) async {
+    final res = await _client
+        .post(_u('/games/picture-match'), headers: _headers, body: jsonEncode({'level': level, 'count': count}))
+        .timeout(const Duration(seconds: 45));
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final data = (body['data'] as Map<String, dynamic>?) ?? {};
+    return ((data['items'] as List?) ?? []).whereType<Map<String, dynamic>>().toList();
+  }
+
   /// Cloud-synced progress (gamification + saved words).
   Future<Map<String, dynamic>> fetchProgress() async {
     final res = await _client.get(_u('/progress'), headers: _headers).timeout(_timeout);

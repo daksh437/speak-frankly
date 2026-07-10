@@ -297,4 +297,59 @@ Return ONLY JSON with these keys:
   return { scenario: _fallbackCustomScenario(topic, level) };
 }
 
-module.exports = { chat, feedback, speakingPhrases, customScenario };
+const FALLBACK_PICTURE_MATCH = [
+  { emoji: '🍕', correct: 'They are eating pizza.', distractors: ['She is reading a book.', 'He is driving a car.'] },
+  { emoji: '🏖️', correct: 'They are relaxing at the beach.', distractors: ['He is cooking dinner.', 'She is studying at night.'] },
+  { emoji: '🐶', correct: 'The dog is running in the park.', distractors: ['The cat is sleeping.', 'The bird is singing.'] },
+  { emoji: '☔', correct: 'It is raining outside.', distractors: ['The sun is shining.', 'It is snowing.'] },
+  { emoji: '🚌', correct: 'She is waiting for the bus.', distractors: ['He is riding a bicycle.', 'They are taking a taxi.'] },
+  { emoji: '☕', correct: 'He is drinking a cup of coffee.', distractors: ['She is eating an apple.', 'They are playing football.'] },
+  { emoji: '📚', correct: 'The student is reading a book.', distractors: ['The chef is cooking.', 'The doctor is working.'] },
+  { emoji: '🎂', correct: 'They are celebrating a birthday.', distractors: ['He is cleaning the house.', 'She is buying clothes.'] },
+  { emoji: '✈️', correct: 'The plane is taking off.', distractors: ['The train is arriving.', 'The car is parking.'] },
+  { emoji: '🏥', correct: 'She is visiting the doctor.', distractors: ['He is going to school.', 'They are at the market.'] },
+];
+
+/**
+ * POST /games/picture-match -> { items } — a fresh, level-aware set of
+ * "see the scene (emoji), pick the matching sentence" items. Not metered
+ * (client caches one set per day). Always returns usable items (fallback).
+ */
+async function pictureMatch(req) {
+  const body = req.body || {};
+  const level = (body.level || 'A2').toString();
+  const count = Math.min(Math.max(parseInt(body.count, 10) || 10, 4), 15);
+  if (!hasKey()) return { items: FALLBACK_PICTURE_MATCH.slice(0, count), mock: true };
+
+  const seed = Date.now() + Math.floor(Math.random() * 100000);
+  const prompt = `Create ${count} "picture match" items for an English learner (level ${level} CEFR).
+Each item is a simple everyday scene shown as ONE emoji, plus three short sentences: one that correctly describes the scene and two plausible but clearly WRONG distractors (about different scenes).
+Rules:
+- One common emoji per scene (people, objects, or activities).
+- Sentences 4-8 words, matched to level ${level}.
+- The correct sentence must clearly match the emoji.
+Return ONLY a JSON array of ${count} objects:
+[{"emoji":"🍕","correct":"They are eating pizza.","distractors":["She is reading a book.","He is driving a car."]}]
+Variety seed: ${seed}`;
+
+  try {
+    const raw = await runGeminiChat([{ role: 'user', text: prompt }], { temperature: 0.9, maxTokens: 2000 });
+    const arr = extractJsonArray(raw);
+    if (Array.isArray(arr)) {
+      const items = arr
+        .filter((x) => x && typeof x.emoji === 'string' && typeof x.correct === 'string' && Array.isArray(x.distractors) && x.distractors.length >= 2)
+        .map((x) => ({
+          emoji: String(x.emoji).slice(0, 6),
+          correct: String(x.correct).slice(0, 120),
+          distractors: x.distractors.slice(0, 2).map((d) => String(d).slice(0, 120)),
+        }))
+        .slice(0, count);
+      if (items.length >= 4) return { items };
+    }
+  } catch (e) {
+    console.warn('[pictureMatch] error:', e.message);
+  }
+  return { items: FALLBACK_PICTURE_MATCH.slice(0, count), fallback: true };
+}
+
+module.exports = { chat, feedback, speakingPhrases, customScenario, pictureMatch };

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/analytics_service.dart';
 import '../services/gamification_service.dart';
+import '../services/picture_match_data.dart';
 import '../theme/app_theme.dart';
 
 /// Visual-first learning (BRD §4.3): see a scene, pick the sentence that
@@ -13,18 +14,8 @@ class PictureMatchScreen extends StatefulWidget {
 }
 
 class _PictureMatchScreenState extends State<PictureMatchScreen> {
-  static const _items = <(String, String, List<String>)>[
-    ('🍕', 'They are eating pizza.', ['She is reading a book.', 'He is driving a car.']),
-    ('🏖️', 'They are relaxing at the beach.', ['He is cooking dinner.', 'She is studying at night.']),
-    ('🐶', 'The dog is running in the park.', ['The cat is sleeping.', 'The bird is singing.']),
-    ('☔', 'It is raining outside.', ['The sun is shining.', 'It is snowing.']),
-    ('🚌', 'She is waiting for the bus.', ['He is riding a bicycle.', 'They are taking a taxi.']),
-    ('☕', 'He is drinking a cup of coffee.', ['She is eating an apple.', 'They are playing football.']),
-    ('📚', 'The student is reading a book.', ['The chef is cooking.', 'The doctor is working.']),
-    ('🎂', 'They are celebrating a birthday.', ['He is cleaning the house.', 'She is buying clothes.']),
-    ('✈️', 'The plane is taking off.', ['The train is arriving.', 'The car is parking.']),
-    ('🏥', 'She is visiting the doctor.', ['He is going to school.', 'They are at the market.']),
-  ];
+  List<PictureItem> _items = PictureMatchData.fallback;
+  bool _loading = true;
 
   int _index = 0;
   int _correctCount = 0;
@@ -37,6 +28,21 @@ class _PictureMatchScreenState extends State<PictureMatchScreen> {
   void initState() {
     super.initState();
     _prepare();
+    _load();
+  }
+
+  Future<void> _load({bool force = false}) async {
+    setState(() => _loading = true);
+    final items = await PictureMatchData.getToday(forceRefresh: force);
+    if (!mounted) return;
+    setState(() {
+      _items = items;
+      _loading = false;
+      _index = 0;
+      _correctCount = 0;
+      _done = false;
+      _prepare();
+    });
   }
 
   void _prepare() {
@@ -73,8 +79,22 @@ class _PictureMatchScreenState extends State<PictureMatchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Picture match')),
-      body: SafeArea(child: _done ? _summary(context) : _quiz(context)),
+      appBar: AppBar(
+        title: const Text('Picture match'),
+        actions: [
+          IconButton(
+            onPressed: _loading ? null : () => _load(force: true),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'New pictures',
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: SafeArea(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : (_done ? _summary(context) : _quiz(context)),
+      ),
     );
   }
 
