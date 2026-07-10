@@ -6,6 +6,11 @@ backend/serviceAccount*.json
 *-firebase-adminsdk-*.json
 RENDER_ENV_VALUES.txt
 
+# ---- Android release signing (NEVER commit — losing these = can't update app) ----
+**/*.jks
+**/*.keystore
+**/key.properties
+
 # ---- Node ----
 **/node_modules/
 *.log
