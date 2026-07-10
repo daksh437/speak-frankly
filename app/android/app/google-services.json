@@ -12,7 +12,20 @@
           "package_name": "com.speakfrankly"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "805127280447-7nv4v3t4l64jor7jhjuij5v6fn9fhg32.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.speakfrankly",
+            "certificate_hash": "ff1bf5919afc463d9d42b6771ca3f6b62b52e2ff"
+          }
+        },
+        {
+          "client_id": "805127280447-uh8r0jq6mu6319tj3jtor481umcffk6e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCoTxrec3fWWkyipfePFUSkLcgbMaD6QaA"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "805127280447-uh8r0jq6mu6319tj3jtor481umcffk6e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
