@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/gamification_service.dart';
+import '../services/speaking_phrases.dart';
 import '../services/speech_service.dart';
 import '../theme/app_theme.dart';
 
@@ -13,27 +14,36 @@ class SpeakScreen extends StatefulWidget {
 }
 
 class _SpeakScreenState extends State<SpeakScreen> {
-  static const _phrases = [
-    'Good morning! How are you today?',
-    'Nice to meet you.',
-    'Could you help me, please?',
-    'I would like a cup of coffee.',
-    'How much does this cost?',
-    'Where is the train station?',
-    'Can you repeat that, please?',
-    'I have been learning English for a month.',
-    'What time does the meeting start?',
-    'Thank you very much for your help.',
-    'I am looking for a new job.',
-    'I really enjoyed the movie.',
-  ];
+  List<String>? _phrases;
+  bool _loadingPhrases = true;
 
   int _index = 0;
   String _recognized = '';
   int? _score;
   bool _scored = false;
 
-  String get _phrase => _phrases[_index];
+  String get _phrase => _phrases![_index];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPhrases();
+  }
+
+  Future<void> _loadPhrases({bool forceRefresh = false}) async {
+    setState(() => _loadingPhrases = true);
+    final list = await SpeakingPhrases.getToday(forceRefresh: forceRefresh);
+    if (!mounted) return;
+    SpeechService.instance.stopListening();
+    setState(() {
+      _phrases = list;
+      _loadingPhrases = false;
+      _index = 0;
+      _recognized = '';
+      _score = null;
+      _scored = false;
+    });
+  }
 
   Future<void> _listen() => SpeechService.instance.speak(_phrase);
 
@@ -68,7 +78,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
   void _next() {
     SpeechService.instance.stopListening();
     setState(() {
-      _index = (_index + 1) % _phrases.length;
+      _index = (_index + 1) % _phrases!.length;
       _recognized = '';
       _score = null;
       _scored = false;
@@ -88,11 +98,19 @@ class _SpeakScreenState extends State<SpeakScreen> {
       appBar: AppBar(
         title: const Text('Speaking Practice'),
         actions: [
-          Center(child: Text('${_index + 1}/${_phrases.length}', style: TextStyle(color: scheme.onSurfaceVariant))),
-          const SizedBox(width: 16),
+          IconButton(
+            onPressed: _loadingPhrases ? null : () => _loadPhrases(forceRefresh: true),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'New phrases',
+          ),
+          if (_phrases != null)
+            Center(child: Text('${_index + 1}/${_phrases!.length}', style: TextStyle(color: scheme.onSurfaceVariant))),
+          const SizedBox(width: 14),
         ],
       ),
-      body: SafeArea(
+      body: (_loadingPhrases || _phrases == null)
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(

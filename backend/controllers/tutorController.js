@@ -157,4 +157,73 @@ Keep it simple and positive. Max 2 grammar_notes.`;
   };
 }
 
-module.exports = { chat, feedback };
+const FALLBACK_SPEAKING_PHRASES = [
+  'Good morning! How are you today?',
+  'Nice to meet you.',
+  'Could you help me, please?',
+  'I would like a cup of coffee.',
+  'How much does this cost?',
+  'Where is the train station?',
+  'Can you repeat that, please?',
+  'I have been learning English for a month.',
+  'What time does the meeting start?',
+  'Thank you very much for your help.',
+  'I am looking for a new job.',
+  'I really enjoyed the movie.',
+];
+
+function extractJsonArray(text) {
+  if (!text || typeof text !== 'string') return null;
+  const cleaned = text.replace(/```(?:json)?/g, '').trim();
+  try {
+    const v = JSON.parse(cleaned);
+    if (Array.isArray(v)) return v;
+  } catch (_) {/* fall through */}
+  const a = cleaned.indexOf('[');
+  const b = cleaned.lastIndexOf(']');
+  if (a !== -1 && b > a) {
+    try {
+      const v = JSON.parse(cleaned.slice(a, b + 1));
+      if (Array.isArray(v)) return v;
+    } catch (_) {/* fall through */}
+  }
+  return null;
+}
+
+/**
+ * POST /speaking/phrases -> { phrases: string[] }
+ * Level/goal-aware phrases for listen-and-imitate practice. Not metered (the
+ * client caches one set per day). Always returns usable phrases (fallback).
+ */
+async function speakingPhrases(req) {
+  const body = req.body || {};
+  const level = (body.level || 'A2').toString();
+  const goal = (body.goal || 'everyday conversation').toString();
+  const count = Math.min(Math.max(parseInt(body.count, 10) || 12, 4), 20);
+
+  if (!hasKey()) return { phrases: FALLBACK_SPEAKING_PHRASES.slice(0, count), mock: true };
+
+  const seed = Date.now() + Math.floor(Math.random() * 100000);
+  const prompt = `Generate ${count} short, natural spoken English phrases for a learner to practice saying aloud.
+Learner level: ${level} (CEFR). Learner goal: ${goal}.
+Rules:
+- Match the level (A0-A2: very simple and short; B1+: natural, slightly longer).
+- Make them useful for the learner's goal.
+- Everyday, realistic, and varied. Each phrase 4-10 words, normal capitalization and punctuation.
+Return ONLY a JSON array of ${count} strings - no numbering, no extra text.
+Variety seed: ${seed}`;
+
+  try {
+    const raw = await runGeminiChat([{ role: 'user', text: prompt }], { temperature: 0.9, maxTokens: 2000 });
+    const arr = extractJsonArray(raw);
+    const phrases = Array.isArray(arr)
+      ? arr.map((s) => String(s).trim()).filter((s) => s.length > 0 && s.length <= 120).slice(0, count)
+      : [];
+    if (phrases.length >= 4) return { phrases };
+  } catch (e) {
+    console.warn('[speakingPhrases] error:', e.message);
+  }
+  return { phrases: FALLBACK_SPEAKING_PHRASES.slice(0, count), fallback: true };
+}
+
+module.exports = { chat, feedback, speakingPhrases };

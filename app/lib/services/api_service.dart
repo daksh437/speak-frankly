@@ -79,6 +79,20 @@ class ApiService {
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
 
+  /// Fresh listen-and-imitate phrases for the learner's level + goal.
+  Future<List<String>> fetchSpeakingPhrases({required String level, required String goal, int count = 12}) async {
+    final res = await _client
+        .post(
+          _u('/speaking/phrases'),
+          headers: _headers,
+          body: jsonEncode({'level': level, 'goal': goal, 'count': count}),
+        )
+        .timeout(const Duration(seconds: 45));
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final data = (body['data'] as Map<String, dynamic>?) ?? {};
+    return ((data['phrases'] as List?) ?? []).map((e) => e.toString()).where((s) => s.trim().isNotEmpty).toList();
+  }
+
   /// The learner's plan + remaining daily messages (server is authoritative).
   Future<Map<String, dynamic>> fetchAccess() async {
     final res = await _client.get(_u('/access'), headers: _headers).timeout(_timeout);
