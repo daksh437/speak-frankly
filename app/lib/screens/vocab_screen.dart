@@ -3,7 +3,42 @@ import 'package:flutter/material.dart';
 
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
+import 'match_game_screen.dart';
 import 'review_screen.dart';
+
+void _showReviewModes(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(padding: EdgeInsets.all(8), child: Text('Choose a review mode', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+          ListTile(
+            leading: Icon(Icons.style_rounded, color: AppTheme.seed),
+            title: const Text('Flashcards'),
+            subtitle: const Text('Flip cards and self-rate'),
+            onTap: () {
+              Navigator.pop(ctx);
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReviewScreen()));
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.grid_view_rounded, color: AppTheme.seed),
+            title: const Text('Matching game'),
+            subtitle: const Text('Match words to their meanings'),
+            onTap: () {
+              Navigator.pop(ctx);
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MatchGameScreen()));
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+}
 
 /// Saved vocabulary — words the learner bookmarked from the dictionary, plus a
 /// flashcard review session (spaced-repetition groundwork).
@@ -25,7 +60,7 @@ class VocabScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: TextButton.icon(
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReviewScreen())),
+                    onPressed: () => _showReviewModes(context),
                     icon: const Icon(Icons.style_rounded, size: 18),
                     label: const Text('Review'),
                   ),

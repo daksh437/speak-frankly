@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../services/achievements.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../services/user_session.dart';
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
+import 'placement_test_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -43,6 +45,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await UserSession.instance.setDisplayName(name);
       if (mounted) setState(() {});
     }
+  }
+
+  Future<void> _takePlacement() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlacementTestScreen()));
+    if (mounted) setState(() {});
   }
 
   Future<void> _changeLevel() async {
@@ -99,6 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 18),
           const _FluencyMap(),
           const SizedBox(height: 18),
+          const _Badges(),
+          const SizedBox(height: 18),
           _PlanCard(access: _access),
           const SizedBox(height: 18),
           _SectionCard(
@@ -114,6 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: 'Settings',
             children: [
               _InfoRow(icon: Icons.person_outline_rounded, label: 'Name', value: UserSession.instance.displayName, onTap: _editName, trailingArrow: true),
+              _InfoRow(icon: Icons.quiz_outlined, label: 'Test my level', value: '', onTap: _takePlacement, trailingArrow: true),
               _InfoRow(icon: Icons.info_outline_rounded, label: 'About', value: 'Speak Frankly', onTap: () => _showAbout(context)),
             ],
           ),
@@ -348,6 +358,96 @@ class _SkillBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Milestone badges — earned ones are colored, locked ones greyed (BRD §8).
+class _Badges extends StatelessWidget {
+  const _Badges();
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    return AnimatedBuilder(
+      animation: Listenable.merge([GamificationService.instance, VocabularyService.instance]),
+      builder: (context, _) {
+        final items = computeAchievements();
+        final earned = items.where((a) => a.earned).length;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Row(
+                children: [
+                  const Text('Badges', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  Text('$earned/${items.length} earned',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12.5)),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+              decoration: BoxDecoration(
+                color: isLight ? Colors.white : const Color(0xFF1E1B26),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: isLight ? [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 5))] : null,
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 6,
+                runSpacing: 16,
+                children: [for (final a in items) _BadgeTile(a)],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BadgeTile extends StatelessWidget {
+  final Achievement a;
+  const _BadgeTile(this.a);
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: '${a.title} — ${a.description}',
+      child: SizedBox(
+        width: 74,
+        child: Column(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                gradient: a.earned ? AppColors.gradient(AppTheme.seed) : null,
+                color: a.earned ? null : scheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: a.earned
+                    ? Text(a.emoji, style: const TextStyle(fontSize: 24))
+                    : Icon(Icons.lock_rounded, color: scheme.onSurfaceVariant, size: 20),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(a.title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: a.earned ? scheme.onSurface : scheme.onSurfaceVariant,
+                )),
+          ],
+        ),
+      ),
     );
   }
 }
