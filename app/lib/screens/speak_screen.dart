@@ -156,10 +156,10 @@ class _SpeakScreenState extends State<SpeakScreen> {
                   return Column(
                     children: [
                       _Waveform(levels: SpeechService.instance.waveform, active: listening, color: AppTheme.seed),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       Text(listening ? 'Shadowing… tap to stop' : 'Tap the mic and shadow the phrase',
                           style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       GestureDetector(
                         onTap: listening ? SpeechService.instance.stopListening : _record,
                         child: AnimatedContainer(
@@ -184,7 +184,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -209,7 +209,7 @@ class _Waveform extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 56,
+      height: 40,
       width: double.infinity,
       child: CustomPaint(
         painter: _WavePainter(
