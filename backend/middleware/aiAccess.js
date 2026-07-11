@@ -3,19 +3,20 @@
  * Backend is the source of truth — never trust client counters.
  *
  * Plans (resolved from Firestore user doc dates, not a stored string):
- * - trial:   new users get TRIAL_DAYS of UNLIMITED tutor use.
- * - free:    after trial → DAILY_MESSAGES_FREE tutor messages/day, reset midnight UTC.
+ * - free:    NO AI access — premium is required to use the tutor (hard paywall).
+ *            (If REQUIRE_PREMIUM=false, free instead gets DAILY_MESSAGES_FREE/day.)
  * - premium: unlimited (Google Play in_app_purchase; premiumExpiry in the future).
  *
- * DEV_SKIP_LIMITS=true bypasses all checks for local testing.
- * Chat needs a higher free cap than InstaFlow's 2/day, so the limit is per-message
- * and configurable via DAILY_MESSAGES_FREE.
+ * There is no free trial. DEV_SKIP_LIMITS=true bypasses all checks for local testing.
  */
 const { getDb } = require('../utils/firestoreAdmin');
 
 const USERS = 'users';
 const DAILY_MESSAGES_FREE = parseInt(process.env.DAILY_MESSAGES_FREE || '25', 10);
 const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS || '7', 10);
+// Premium required for ALL AI (default). Set REQUIRE_PREMIUM=false to instead
+// give free users DAILY_MESSAGES_FREE messages/day.
+const REQUIRE_PREMIUM = process.env.REQUIRE_PREMIUM !== 'false' && process.env.REQUIRE_PREMIUM !== '0';
 const DEV_SKIP_LIMITS = process.env.DEV_SKIP_LIMITS === 'true' || process.env.DEV_SKIP_LIMITS === '1';
 
 if (DEV_SKIP_LIMITS) {
@@ -110,7 +111,20 @@ async function getAiAccess(uid) {
     return { allowed: true, planType: 'premium', dailyUsed: null, dailyLimit: null, resetAtUtc: null, user: currentUser };
   }
 
-  // free
+  // free — premium required: no AI access at all (hard paywall).
+  if (REQUIRE_PREMIUM) {
+    return {
+      allowed: false,
+      planType: 'free',
+      dailyUsed: 0,
+      dailyLimit: 0,
+      resetAtUtc: null,
+      user: currentUser,
+      error: 'PREMIUM_REQUIRED',
+    };
+  }
+
+  // free (only when REQUIRE_PREMIUM=false) — daily message cap.
   const today = todayDateStr();
   let dailyUsed = typeof currentUser.dailyAiUsed === 'number' ? currentUser.dailyAiUsed : 0;
   if ((currentUser.dailyAiDate || '') !== today) dailyUsed = 0;
@@ -152,11 +166,14 @@ async function requireAiAccess(req, res, next) {
   }
 
   if (!access.allowed) {
+    const premiumRequired = access.error === 'PREMIUM_REQUIRED';
     return res.status(403).json({
       success: false,
-      error: 'DAILY_LIMIT_REACHED',
-      code: 'DAILY_LIMIT_REACHED',
-      message: 'Daily free limit reached. Upgrade to Premium for unlimited practice.',
+      error: access.error || 'DAILY_LIMIT_REACHED',
+      code: access.error || 'DAILY_LIMIT_REACHED',
+      message: premiumRequired
+        ? 'Premium required. Subscribe to use the AI tutor.'
+        : 'Daily free limit reached. Upgrade to Premium for unlimited practice.',
       dailyLimit: access.dailyLimit,
       resetAtUtc: access.resetAtUtc,
     });
@@ -173,7 +190,8 @@ async function requireAiAccess(req, res, next) {
 function wrapAiHandler(handler, buildFallback) {
   return function wrapped(req, res, next) {
     if (req.aiAccessAllowed !== true) {
-      return res.status(403).json({ success: false, error: 'DAILY_LIMIT_REACHED', code: 'DAILY_LIMIT_REACHED' });
+      const code = req.aiAccess?.error || 'PREMIUM_REQUIRED';
+      return res.status(403).json({ success: false, error: code, code });
     }
     return Promise.resolve(handler(req, res, next))
       .then((value) => {
@@ -225,5 +243,6 @@ module.exports = {
   resolvePlan,
   DAILY_MESSAGES_FREE,
   TRIAL_DAYS,
+  REQUIRE_PREMIUM,
   DEV_SKIP_LIMITS,
 };

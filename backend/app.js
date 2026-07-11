@@ -27,7 +27,7 @@ const gamesRoutes = require('./routes/games');
 const vocabRoutes = require('./routes/vocab');
 const { hasKey, MODEL } = require('./utils/geminiClient');
 const { getInitStatus } = require('./utils/firestoreAdmin');
-const { DEV_SKIP_LIMITS, DAILY_MESSAGES_FREE, TRIAL_DAYS } = require('./middleware/aiAccess');
+const { DEV_SKIP_LIMITS, DAILY_MESSAGES_FREE, REQUIRE_PREMIUM } = require('./middleware/aiAccess');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -89,7 +89,7 @@ function startServer() {
     console.log(`🚀 Speak Frankly backend on port ${PORT} (${NODE_ENV})`);
     console.log(`🤖 Gemini: ${hasKey() ? `REAL (${MODEL})` : 'MOCK MODE (no GEMINI_API_KEY)'}`);
     console.log(`🔥 Firestore: ${fb.firestoreReady ? `ready (${fb.projectId})` : 'degraded / not configured'}`);
-    console.log(`🎫 Plan: trial ${TRIAL_DAYS}d unlimited → free ${DAILY_MESSAGES_FREE} msg/day → premium unlimited`);
+    console.log(`🎫 Plan: ${REQUIRE_PREMIUM ? 'premium required for AI (no free tier)' : `free ${DAILY_MESSAGES_FREE} msg/day`} → premium unlimited`);
     if (DEV_SKIP_LIMITS) console.log('⚠️  DEV_SKIP_LIMITS on — limits bypassed.');
     console.log(`📊 Health: http://localhost:${PORT}/health`);
   });

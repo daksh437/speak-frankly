@@ -1,11 +1,11 @@
 const express = require('express');
 const { speakingPhrases } = require('../controllers/tutorController');
+const { requireAiAccess } = require('../middleware/aiAccess');
 
 const router = express.Router();
 
-// Not metered: the client caches one set of phrases per day, so this is ~1
-// Gemini call/day/device. Always returns usable phrases (graceful fallback).
-router.post('/phrases', async (req, res) => {
+// Premium-gated AI. The client caches one set of phrases per day (~1 call/day).
+router.post('/phrases', requireAiAccess, async (req, res) => {
   try {
     const data = await speakingPhrases(req);
     res.json({ success: true, data });

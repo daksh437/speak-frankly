@@ -1,11 +1,11 @@
 const express = require('express');
 const { customScenario } = require('../controllers/tutorController');
+const { requireAiAccess } = require('../middleware/aiAccess');
 
 const router = express.Router();
 
-// Not metered: one AI call to build a scenario from the learner's topic. The
-// conversation that follows (/tutor/chat) is metered normally.
-router.post('/scenario', async (req, res) => {
+// Premium-gated AI: build a scenario from the learner's topic.
+router.post('/scenario', requireAiAccess, async (req, res) => {
   try {
     const data = await customScenario(req);
     if (data.error) return res.status(400).json({ success: false, error: data.error });

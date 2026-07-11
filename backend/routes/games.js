@@ -1,10 +1,11 @@
 const express = require('express');
 const { pictureMatch } = require('../controllers/tutorController');
+const { requireAiAccess } = require('../middleware/aiAccess');
 
 const router = express.Router();
 
-// Not metered: the client caches one set of items per day (~1 Gemini call/day).
-router.post('/picture-match', async (req, res) => {
+// Premium-gated AI. The client caches one set of items per day (~1 call/day).
+router.post('/picture-match', requireAiAccess, async (req, res) => {
   try {
     const data = await pictureMatch(req);
     res.json({ success: true, data });

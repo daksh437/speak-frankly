@@ -6,6 +6,7 @@ import '../services/user_session.dart';
 import 'login_screen.dart';
 import 'main_shell.dart';
 import 'onboarding_screen.dart';
+import 'premium_gate.dart';
 
 /// Routes by auth state: signed out → LoginScreen; signed in → prepare that
 /// account's session (reset+load if a different account) → onboarding/app.
@@ -48,7 +49,11 @@ class _AuthGateState extends State<AuthGate> {
           _prepare(user.uid); // async; shows loader until ready
           return const _Loader();
         }
-        return UserSession.instance.onboarded ? const MainShell() : const OnboardingScreen();
+        // Hard paywall: no AI access without premium. Everything after sign-in
+        // (onboarding + the app) sits behind the gate.
+        return PremiumGate(
+          child: UserSession.instance.onboarded ? const MainShell() : const OnboardingScreen(),
+        );
       },
     );
   }

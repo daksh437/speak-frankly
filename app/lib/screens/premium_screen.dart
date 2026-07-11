@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../services/premium_service.dart';
 import '../theme/app_theme.dart';
 
 /// Premium upgrade screen — introductory ₹10 for 7 days, then ₹199/month.
 /// The actual price/offer comes from the Play Console subscription; the text
 /// below mirrors it as the marketing copy.
+///
+/// When [blocking] is true the screen acts as a hard paywall: no back button,
+/// a sign-out escape hatch, and on success [onSubscribed] is invoked (instead of
+/// popping) so the gate can reveal the app.
 class PremiumScreen extends StatefulWidget {
-  const PremiumScreen({super.key});
+  const PremiumScreen({super.key, this.blocking = false, this.onSubscribed});
+  final bool blocking;
+  final VoidCallback? onSubscribed;
   @override
   State<PremiumScreen> createState() => _PremiumScreenState();
 }
@@ -32,7 +39,18 @@ class _PremiumScreenState extends State<PremiumScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Speak Frankly Premium')),
+      appBar: AppBar(
+        title: const Text('Speak Frankly Premium'),
+        automaticallyImplyLeading: !widget.blocking,
+        actions: widget.blocking
+            ? [
+                TextButton(
+                  onPressed: () => AuthService.signOut(),
+                  child: const Text('Sign out'),
+                ),
+              ]
+            : null,
+      ),
       body: SafeArea(
         child: AnimatedBuilder(
           animation: PremiumService.instance,
@@ -160,7 +178,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Done')),
+            child: FilledButton(
+              onPressed: () {
+                if (widget.onSubscribed != null) {
+                  widget.onSubscribed!();
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Done'),
+            ),
           ),
         ],
       ),
