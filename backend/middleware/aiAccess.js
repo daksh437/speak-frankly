@@ -40,20 +40,10 @@ function toDate(v) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Resolve plan from dates. premium > trial > free. */
+/** Resolve plan from dates. premium (paid subscription) > free. No free trial. */
 function resolvePlan(user, now = new Date()) {
   const premiumExpiry = toDate(user.premiumExpiry || user.premium_expiry);
   if (premiumExpiry && premiumExpiry > now) return 'premium';
-
-  const trialEnd = toDate(user.trialEndDate || user.trialEnd);
-  if (trialEnd && trialEnd > now) return 'trial';
-
-  // If no explicit trial window but the account was just created, treat as trial.
-  const created = toDate(user.createdAt || user.created_at || user.trialStartDate);
-  if (created) {
-    const end = new Date(created.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
-    if (end > now) return 'trial';
-  }
   return 'free';
 }
 
@@ -71,20 +61,17 @@ async function loadUser(uid) {
 }
 
 /**
- * First time we see a signed-in learner, create their user doc and start the
- * trial (business model: new users get TRIAL_DAYS of unlimited practice).
+ * First time we see a signed-in learner, create their user doc on the free plan
+ * (daily limits). Premium is granted only via a paid subscription. No free trial.
  * Returns the created user object, or null if the write failed.
  */
-async function createTrialUser(uid) {
+async function createFreeUser(uid) {
   const db = getDb();
   if (!db) return null;
   const now = new Date();
-  const trialEndDate = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
   const doc = {
     createdAt: now,
-    trialStartDate: now,
-    trialEndDate,
-    planType: 'trial',
+    planType: 'free',
     dailyAiUsed: 0,
     dailyAiDate: todayDateStr(),
     totalAiUsed: 0,
@@ -93,7 +80,7 @@ async function createTrialUser(uid) {
     await db.collection(USERS).doc(uid).set(doc, { merge: true });
     return { id: uid, ...doc };
   } catch (e) {
-    console.warn('[aiAccess] createTrialUser error:', e.message);
+    console.warn('[aiAccess] createFreeUser error:', e.message);
     return null;
   }
 }
@@ -107,27 +94,26 @@ async function getAiAccess(uid) {
   if (!firestoreOk) {
     return { allowed: true, planType: 'free', dailyUsed: 0, dailyLimit: DAILY_MESSAGES_FREE, resetAtUtc, user: null, degraded: true };
   }
-  if (!user) {
-    // New signed-in learner → provision a trial (unlimited for TRIAL_DAYS).
-    const created = await createTrialUser(uid);
-    if (created) {
-      return { allowed: true, planType: 'trial', dailyUsed: null, dailyLimit: null, resetAtUtc: null, user: created };
+  let currentUser = user;
+  if (!currentUser) {
+    // New signed-in learner → create on the free plan (daily limits apply).
+    currentUser = await createFreeUser(uid);
+    if (!currentUser) {
+      return { allowed: true, planType: 'free', dailyUsed: 0, dailyLimit: DAILY_MESSAGES_FREE, resetAtUtc, user: null, degraded: true };
     }
-    // If the write failed, don't hard-block — allow through in this degraded case.
-    return { allowed: true, planType: 'trial', dailyUsed: null, dailyLimit: null, resetAtUtc: null, user: null, degraded: true };
   }
 
   const now = new Date();
-  const planType = resolvePlan(user, now);
+  const planType = resolvePlan(currentUser, now);
 
-  if (planType === 'trial' || planType === 'premium') {
-    return { allowed: true, planType, dailyUsed: null, dailyLimit: null, resetAtUtc: null, user };
+  if (planType === 'premium') {
+    return { allowed: true, planType: 'premium', dailyUsed: null, dailyLimit: null, resetAtUtc: null, user: currentUser };
   }
 
   // free
   const today = todayDateStr();
-  let dailyUsed = typeof user.dailyAiUsed === 'number' ? user.dailyAiUsed : 0;
-  if ((user.dailyAiDate || '') !== today) dailyUsed = 0;
+  let dailyUsed = typeof currentUser.dailyAiUsed === 'number' ? currentUser.dailyAiUsed : 0;
+  if ((currentUser.dailyAiDate || '') !== today) dailyUsed = 0;
   dailyUsed = Math.max(0, Math.min(DAILY_MESSAGES_FREE, Math.floor(dailyUsed)));
 
   return {
@@ -136,7 +122,7 @@ async function getAiAccess(uid) {
     dailyUsed,
     dailyLimit: DAILY_MESSAGES_FREE,
     resetAtUtc,
-    user,
+    user: currentUser,
     error: dailyUsed < DAILY_MESSAGES_FREE ? null : 'DAILY_LIMIT_REACHED',
   };
 }
@@ -147,7 +133,7 @@ async function requireAiAccess(req, res, next) {
 
   if (DEV_SKIP_LIMITS) {
     req.uid = uid || 'dev-skip';
-    req.aiAccess = { allowed: true, planType: 'trial' };
+    req.aiAccess = { allowed: true, planType: 'premium' };
     req.aiAccessAllowed = true;
     return next();
   }
@@ -160,7 +146,7 @@ async function requireAiAccess(req, res, next) {
   req.uid = uid;
   req.aiAccess = access;
 
-  if (access.planType === 'trial' || access.planType === 'premium') {
+  if (access.planType === 'premium') {
     req.aiAccessAllowed = true;
     return next();
   }

@@ -149,6 +149,13 @@ class ApiService {
     await _client.post(_u('/progress'), headers: _headers, body: jsonEncode(data)).timeout(_timeout);
   }
 
+  /// Grant premium after a confirmed Google Play subscription purchase.
+  Future<void> activatePremium({String? purchaseToken}) async {
+    await _client
+        .post(_u('/premium/activate'), headers: _headers, body: jsonEncode({'purchaseToken': purchaseToken}))
+        .timeout(_timeout);
+  }
+
   /// The learner's plan + remaining daily messages (server is authoritative).
   Future<Map<String, dynamic>> fetchAccess() async {
     final res = await _client.get(_u('/access'), headers: _headers).timeout(_timeout);

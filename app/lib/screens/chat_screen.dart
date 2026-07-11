@@ -8,6 +8,7 @@ import '../services/speech_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dictionary_sheet.dart';
+import 'premium_screen.dart';
 import 'session_report_screen.dart';
 
 const _cefrLevels = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1'];
@@ -565,9 +566,15 @@ class _LimitBanner extends StatelessWidget {
             Text("You've reached today's free limit 🎯",
                 style: TextStyle(fontWeight: FontWeight.bold, color: scheme.onErrorContainer)),
             const SizedBox(height: 4),
-            Text('Come back tomorrow, or upgrade to Premium for unlimited practice.',
+            Text('Go Premium for unlimited practice, or come back tomorrow.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: scheme.onErrorContainer, fontSize: 13)),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen())),
+              icon: const Text('👑', style: TextStyle(fontSize: 14)),
+              label: const Text('Upgrade to Premium'),
+            ),
           ],
         ),
       ),

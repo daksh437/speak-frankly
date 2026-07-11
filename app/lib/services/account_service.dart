@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'gamification_service.dart';
 import 'locale_controller.dart';
+import 'premium_service.dart';
 import 'sync_service.dart';
 import 'user_session.dart';
 import 'vocabulary_service.dart';
@@ -31,6 +32,9 @@ class AccountService {
     await SyncService.pullAndApply();
     LocaleController.setFromLanguage(UserSession.instance.nativeLanguage);
     await SyncService.push(); // persist merged state / create the doc
+
+    // Restore any active Google Play subscription for this account (re-grants premium).
+    PremiumService.instance.init();
   }
 
   /// On sign-out, clear local data so the next account starts clean.

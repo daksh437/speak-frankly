@@ -11,6 +11,7 @@ import '../services/gamification_service.dart';
 import '../services/user_session.dart';
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
+import 'premium_screen.dart';
 import 'placement_test_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -261,29 +262,21 @@ class _PlanCard extends StatelessWidget {
     return FutureBuilder<Map<String, dynamic>>(
       future: access,
       builder: (context, snap) {
-        String title = 'Your plan';
-        String subtitle = 'Loading…';
-        IconData icon = Icons.workspace_premium_rounded;
-        if (snap.hasData) {
-          final d = snap.data!;
-          final plan = (d['planType'] ?? 'free').toString();
-          if (plan == 'trial') {
-            title = 'Free Trial';
-            subtitle = 'Unlimited practice during your trial 🎉';
-          } else if (plan == 'premium') {
-            title = 'Premium';
-            subtitle = 'Unlimited conversations. Thank you! 💜';
-          } else {
-            final used = (d['dailyUsed'] ?? 0) as num;
-            final limit = (d['dailyLimit'] ?? 25) as num;
-            final left = (limit - used).clamp(0, limit).toInt();
-            title = 'Free plan';
-            subtitle = '$left of ${limit.toInt()} messages left today';
-          }
-        } else if (snap.hasError) {
-          subtitle = 'Could not load plan.';
+        final d = snap.data ?? {};
+        final isPremium = (d['planType'] ?? 'free').toString() == 'premium';
+        String title;
+        String subtitle;
+        if (isPremium) {
+          title = 'Premium 💜';
+          subtitle = 'Unlimited conversations. Thank you!';
+        } else {
+          final used = (d['dailyUsed'] ?? 0) as num;
+          final limit = (d['dailyLimit'] ?? 25) as num;
+          final left = (limit - used).clamp(0, limit).toInt();
+          title = 'Free plan';
+          subtitle = snap.hasData ? '$left of ${limit.toInt()} left today — tap to go Premium' : 'Tap to unlock unlimited practice';
         }
-        return Container(
+        final card = Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: scheme.primaryContainer,
@@ -291,7 +284,7 @@ class _PlanCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, color: scheme.onPrimaryContainer),
+              Icon(isPremium ? Icons.workspace_premium_rounded : Icons.workspace_premium_outlined, color: scheme.onPrimaryContainer),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -303,8 +296,15 @@ class _PlanCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (!isPremium) Icon(Icons.chevron_right_rounded, color: scheme.onPrimaryContainer),
             ],
           ),
+        );
+        if (isPremium) return card;
+        return InkWell(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen())),
+          borderRadius: BorderRadius.circular(18),
+          child: card,
         );
       },
     );

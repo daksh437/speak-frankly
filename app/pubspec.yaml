@@ -60,6 +60,9 @@ dependencies:
   # Render the app logo mark (speech bubble) as a crisp vector.
   flutter_svg: ^2.0.10+1
 
+  # Premium subscription via Google Play Billing.
+  in_app_purchase: ^3.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
