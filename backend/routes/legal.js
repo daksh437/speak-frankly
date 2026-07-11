@@ -2,7 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 
-const CONTACT = 'dakshjangir44@gmail.com';
+const CONTACT = 'instaflow38@gmail.com';
 const APP = 'Speak Frankly';
 const UPDATED = 'July 2026';
 
