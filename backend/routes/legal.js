@@ -115,4 +115,31 @@ router.get('/terms', (_req, res) => {
 `));
 });
 
+router.get('/delete-account', (_req, res) => {
+  res.set('Content-Type', 'text/html; charset=utf-8').send(page('Delete your account', `
+<h1>Delete your ${APP} account</h1>
+<p class="muted">${APP} · Account &amp; data deletion · Last updated: ${UPDATED}</p>
+
+<p>You can request deletion of your ${APP} account and all associated data at any time.</p>
+
+<h2>How to request deletion</h2>
+<ol>
+  <li>Email <a href="mailto:${CONTACT}?subject=Delete%20my%20account">${CONTACT}</a> from the email address linked to your Google account.</li>
+  <li>Use the subject line <b>"Delete my account"</b>.</li>
+  <li>We will verify and process your request.</li>
+</ol>
+
+<div class="box">You can also open the app → <b>Profile → Sign out</b> at any time; to permanently delete your data, use the email request above.</div>
+
+<h2>What is deleted</h2>
+<ul>
+  <li>Your account: Google name, email address, and account ID.</li>
+  <li>Your learning data: progress (streak, XP, completed scenarios), saved words, level, goal, and chosen language.</li>
+</ul>
+
+<h2>Retention</h2>
+<p>Your account and associated data are permanently deleted within <b>30 days</b> of your request. No additional data is retained after deletion.</p>
+`));
+});
+
 module.exports = router;
