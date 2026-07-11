@@ -45,6 +45,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool get _hasSpoken => _messages.any((m) => m.isUser);
 
+  /// Beginners (A0–A2) get tappable reply choices — the "choose your reply"
+  /// mode from the BRD, so they're never stuck facing an empty text box.
+  bool get _isBeginner => const ['A0', 'A1', 'A2'].contains(UserSession.instance.level);
+
+  /// Simple, universal opening replies to seed the very first turn for beginners
+  /// (the scenario's starter line has no server suggestions yet).
+  static const _starterOptions = ['Hello!', 'Can you help me?', "Sorry, I don't understand."];
+
   /// End the session: fetch a feedback report, award completion XP, show the report.
   Future<void> _finish() async {
     if (_finishing) return;
@@ -84,6 +92,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _messages.add(ChatMessage(role: 'model', text: widget.scenario.starter));
+    // Beginners see tap-to-reply choices from the very first turn.
+    if (_isBeginner) _suggestions = _starterOptions;
     AnalyticsService.log('scenario_started', {'scenario': widget.scenario.id});
   }
 
@@ -200,7 +210,8 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          if (_suggestions.isNotEmpty && !_limitReached) _SuggestionBar(suggestions: _suggestions, accent: _accent, onTap: _send),
+          if (_suggestions.isNotEmpty && !_limitReached)
+            _SuggestionBar(suggestions: _suggestions, accent: _accent, onTap: _send, beginner: _isBeginner),
           if (_limitReached) const _LimitBanner() else _InputBar(controller: _controller, accent: _accent, onSend: _send, enabled: !_sending),
         ],
       ),
@@ -318,41 +329,64 @@ class _SuggestionBar extends StatelessWidget {
   final List<String> suggestions;
   final Color accent;
   final void Function(String) onTap;
-  const _SuggestionBar({required this.suggestions, required this.accent, required this.onTap});
+
+  /// For beginners, show a gentle "tap a reply" prompt above the choices.
+  final bool beginner;
+  const _SuggestionBar({required this.suggestions, required this.accent, required this.onTap, this.beginner = false});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 50,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        children: [
-          for (final s in suggestions)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Material(
-                color: accent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-                child: InkWell(
-                  onTap: () => onTap(s),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.north_east_rounded, size: 14, color: accent),
-                        const SizedBox(width: 6),
-                        Text(s, style: TextStyle(color: accent, fontWeight: FontWeight.w600, fontSize: 13)),
-                      ],
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (beginner)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 6, bottom: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.touch_app_rounded, size: 14, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text('Not sure what to say? Tap a reply',
+                    style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        SizedBox(
+          height: 50,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            children: [
+              for (final s in suggestions)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Material(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      onTap: () => onTap(s),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.north_east_rounded, size: 14, color: accent),
+                            const SizedBox(width: 6),
+                            Text(s, style: TextStyle(color: accent, fontWeight: FontWeight.w600, fontSize: 13)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-        ],
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

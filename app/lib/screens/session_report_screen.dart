@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/sync_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 
@@ -203,6 +204,7 @@ class _LevelSuggestionCardState extends State<_LevelSuggestionCard> {
             FilledButton(
               onPressed: () async {
                 await UserSession.instance.setLevel(level);
+                SyncService.push(); // adaptive level follows the account across devices
                 if (mounted) setState(() => _applied = true);
               },
               style: FilledButton.styleFrom(backgroundColor: color),

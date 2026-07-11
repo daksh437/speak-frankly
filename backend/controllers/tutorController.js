@@ -51,11 +51,11 @@ Return ONLY valid JSON (no markdown) in exactly this shape:
   "corrections": [
     { "original": "what they wrote", "better": "the corrected version", "reason": "very short, simple why" }
   ],
-  "suggestions": ["a short reply the learner could say next", "another option"],
+  "suggestions": ["a reply the LEARNER could tap to say next", "another option", "a third option"],
   "translation": null
 }
 - "corrections": [] if their message was fine.
-- "suggestions": 2 short phrases the learner could use to continue, at their level.
+- "suggestions": ALWAYS give 3 ready-to-tap replies written in FIRST PERSON as the learner (things they could say back to you), matched to their level. At A0–A2 keep each 2–6 words and very simple; at B1+ they can be fuller. These let a beginner continue the conversation with one tap.
 - "translation": always null (the app handles translation separately).`;
 }
 
@@ -66,7 +66,7 @@ function mockReply(scenario, userText) {
   return {
     reply: text ? `${base} You said: "${text.slice(0, 60)}". What happens next?` : (scenario?.starter || 'Hi! Shall we begin?'),
     corrections: [],
-    suggestions: scenario && scenario.keywords ? scenario.keywords.slice(0, 2).map((k) => `Something about ${k}`) : ['Okay.', 'Can you help me?'],
+    suggestions: ['Yes, I agree.', 'Can you help me?', "Sorry, I don't understand."],
     translation: null,
     mock: true,
   };
