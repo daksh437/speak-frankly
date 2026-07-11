@@ -11,6 +11,7 @@ import '../services/gamification_service.dart';
 import '../services/user_session.dart';
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
+import 'offline_downloads_screen.dart';
 import 'premium_screen.dart';
 import 'placement_test_screen.dart';
 
@@ -154,6 +155,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _InfoRow(icon: Icons.person_outline_rounded, label: loc.nameLabel, value: UserSession.instance.displayName, onTap: _editName, trailingArrow: true),
               _InfoRow(icon: Icons.quiz_outlined, label: loc.testMyLevel, value: '', onTap: _takePlacement, trailingArrow: true),
+              _InfoRow(
+                icon: Icons.download_for_offline_outlined,
+                label: 'Offline downloads',
+                value: '',
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineDownloadsScreen())),
+                trailingArrow: true,
+              ),
               if (FirebaseAuth.instance.currentUser?.email != null)
                 _InfoRow(icon: Icons.account_circle_outlined, label: 'Account', value: FirebaseAuth.instance.currentUser!.email!),
               _InfoRow(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy', value: '', onTap: () => _open(AppConfig.privacyUrl), trailingArrow: true),

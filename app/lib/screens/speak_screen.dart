@@ -6,8 +6,9 @@ import '../services/speaking_phrases.dart';
 import '../services/speech_service.dart';
 import '../theme/app_theme.dart';
 
-/// Listen-and-imitate speaking practice. Hear a phrase (TTS), say it back, and
-/// get a pronunciation score from the on-device recognizer. Earns XP.
+/// Shadowing practice. Hear a phrase (TTS), then "shadow" it — repeat it aloud
+/// while a live waveform shows your voice — and get a pronunciation score from
+/// the on-device recognizer. Earns XP. (BRD §9 shadowing.)
 class SpeakScreen extends StatefulWidget {
   const SpeakScreen({super.key});
   @override
@@ -98,7 +99,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Speaking Practice'),
+        title: const Text('Shadowing Practice'),
         actions: [
           IconButton(
             onPressed: _loadingPhrases ? null : () => _loadPhrases(forceRefresh: true),
@@ -118,7 +119,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
           child: Column(
             children: [
               const SizedBox(height: 8),
-              Text('Say this out loud', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14)),
+              Text('Listen, then shadow it — repeat out loud', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14)),
               const SizedBox(height: 16),
               // Phrase card
               Container(
@@ -154,7 +155,9 @@ class _SpeakScreenState extends State<SpeakScreen> {
                   final listening = SpeechService.instance.isListening;
                   return Column(
                     children: [
-                      Text(listening ? 'Listening… tap to stop' : 'Tap the mic and speak',
+                      _Waveform(levels: SpeechService.instance.waveform, active: listening, color: AppTheme.seed),
+                      const SizedBox(height: 12),
+                      Text(listening ? 'Shadowing… tap to stop' : 'Tap the mic and shadow the phrase',
                           style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
                       const SizedBox(height: 12),
                       GestureDetector(
@@ -193,6 +196,57 @@ class _SpeakScreenState extends State<SpeakScreen> {
       ),
     );
   }
+}
+
+/// Live voice waveform for shadowing — animated bars driven by the mic's sound
+/// level while listening; a calm flat line when idle.
+class _Waveform extends StatelessWidget {
+  final List<double> levels;
+  final bool active;
+  final Color color;
+  const _Waveform({required this.levels, required this.active, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      width: double.infinity,
+      child: CustomPaint(
+        painter: _WavePainter(
+          levels: levels,
+          color: active ? color : color.withValues(alpha: 0.25),
+        ),
+      ),
+    );
+  }
+}
+
+class _WavePainter extends CustomPainter {
+  final List<double> levels;
+  final Color color;
+  _WavePainter({required this.levels, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const barCount = 32;
+    final paint = Paint()
+      ..color = color
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 3.5;
+    final mid = size.height / 2;
+    final gap = size.width / barCount;
+    for (int i = 0; i < barCount; i++) {
+      // Take the most recent `barCount` samples (older to the left).
+      final idx = levels.length - barCount + i;
+      final v = (idx >= 0 && idx < levels.length) ? levels[idx] : 0.0;
+      final h = (v * (size.height * 0.9)).clamp(3.0, size.height);
+      final x = gap * i + gap / 2;
+      canvas.drawLine(Offset(x, mid - h / 2), Offset(x, mid + h / 2), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WavePainter old) => true;
 }
 
 class _ResultCard extends StatelessWidget {

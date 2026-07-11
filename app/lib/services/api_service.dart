@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import '../models/models.dart';
@@ -26,17 +27,31 @@ class ApiService {
         queryParameters: query?.map((k, v) => MapEntry(k, v.toString())),
       );
 
-  /// Scenario library. Falls back to a bundled copy when offline.
+  /// Scenario library. When offline, serves the downloaded pack (if any), then
+  /// a small bundled copy.
   Future<List<Scenario>> fetchScenarios() async {
     try {
       final res = await _client.get(_u('/scenarios'), headers: _headers).timeout(_timeout);
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       final data = (body['data'] as List?) ?? [];
       final list = data.whereType<Map<String, dynamic>>().map(Scenario.fromJson).toList();
-      return list.isNotEmpty ? list : offlineScenarios();
+      return list.isNotEmpty ? list : await _fallbackScenarios();
     } catch (_) {
-      return offlineScenarios();
+      return _fallbackScenarios();
     }
+  }
+
+  /// Downloaded offline pack first (OfflineService.kScenariosKey), else bundled.
+  Future<List<Scenario>> _fallbackScenarios() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString('sf_offline_scenarios');
+      if (raw != null) {
+        final list = (jsonDecode(raw) as List).whereType<Map<String, dynamic>>().map(Scenario.fromJson).toList();
+        if (list.isNotEmpty) return list;
+      }
+    } catch (_) {/* ignore */}
+    return offlineScenarios();
   }
 
   /// Build a chat-ready scenario from a free-text topic (Context Generator).

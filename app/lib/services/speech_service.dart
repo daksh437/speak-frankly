@@ -18,7 +18,27 @@ class SpeechService extends ChangeNotifier {
   bool isListening = false;
   String lastWords = '';
 
+  /// Live mic loudness for the shadowing waveform: a rolling list of recent
+  /// normalized amplitudes (0..1), newest last. Updated while listening.
+  static const int _waveMax = 48;
+  final List<double> waveform = <double>[];
+
   bool get available => _sttReady;
+
+  void _pushLevel(double raw) {
+    // speech_to_text sound levels are platform-specific; on Android roughly
+    // 0..~12. Normalize to a lively 0..1 for the bars.
+    final v = (raw.abs() / 10.0).clamp(0.0, 1.0);
+    waveform.add(v);
+    if (waveform.length > _waveMax) waveform.removeAt(0);
+    notifyListeners();
+  }
+
+  void _resetWaveform() {
+    if (waveform.isEmpty) return;
+    waveform.clear();
+    notifyListeners();
+  }
 
   Future<bool> _ensureStt() async {
     if (_sttReady) return true;
@@ -70,6 +90,7 @@ class SpeechService extends ChangeNotifier {
     if (!await _ensureStt()) return false;
     lastWords = '';
     isListening = true;
+    _resetWaveform();
     notifyListeners();
     try {
       await _stt.listen(
@@ -78,6 +99,7 @@ class SpeechService extends ChangeNotifier {
           onResult(r.recognizedWords, r.finalResult);
           notifyListeners();
         },
+        onSoundLevelChange: _pushLevel, // feeds the shadowing waveform
         listenOptions: SpeechListenOptions(
           partialResults: true,
           cancelOnError: true,
