@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../services/locale_controller.dart';
 import '../services/sync_service.dart';
 import '../services/user_session.dart';
+import '../widgets/app_logo.dart';
 import 'main_shell.dart';
 
 /// A friendly, step-by-step onboarding (BRD §6.1 / §7): one decision per screen,
@@ -261,7 +262,7 @@ class _WelcomePage extends StatelessWidget {
                 BoxShadow(color: scheme.primary.withValues(alpha: 0.35), blurRadius: 30, offset: const Offset(0, 12)),
               ],
             ),
-            child: const Center(child: Text('🗣️', style: TextStyle(fontSize: 62))),
+            child: const Center(child: AppLogo(size: 76)),
           ),
           const SizedBox(height: 32),
           Text(

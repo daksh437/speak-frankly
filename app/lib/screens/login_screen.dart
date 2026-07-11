@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_logo.dart';
 
 /// First screen for signed-out users: a branded hero + "Continue with Google".
 /// On success, AuthGate reacts to the auth state change and routes onward.
@@ -65,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [scheme.primary, scheme.tertiary]),
                     boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: 0.35), blurRadius: 30, offset: const Offset(0, 12))],
                   ),
-                  child: const Center(child: Text('🗣️', style: TextStyle(fontSize: 62))),
+                  child: const Center(child: AppLogo(size: 76)),
                 ),
                 const SizedBox(height: 32),
                 Text('Speak Frankly', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),

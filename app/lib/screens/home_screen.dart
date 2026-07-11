@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 import 'chat_screen.dart';
 import 'picture_match_screen.dart';
 
@@ -204,7 +205,7 @@ class _Header extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: AppColors.gradient(AppTheme.seed),
                 ),
-                child: const Center(child: Text('🗣️', style: TextStyle(fontSize: 22))),
+                child: const Center(child: AppLogo(size: 28)),
               ),
             ],
           ),
