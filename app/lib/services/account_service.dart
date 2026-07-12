@@ -31,7 +31,9 @@ class AccountService {
     // Load this account's cloud data (after a reset, this is a clean load).
     await SyncService.pullAndApply();
     LocaleController.setFromLanguage(UserSession.instance.nativeLanguage);
-    await SyncService.push(); // persist merged state / create the doc
+    // Persist merged state / create the doc — fire-and-forget so it doesn't block
+    // the login → app transition (esp. on a cold backend).
+    SyncService.push();
 
     // Restore any active Google Play subscription for this account (re-grants premium).
     PremiumService.instance.init();

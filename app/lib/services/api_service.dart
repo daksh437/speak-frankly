@@ -27,6 +27,12 @@ class ApiService {
         queryParameters: query?.map((k, v) => MapEntry(k, v.toString())),
       );
 
+  /// Wake a sleeping (Render free-tier) backend early so it's warm by the time
+  /// the user finishes signing in. Fire-and-forget; errors ignored.
+  void warmup() {
+    _client.get(_u('/health')).timeout(const Duration(seconds: 20)).ignore();
+  }
+
   /// Scenario library. When offline, serves the downloaded pack (if any), then
   /// a small bundled copy.
   Future<List<Scenario>> fetchScenarios() async {

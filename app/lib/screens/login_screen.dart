@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_logo.dart';
 
@@ -15,6 +16,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Wake the backend while the user reads the screen / picks an account,
+    // so the post-login data load isn't stuck behind a cold start.
+    ApiService.instance.warmup();
+  }
 
   Future<void> _open(String url) async {
     final uri = Uri.parse(url);

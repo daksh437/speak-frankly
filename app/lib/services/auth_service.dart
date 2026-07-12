@@ -27,10 +27,13 @@ class AuthService {
   }
 
   static Future<void> signOut() async {
-    try {
-      await GoogleSignIn().signOut();
-    } catch (_) {}
-    await AccountService.onSignedOut(); // clear this device's local data
+    // Sign out of Firebase FIRST so authStateChanges fires and AuthGate routes
+    // to the login screen immediately — a slow/hanging Google plugin must never
+    // block the actual sign-out.
     await FirebaseAuth.instance.signOut();
+    await AccountService.onSignedOut(); // clear this device's local data
+    try {
+      await GoogleSignIn().signOut().timeout(const Duration(seconds: 4));
+    } catch (_) {/* best-effort; Firebase is already signed out */}
   }
 }
