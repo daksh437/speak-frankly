@@ -64,6 +64,7 @@ app.use('/progress', progressRoutes);
 app.use('/games', gamesRoutes);
 app.use('/vocab', vocabRoutes);
 app.use('/premium', require('./routes/premium'));
+app.use('/translate', require('./routes/translate'));
 app.use('/tutor', tutorRoutes);
 
 // Graceful catch-all for AI paths so a learner never sees a raw 500 mid-chat.

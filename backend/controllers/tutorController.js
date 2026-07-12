@@ -398,4 +398,27 @@ Return ONLY a JSON array: [{"word":"...","meaning":"..."}]`;
   return { words: _simpleExtract(text) };
 }
 
-module.exports = { chat, feedback, speakingPhrases, customScenario, pictureMatch, extractVocab };
+/**
+ * POST /translate -> { translation } — translate an English tutor line into the
+ * learner's native language (name, e.g. "Hindi"). Graceful: returns '' on failure.
+ */
+async function translate(req) {
+  const body = req.body || {};
+  const text = (body.text || '').toString().slice(0, 1000);
+  let target = (body.target || '').toString().trim();
+  if (!target || target.toLowerCase() === 'other') target = 'Hindi';
+  if (!text.trim()) return { translation: '' };
+  if (!hasKey()) return { translation: '', mock: true };
+
+  const prompt = `Translate the following English text into ${target}. Return ONLY the translation — no quotes, no English, no notes.\n\nText: ${text}`;
+  try {
+    const raw = await runGeminiChat([{ role: 'user', text: prompt }], { temperature: 0.3, maxTokens: 500 });
+    const t = String(raw || '').replace(/```/g, '').trim();
+    if (t) return { translation: t, target };
+  } catch (e) {
+    console.warn('[translate] error:', e.message);
+  }
+  return { translation: '' };
+}
+
+module.exports = { chat, feedback, speakingPhrases, customScenario, pictureMatch, extractVocab, translate };

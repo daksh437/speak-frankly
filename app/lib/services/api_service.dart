@@ -184,6 +184,21 @@ class ApiService {
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
 
+  /// Translate an English tutor line into [target] language (a name, e.g.
+  /// "Hindi"). Returns '' on failure so the UI can fall back gracefully.
+  Future<String> translate({required String text, required String target}) async {
+    try {
+      final res = await _client
+          .post(_u('/translate'), headers: _headers, body: jsonEncode({'text': text, 'target': target}))
+          .timeout(_timeout);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final data = (body['data'] as Map<String, dynamic>?) ?? {};
+      return (data['translation'] ?? '').toString();
+    } catch (_) {
+      return '';
+    }
+  }
+
   /// Dictionary card for a word, optionally translated into [target] language.
   Future<DictionaryCard?> lookupWord(String word, {String? target}) async {
     final res = await _client

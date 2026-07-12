@@ -255,9 +255,137 @@ class _MessageBubble extends StatelessWidget {
               ? Text(message.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.35))
               : _TappableWords(text: message.text, color: scheme.onSurface),
         ),
+        if (!isUser) _TutorActions(text: message.text, accent: accent),
         ...message.corrections.map((c) => _CorrectionCard(correction: c)),
         const SizedBox(height: 10),
       ],
+    );
+  }
+}
+
+/// Under each tutor line: hear it aloud (🔊) and translate it (🌐) into the
+/// learner's native language.
+class _TutorActions extends StatefulWidget {
+  final String text;
+  final Color accent;
+  const _TutorActions({required this.text, required this.accent});
+  @override
+  State<_TutorActions> createState() => _TutorActionsState();
+}
+
+class _TutorActionsState extends State<_TutorActions> {
+  String? _translation;
+  bool _loading = false;
+  bool _show = false;
+
+  String get _target {
+    final n = UserSession.instance.nativeLanguage.trim();
+    return (n.isEmpty || n.toLowerCase() == 'other') ? 'Hindi' : n;
+  }
+
+  Future<void> _translate() async {
+    if (_translation != null) {
+      setState(() => _show = !_show); // toggle
+      return;
+    }
+    setState(() => _loading = true);
+    final t = await ApiService.instance.translate(text: widget.text, target: _target);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _translation = t;
+      _show = true;
+    });
+    if (t.isEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Translation not available right now.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2, bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _ActionChip(
+                icon: Icons.volume_up_rounded,
+                label: 'Listen',
+                color: widget.accent,
+                onTap: () => SpeechService.instance.speak(widget.text),
+              ),
+              const SizedBox(width: 6),
+              _ActionChip(
+                icon: Icons.translate_rounded,
+                label: _target,
+                color: widget.accent,
+                loading: _loading,
+                active: _show && (_translation?.isNotEmpty ?? false),
+                onTap: _translate,
+              ),
+            ],
+          ),
+          if (_show && (_translation?.isNotEmpty ?? false))
+            Container(
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+              decoration: BoxDecoration(
+                color: widget.accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: widget.accent.withValues(alpha: 0.25)),
+              ),
+              child: Text(_translation!, style: TextStyle(fontSize: 14, color: scheme.onSurface, height: 1.35)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool loading;
+  final bool active;
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.loading = false,
+    this.active = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: active ? color.withValues(alpha: 0.16) : Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: loading ? null : onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              loading
+                  ? SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+                  : Icon(icon, size: 15, color: color),
+              const SizedBox(width: 4),
+              Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
