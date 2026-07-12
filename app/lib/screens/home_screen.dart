@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import 'chat_screen.dart';
 import 'picture_match_screen.dart';
+import 'stories_list_screen.dart';
 
 /// XP needed to unlock the scenario at [index] (first two are always open).
 int _unlockXp(int index) => index < 2 ? 0 : (index - 1) * 60;
@@ -112,6 +113,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _TalkAboutAnythingCard(onTap: _startCustom)),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                      sliver: SliverToBoxAdapter(
+                        child: _MiniGameCard(
+                          emoji: '📖',
+                          title: 'Story mode',
+                          subtitle: 'Guided role-plays — pick your reply · works offline',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const StoriesListScreen()),
+                          ),
+                        ),
+                      ),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
