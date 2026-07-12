@@ -49,11 +49,12 @@ class _AuthGateState extends State<AuthGate> {
           _prepare(user.uid); // async; shows loader until ready
           return const _Loader();
         }
-        // Hard paywall: no AI access without premium. Everything after sign-in
-        // (onboarding + the app) sits behind the gate.
-        return PremiumGate(
-          child: UserSession.instance.onboarded ? const MainShell() : const OnboardingScreen(),
-        );
+        // Flow after sign-in: new users do onboarding FIRST (no paywall), then
+        // hit the hard paywall before the app. Returning (onboarded) users go
+        // straight to the paywall → app.
+        return UserSession.instance.onboarded
+            ? PremiumGate(child: const MainShell())
+            : const OnboardingScreen();
       },
     );
   }

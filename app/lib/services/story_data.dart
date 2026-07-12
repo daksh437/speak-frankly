@@ -7,6 +7,10 @@ List<Story> allStories() => const [
       _jobInterview,
       _atTheDoctor,
       _shopping,
+      _coffeeShop,
+      _directions,
+      _hotelCheckin,
+      _makingFriends,
     ];
 
 Story? storyById(String id) {
@@ -263,6 +267,207 @@ const _shopping = Story(
       choices: [
         StoryChoice('By card, please.', ''),
         StoryChoice('With cash.', ''),
+      ],
+    ),
+  },
+);
+
+// ── ☕ At a Coffee Shop (A1) ────────────────────────────────────────────────
+const _coffeeShop = Story(
+  id: 'story-coffee-shop',
+  title: 'At a Coffee Shop',
+  emoji: '☕',
+  level: 'A1',
+  description: 'Order a coffee and a snack to go.',
+  keywords: ['coffee', 'size', 'milk', 'to go', 'card'],
+  startId: 'hi',
+  nodes: {
+    'hi': StoryNode(
+      'hi',
+      'Hi! Welcome. What can I get for you?',
+      choices: [
+        StoryChoice("Can I have a coffee, please?", 'size'),
+        StoryChoice('One coffee.', 'size', note: "Add 'please' to be polite: 'A coffee, please.'", good: false),
+      ],
+    ),
+    'size': StoryNode(
+      'size',
+      'Sure! What size — small, medium, or large?',
+      choices: [
+        StoryChoice('Medium, please.', 'milk'),
+        StoryChoice('A large one.', 'milk'),
+      ],
+    ),
+    'milk': StoryNode(
+      'milk',
+      'Would you like any milk or sugar?',
+      choices: [
+        StoryChoice('A little milk, no sugar.', 'snack'),
+        StoryChoice('No, thank you. Black is fine.', 'snack'),
+      ],
+    ),
+    'snack': StoryNode(
+      'snack',
+      'Anything to eat with that? Our cookies are fresh.',
+      choices: [
+        StoryChoice('Yes, one cookie please.', 'pay'),
+        StoryChoice('No, just the coffee.', 'pay'),
+      ],
+    ),
+    'pay': StoryNode(
+      'pay',
+      "Great. That'll be four dollars. For here or to go?",
+      choices: [
+        StoryChoice('To go, please. Here is my card.', ''),
+        StoryChoice('For here. Can I pay by card?', ''),
+      ],
+    ),
+  },
+);
+
+// ── 🗺️ Asking for Directions (A1) ──────────────────────────────────────────
+const _directions = Story(
+  id: 'story-directions',
+  title: 'Asking for Directions',
+  emoji: '🗺️',
+  level: 'A1',
+  description: 'Ask a stranger how to reach the station.',
+  keywords: ['left', 'right', 'straight', 'corner', 'near'],
+  startId: 'excuse',
+  nodes: {
+    'excuse': StoryNode(
+      'excuse',
+      'Hi, you look lost — can I help you?',
+      choices: [
+        StoryChoice('Yes, please. Where is the train station?', 'straight'),
+        StoryChoice('Station where?', 'straight', note: "Try: 'How do I get to the station?'", good: false),
+      ],
+    ),
+    'straight': StoryNode(
+      'straight',
+      "Sure! Go straight down this road, then turn left at the corner. Got it?",
+      choices: [
+        StoryChoice('Turn left at the corner. Is it far?', 'near'),
+        StoryChoice('Sorry, can you say that again?', 'repeat'),
+      ],
+    ),
+    'repeat': StoryNode(
+      'repeat',
+      'No problem. Go straight, then turn left at the corner. The station is right there.',
+      choices: [
+        StoryChoice('Okay, straight then left. Thank you!', 'near'),
+      ],
+    ),
+    'near': StoryNode(
+      'near',
+      "It's very near — about a five minute walk.",
+      choices: [
+        StoryChoice('Thank you so much for your help!', ''),
+        StoryChoice('Great, thanks! Have a nice day.', ''),
+      ],
+    ),
+  },
+);
+
+// ── 🏨 Hotel Check-in (A2) ──────────────────────────────────────────────────
+const _hotelCheckin = Story(
+  id: 'story-hotel-checkin',
+  title: 'Hotel Check-in',
+  emoji: '🏨',
+  level: 'A2',
+  description: 'Check into a hotel and ask about breakfast.',
+  keywords: ['reservation', 'room', 'breakfast', 'wifi', 'key'],
+  startId: 'welcome',
+  nodes: {
+    'welcome': StoryNode(
+      'welcome',
+      'Good evening, welcome! Do you have a reservation?',
+      choices: [
+        StoryChoice('Yes, under the name Kumar.', 'found'),
+        StoryChoice('No, do you have any rooms free?', 'walkin'),
+      ],
+    ),
+    'found': StoryNode(
+      'found',
+      'Let me check… yes, a room for two nights. Here you are.',
+      choices: [
+        StoryChoice('Great. What time is breakfast?', 'breakfast'),
+        StoryChoice('Thank you. Is there wifi in the room?', 'wifi'),
+      ],
+    ),
+    'walkin': StoryNode(
+      'walkin',
+      "You're in luck — we have one room left for tonight.",
+      choices: [
+        StoryChoice("Perfect, I'll take it. What time is breakfast?", 'breakfast'),
+        StoryChoice('Good. Is there wifi in the room?', 'wifi'),
+      ],
+    ),
+    'breakfast': StoryNode(
+      'breakfast',
+      'Breakfast is from seven to ten in the morning, on the ground floor.',
+      choices: [
+        StoryChoice('Great, thank you. Can I have my key?', 'key'),
+      ],
+    ),
+    'wifi': StoryNode(
+      'wifi',
+      'Yes, free wifi. The password is on the desk in your room.',
+      choices: [
+        StoryChoice('Perfect. Could I have my key, please?', 'key'),
+      ],
+    ),
+    'key': StoryNode(
+      'key',
+      'Of course. Room 204, second floor. Enjoy your stay!',
+      choices: [
+        StoryChoice('Thank you very much!', ''),
+        StoryChoice('Thanks a lot. Have a good night!', ''),
+      ],
+    ),
+  },
+);
+
+// ── 💬 Making Friends (A2) ──────────────────────────────────────────────────
+const _makingFriends = Story(
+  id: 'story-making-friends',
+  title: 'Making a New Friend',
+  emoji: '💬',
+  level: 'A2',
+  description: 'Chat with someone new at a party.',
+  keywords: ['hobby', 'weekend', 'nice to meet you', 'by the way', 'catch up'],
+  startId: 'intro',
+  nodes: {
+    'intro': StoryNode(
+      'intro',
+      "Hi! I don't think we've met. I'm Sam.",
+      choices: [
+        StoryChoice("Hi Sam, nice to meet you! I'm Alex.", 'how'),
+        StoryChoice('Hello. I am Alex.', 'how', note: "Warmer: 'Nice to meet you, I'm Alex.'", good: false),
+      ],
+    ),
+    'how': StoryNode(
+      'how',
+      'Nice to meet you too! So, how do you know the host?',
+      choices: [
+        StoryChoice("We work together. And you?", 'hobby'),
+        StoryChoice("We're old college friends. What about you?", 'hobby'),
+      ],
+    ),
+    'hobby': StoryNode(
+      'hobby',
+      "Oh nice! So what do you like to do in your free time?",
+      choices: [
+        StoryChoice('I love playing football on weekends.', 'common'),
+        StoryChoice('I enjoy reading and cooking.', 'common'),
+      ],
+    ),
+    'common': StoryNode(
+      'common',
+      "That's cool! We should hang out sometime. Can I get your number?",
+      choices: [
+        StoryChoice('Sure! That sounds great.', ''),
+        StoryChoice("Of course. Let's catch up soon!", ''),
       ],
     ),
   },

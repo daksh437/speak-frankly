@@ -6,6 +6,7 @@ import '../services/sync_service.dart';
 import '../services/user_session.dart';
 import '../widgets/app_logo.dart';
 import 'main_shell.dart';
+import 'premium_gate.dart';
 
 /// A friendly, step-by-step onboarding (BRD §6.1 / §7): one decision per screen,
 /// big tap targets, minimal text, a welcome hero, and a progress bar.
@@ -67,8 +68,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
     SyncService.push(); // save this account's profile to the cloud
     if (!mounted) return;
+    // Onboarding done → now the hard paywall gates entry to the app.
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell()),
+      MaterialPageRoute(builder: (_) => PremiumGate(child: const MainShell())),
     );
   }
 
