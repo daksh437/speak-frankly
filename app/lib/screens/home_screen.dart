@@ -5,9 +5,13 @@ import '../models/models.dart';
 import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
+import '../services/notification_service.dart';
+import '../services/speech_service.dart';
 import '../services/user_session.dart';
+import '../services/word_of_day.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/dictionary_sheet.dart';
 import 'chat_screen.dart';
 import 'picture_match_screen.dart';
 import 'stories_list_screen.dart';
@@ -31,11 +35,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Scenario>> _future;
+  String _query = '';
+  String? _levelFilter; // null = All
 
   @override
   void initState() {
     super.initState();
     _future = ApiService.instance.fetchScenarios();
+    // Ask for notification permission + schedule the daily reminder once the
+    // learner is in the app (fire-and-forget).
+    NotificationService.instance.requestAndSchedule();
+  }
+
+  List<Scenario> _applyFilters(List<Scenario> all) {
+    final q = _query.trim().toLowerCase();
+    return all.where((s) {
+      if (_levelFilter != null && s.level != _levelFilter) return false;
+      if (q.isEmpty) return true;
+      return s.title.toLowerCase().contains(q) ||
+          s.description.toLowerCase().contains(q) ||
+          s.theme.toLowerCase().contains(q) ||
+          s.keywords.any((k) => k.toLowerCase().contains(q));
+    }).toList();
   }
 
   void _reload() => setState(() => _future = ApiService.instance.fetchScenarios());
@@ -107,9 +128,15 @@ class _HomeScreenState extends State<HomeScreen> {
               animation: GamificationService.instance,
               builder: (context, _) {
                 final xp = GamificationService.instance.xp;
+                final levels = (scenarios.map((s) => s.level).toSet().toList()..sort());
+                final filtered = _applyFilters(scenarios);
                 return CustomScrollView(
                   slivers: [
                     const SliverToBoxAdapter(child: _Header()),
+                    const SliverPadding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 6),
+                      sliver: SliverToBoxAdapter(child: _WordOfDayCard()),
+                    ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _TalkAboutAnythingCard(onTap: _startCustom)),
@@ -148,26 +175,47 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      sliver: SliverList.separated(
-                        itemCount: scenarios.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 14),
-                        itemBuilder: (_, i) {
-                          final needed = _unlockXp(i);
-                          final locked = xp < needed;
-                          return _ScenarioCard(
-                            scenario: scenarios[i],
-                            locked: locked,
-                            requiredXp: needed,
-                            onTap: locked
-                                ? () => _showLocked(context, needed, xp)
-                                : () => Navigator.of(context).push(
-                                      MaterialPageRoute(builder: (_) => ChatScreen(scenario: scenarios[i])),
-                                    ),
-                          );
-                        },
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      sliver: SliverToBoxAdapter(
+                        child: _ScenarioFilters(
+                          levels: levels,
+                          selectedLevel: _levelFilter,
+                          onQuery: (q) => setState(() => _query = q),
+                          onLevel: (l) => setState(() => _levelFilter = l),
+                        ),
                       ),
                     ),
+                    if (filtered.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                          child: Text('No scenarios match your search.',
+                              textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant)),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        sliver: SliverList.separated(
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          itemBuilder: (_, i) {
+                            final s = filtered[i];
+                            final needed = _unlockXp(scenarios.indexOf(s)); // stable unlock by original order
+                            final locked = xp < needed;
+                            return _ScenarioCard(
+                              scenario: s,
+                              locked: locked,
+                              requiredXp: needed,
+                              onTap: locked
+                                  ? () => _showLocked(context, needed, xp)
+                                  : () => Navigator.of(context).push(
+                                        MaterialPageRoute(builder: (_) => ChatScreen(scenario: s)),
+                                      ),
+                            );
+                          },
+                        ),
+                      ),
                   ],
                 );
               },
@@ -321,6 +369,128 @@ class _TalkAboutAnythingCard extends StatelessWidget {
               ),
               const Icon(Icons.auto_awesome_rounded, color: Colors.white),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Word of the Day (daily challenge) — one useful word/phrase each day, with a
+/// meaning, example, Listen (TTS), and tap-to-look-up.
+class _WordOfDayCard extends StatelessWidget {
+  const _WordOfDayCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final w = WordOfDay.today();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('📅', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 6),
+              Text('WORD OF THE DAY',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
+              const Spacer(),
+              InkWell(
+                onTap: () => SpeechService.instance.speak('${w.word}. ${w.example}'),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.volume_up_rounded, size: 20, color: scheme.onPrimaryContainer),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: () => showDictionarySheet(context, w.word),
+            child: Text(w.word,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: scheme.onPrimaryContainer)),
+          ),
+          const SizedBox(height: 2),
+          Text(w.meaning, style: TextStyle(fontSize: 13.5, color: scheme.onPrimaryContainer.withValues(alpha: 0.9))),
+          const SizedBox(height: 6),
+          Text('“${w.example}”',
+              style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: scheme.onPrimaryContainer.withValues(alpha: 0.8))),
+        ],
+      ),
+    );
+  }
+}
+
+/// Search box + level filter chips for the scenario library.
+class _ScenarioFilters extends StatelessWidget {
+  final List<String> levels;
+  final String? selectedLevel;
+  final ValueChanged<String> onQuery;
+  final ValueChanged<String?> onLevel;
+  const _ScenarioFilters({
+    required this.levels,
+    required this.selectedLevel,
+    required this.onQuery,
+    required this.onLevel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          onChanged: onQuery,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Search scenarios…',
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+            filled: true,
+            fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 34,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _chip(context, 'All', selectedLevel == null, () => onLevel(null)),
+              for (final l in levels) _chip(context, l, selectedLevel == l, () => onLevel(l)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _chip(BuildContext context, String label, bool selected, VoidCallback onTap) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: selected ? scheme.primary : scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? scheme.onPrimary : scheme.onSurfaceVariant)),
           ),
         ),
       ),

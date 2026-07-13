@@ -63,6 +63,14 @@ dependencies:
   # Premium subscription via Google Play Billing.
   in_app_purchase: ^3.2.0
 
+  # Daily practice reminder (local scheduled notification).
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
+
+  # Ask happy learners to rate the app (Play in-app review).
+  in_app_review: ^2.0.9
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

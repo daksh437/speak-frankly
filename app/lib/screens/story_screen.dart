@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/story.dart';
 import '../services/analytics_service.dart';
 import '../services/gamification_service.dart';
+import '../services/rate_prompt.dart';
 import '../services/speech_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dictionary_sheet.dart';
@@ -83,6 +84,7 @@ class _StoryScreenState extends State<StoryScreen> {
     _finished = true;
     await GamificationService.instance.completeScenario(xpBonus: 15);
     AnalyticsService.log('story_completed', {'story': widget.story.id});
+    RatePrompt.onSessionComplete();
     _scrollDown();
     if (mounted) setState(() {});
   }

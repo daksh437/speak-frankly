@@ -4,6 +4,7 @@ import '../models/models.dart';
 import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
+import '../services/rate_prompt.dart';
 import '../services/speech_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
@@ -65,6 +66,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     await GamificationService.instance.completeScenario();
     AnalyticsService.log('scenario_completed', {'scenario': widget.scenario.id});
+    RatePrompt.onSessionComplete(); // ask happy users to rate (after a few sessions)
 
     // Adaptive difficulty: suggest a level change based on this session's
     // correction density (few mistakes → level up; many → level down).

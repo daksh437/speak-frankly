@@ -6,6 +6,7 @@ import 'screens/auth_gate.dart';
 import 'services/analytics_service.dart';
 import 'services/gamification_service.dart';
 import 'services/locale_controller.dart';
+import 'services/notification_service.dart';
 import 'services/sync_service.dart';
 import 'services/user_session.dart';
 import 'services/vocabulary_service.dart';
@@ -29,6 +30,9 @@ Future<void> main() async {
 
   // Best-effort cloud sync of progress + saved words (non-blocking).
   SyncService.start();
+
+  // Daily practice reminder — schedule in the background (non-blocking).
+  NotificationService.instance.init();
 
   runApp(const SpeakFranklyApp());
 }

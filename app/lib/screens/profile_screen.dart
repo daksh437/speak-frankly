@@ -11,6 +11,7 @@ import '../services/gamification_service.dart';
 import '../services/user_session.dart';
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
+import '../services/notification_service.dart';
 import 'offline_downloads_screen.dart';
 import 'premium_screen.dart';
 import 'placement_test_screen.dart';
@@ -161,6 +162,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 value: '',
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineDownloadsScreen())),
                 trailingArrow: true,
+              ),
+              AnimatedBuilder(
+                animation: NotificationService.instance,
+                builder: (context, _) => SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.notifications_active_outlined),
+                  title: const Text('Daily reminder'),
+                  subtitle: const Text('A gentle nudge at 7 PM to keep your streak'),
+                  value: NotificationService.instance.enabled,
+                  onChanged: (v) async {
+                    if (v) {
+                      await NotificationService.instance.requestAndSchedule();
+                    } else {
+                      await NotificationService.instance.setEnabled(false);
+                    }
+                  },
+                ),
               ),
               if (FirebaseAuth.instance.currentUser?.email != null)
                 _InfoRow(icon: Icons.account_circle_outlined, label: 'Account', value: FirebaseAuth.instance.currentUser!.email!),
