@@ -26,15 +26,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String _level = 'A2';
 
   // Only languages the app UI is actually localized into are offered here, so a
-  // learner never lands in a half-translated app. (Arabic was removed — it needs
-  // a proper RTL localization first.) "Other" keeps the UI in English; tap-to-
-  // translate still works for any language via the AI backend.
+  // learner never lands in a half-translated app. "English" = full immersion:
+  // the app stays in English and no L1 translation is needed.
   static const _languages = [
     ('🇮🇳', 'Hindi'),
     ('🇪🇸', 'Spanish'),
     ('🇧🇷', 'Portuguese'),
     ('🇫🇷', 'French'),
-    ('🌐', 'Other'),
+    ('🇬🇧', 'English'),
   ];
 
   bool get _canContinue {
@@ -168,6 +167,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           _OptionCard(
                             emoji: lang.$1,
                             label: lang.$2,
+                            // English = immersion mode; a small English hint.
+                            sublabel: lang.$2 == 'English' ? 'Immersion — build stronger English' : null,
                             selected: _lang == lang.$2,
                             onTap: () => setState(() {
                               _lang = lang.$2;

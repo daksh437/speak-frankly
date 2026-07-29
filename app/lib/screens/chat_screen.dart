@@ -359,6 +359,8 @@ class _TutorActionsState extends State<_TutorActions> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // English-immersion learners don't need an English→English translation.
+    final showTranslate = _target.toLowerCase() != 'english';
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 2),
       child: Column(
@@ -372,15 +374,16 @@ class _TutorActionsState extends State<_TutorActions> {
                 color: widget.accent,
                 onTap: () => SpeechService.instance.speak(widget.text),
               ),
-              const SizedBox(width: 6),
-              _ActionChip(
-                icon: Icons.translate_rounded,
-                label: _target,
-                color: widget.accent,
-                loading: _loading,
-                active: _show && (_translation?.isNotEmpty ?? false),
-                onTap: _translate,
-              ),
+              if (showTranslate) const SizedBox(width: 6),
+              if (showTranslate)
+                _ActionChip(
+                  icon: Icons.translate_rounded,
+                  label: _target,
+                  color: widget.accent,
+                  loading: _loading,
+                  active: _show && (_translation?.isNotEmpty ?? false),
+                  onTap: _translate,
+                ),
             ],
           ),
           if (_show && (_translation?.isNotEmpty ?? false))
