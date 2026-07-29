@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
@@ -24,11 +25,20 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Future<Map<String, dynamic>>? _access;
+  String _version = '';
 
   @override
   void initState() {
     super.initState();
     _access = ApiService.instance.fetchAccess();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _version = '${info.version} (${info.buildNumber})');
+    } catch (_) {/* leave blank */}
   }
 
   Future<void> _editName() async {
@@ -189,7 +199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          Center(child: Text('Speak Frankly · v1.0', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12))),
+          Center(child: Text('Speak Frankly${_version.isEmpty ? '' : ' · v$_version'}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12))),
         ],
       ),
     );
@@ -199,7 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showAboutDialog(
       context: context,
       applicationName: 'Speak Frankly',
-      applicationVersion: '1.0',
+      applicationVersion: _version.isEmpty ? null : 'v$_version',
       applicationLegalese: 'Learn English by talking — no fear, just conversation.',
     );
   }
@@ -282,6 +292,16 @@ class _PlanCard extends StatelessWidget {
   final Future<Map<String, dynamic>>? access;
   const _PlanCard({required this.access});
 
+  /// Whole days remaining until [iso] (a UTC ISO timestamp), or null if unknown.
+  int? _trialDaysLeft(dynamic iso) {
+    if (iso == null) return null;
+    final end = DateTime.tryParse(iso.toString());
+    if (end == null) return null;
+    final diff = end.difference(DateTime.now());
+    if (diff.isNegative) return 0;
+    return diff.inHours ~/ 24 + (diff.inHours % 24 == 0 ? 0 : 1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -289,15 +309,23 @@ class _PlanCard extends StatelessWidget {
       future: access,
       builder: (context, snap) {
         final d = snap.data ?? {};
-        final isPremium = (d['planType'] ?? 'free').toString() == 'premium';
+        final plan = (d['planType'] ?? 'free').toString();
+        final isPremium = plan == 'premium';
+        final isTrial = plan == 'trial';
         String title;
         String subtitle;
         if (isPremium) {
           title = 'Premium 💜';
           subtitle = 'Unlimited conversations. Thank you!';
+        } else if (isTrial) {
+          title = 'Free trial ✨';
+          final days = _trialDaysLeft(d['trialEndsAtUtc']);
+          subtitle = days != null
+              ? (days <= 1 ? 'Unlimited today — last day of your free trial' : 'Unlimited practice · $days days left')
+              : 'Unlimited practice during your free trial';
         } else {
           final used = (d['dailyUsed'] ?? 0) as num;
-          final limit = (d['dailyLimit'] ?? 25) as num;
+          final limit = (d['dailyLimit'] ?? 10) as num;
           final left = (limit - used).clamp(0, limit).toInt();
           title = 'Free plan';
           subtitle = snap.hasData ? '$left of ${limit.toInt()} left today — tap to go Premium' : 'Tap to unlock unlimited practice';

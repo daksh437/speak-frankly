@@ -68,5 +68,33 @@
 
   "savedWords": "Saved Words",
   "review": "Review",
-  "importText": "Import text"
+  "importText": "Import text",
+
+  "limitReachedTitle": "You've reached today's free limit 🎯",
+  "streakLimitTitle": "Don't lose your {streak}-day streak! 🔥",
+  "@streakLimitTitle": {
+    "placeholders": { "streak": { "type": "int" } }
+  },
+  "limitReachedSub": "Go Premium for unlimited practice, or come back tomorrow.",
+  "streakLimitSub": "Go Premium to keep practising today and protect your streak — or come back tomorrow.",
+  "upgradeToPremium": "Upgrade to Premium",
+  "trialLabel": "Free trial",
+  "trialDaysLeft": "{days} days left · unlimited practice",
+  "@trialDaysLeft": {
+    "placeholders": { "days": { "type": "int" } }
+  },
+  "trialLastDay": "Last day — unlimited practice today",
+  "offlinePremiumTitle": "Premium feature 📥",
+  "offlinePremiumBody": "Offline downloads are part of Premium, so you can keep practising with no internet. Upgrade to unlock.",
+  "notNow": "Not now",
+  "goPremium": "Go Premium",
+  "downloadOfflinePremium": "Download for offline (Premium)",
+
+  "qStruggle": "What's hard about speaking English?",
+  "qStruggleSub": "We'll help you beat exactly this.",
+  "struggleFreeze": "I freeze / go blank",
+  "struggleSwitch": "I switch to my language",
+  "struggleMistakes": "I'm scared of making mistakes",
+  "struggleUnderstand": "I understand but can't speak",
+  "firstReplyWin": "🎉 You just spoke your first English sentence — that's the hardest part. Keep going!"
 }

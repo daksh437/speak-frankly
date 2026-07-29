@@ -3,20 +3,21 @@
  * Backend is the source of truth — never trust client counters.
  *
  * Plans (resolved from Firestore user doc dates, not a stored string):
- * - free:    NO AI access — premium is required to use the tutor (hard paywall).
- *            (If REQUIRE_PREMIUM=false, free instead gets DAILY_MESSAGES_FREE/day.)
+ * - trial:   new users get TRIAL_DAYS days of UNLIMITED AI (no card, no paywall).
+ * - free:    after the trial ends → DAILY_MESSAGES_FREE messages/day (resets midnight UTC).
+ *            (Set REQUIRE_PREMIUM=true to instead hard-gate free users behind premium.)
  * - premium: unlimited (Google Play in_app_purchase; premiumExpiry in the future).
  *
- * There is no free trial. DEV_SKIP_LIMITS=true bypasses all checks for local testing.
+ * DEV_SKIP_LIMITS=true bypasses all checks for local testing.
  */
 const { getDb } = require('../utils/firestoreAdmin');
 
 const USERS = 'users';
-const DAILY_MESSAGES_FREE = parseInt(process.env.DAILY_MESSAGES_FREE || '25', 10);
-const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS || '7', 10);
-// Premium required for ALL AI (default). Set REQUIRE_PREMIUM=false to instead
-// give free users DAILY_MESSAGES_FREE messages/day.
-const REQUIRE_PREMIUM = process.env.REQUIRE_PREMIUM !== 'false' && process.env.REQUIRE_PREMIUM !== '0';
+const DAILY_MESSAGES_FREE = parseInt(process.env.DAILY_MESSAGES_FREE || '10', 10);
+const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS || '3', 10);
+// Default = freemium (trial → free daily limit). Set REQUIRE_PREMIUM=true to
+// instead hard-gate free users (post-trial) behind a paywall.
+const REQUIRE_PREMIUM = process.env.REQUIRE_PREMIUM === 'true' || process.env.REQUIRE_PREMIUM === '1';
 const DEV_SKIP_LIMITS = process.env.DEV_SKIP_LIMITS === 'true' || process.env.DEV_SKIP_LIMITS === '1';
 
 if (DEV_SKIP_LIMITS) {
@@ -41,10 +42,12 @@ function toDate(v) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Resolve plan from dates. premium (paid subscription) > free. No free trial. */
+/** Resolve plan from dates. premium (paid) > trial (time-limited) > free. */
 function resolvePlan(user, now = new Date()) {
   const premiumExpiry = toDate(user.premiumExpiry || user.premium_expiry);
   if (premiumExpiry && premiumExpiry > now) return 'premium';
+  const trialEndsAt = toDate(user.trialEndsAt || user.trial_ends_at);
+  if (trialEndsAt && trialEndsAt > now) return 'trial';
   return 'free';
 }
 
@@ -62,17 +65,21 @@ async function loadUser(uid) {
 }
 
 /**
- * First time we see a signed-in learner, create their user doc on the free plan
- * (daily limits). Premium is granted only via a paid subscription. No free trial.
+ * First time we see a signed-in learner, create their user doc and start their
+ * free TRIAL_DAYS trial (unlimited AI). After it ends they drop to the free
+ * daily limit. Premium is granted only via a paid subscription.
  * Returns the created user object, or null if the write failed.
  */
-async function createFreeUser(uid) {
+async function createTrialUser(uid) {
   const db = getDb();
   if (!db) return null;
   const now = new Date();
+  const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
   const doc = {
     createdAt: now,
-    planType: 'free',
+    planType: 'trial',
+    trialStartedAt: now,
+    trialEndsAt,
     dailyAiUsed: 0,
     dailyAiDate: todayDateStr(),
     totalAiUsed: 0,
@@ -81,7 +88,7 @@ async function createFreeUser(uid) {
     await db.collection(USERS).doc(uid).set(doc, { merge: true });
     return { id: uid, ...doc };
   } catch (e) {
-    console.warn('[aiAccess] createFreeUser error:', e.message);
+    console.warn('[aiAccess] createTrialUser error:', e.message);
     return null;
   }
 }
@@ -93,25 +100,32 @@ async function getAiAccess(uid) {
 
   // Degraded mode (no Firestore) — allow through so dev/testing isn't blocked.
   if (!firestoreOk) {
-    return { allowed: true, planType: 'free', dailyUsed: 0, dailyLimit: DAILY_MESSAGES_FREE, resetAtUtc, user: null, degraded: true };
+    return { allowed: true, planType: 'free', dailyUsed: 0, dailyLimit: DAILY_MESSAGES_FREE, resetAtUtc, trialEndsAtUtc: null, user: null, degraded: true };
   }
   let currentUser = user;
   if (!currentUser) {
-    // New signed-in learner → create on the free plan (daily limits apply).
-    currentUser = await createFreeUser(uid);
+    // New signed-in learner → start their free trial (unlimited for TRIAL_DAYS).
+    currentUser = await createTrialUser(uid);
     if (!currentUser) {
-      return { allowed: true, planType: 'free', dailyUsed: 0, dailyLimit: DAILY_MESSAGES_FREE, resetAtUtc, user: null, degraded: true };
+      return { allowed: true, planType: 'free', dailyUsed: 0, dailyLimit: DAILY_MESSAGES_FREE, resetAtUtc, trialEndsAtUtc: null, user: null, degraded: true };
     }
   }
 
   const now = new Date();
   const planType = resolvePlan(currentUser, now);
+  const trialEndsAt = toDate(currentUser.trialEndsAt || currentUser.trial_ends_at);
+  const trialEndsAtUtc = trialEndsAt ? trialEndsAt.toISOString() : null;
 
   if (planType === 'premium') {
-    return { allowed: true, planType: 'premium', dailyUsed: null, dailyLimit: null, resetAtUtc: null, user: currentUser };
+    return { allowed: true, planType: 'premium', dailyUsed: null, dailyLimit: null, resetAtUtc: null, trialEndsAtUtc: null, user: currentUser };
   }
 
-  // free — premium required: no AI access at all (hard paywall).
+  // trial — unlimited AI until trialEndsAt.
+  if (planType === 'trial') {
+    return { allowed: true, planType: 'trial', dailyUsed: null, dailyLimit: null, resetAtUtc: null, trialEndsAtUtc, user: currentUser };
+  }
+
+  // free + optional hard paywall: no AI access at all.
   if (REQUIRE_PREMIUM) {
     return {
       allowed: false,
@@ -119,12 +133,13 @@ async function getAiAccess(uid) {
       dailyUsed: 0,
       dailyLimit: 0,
       resetAtUtc: null,
+      trialEndsAtUtc,
       user: currentUser,
       error: 'PREMIUM_REQUIRED',
     };
   }
 
-  // free (only when REQUIRE_PREMIUM=false) — daily message cap.
+  // free (default) — daily message cap.
   const today = todayDateStr();
   let dailyUsed = typeof currentUser.dailyAiUsed === 'number' ? currentUser.dailyAiUsed : 0;
   if ((currentUser.dailyAiDate || '') !== today) dailyUsed = 0;
@@ -136,6 +151,7 @@ async function getAiAccess(uid) {
     dailyUsed,
     dailyLimit: DAILY_MESSAGES_FREE,
     resetAtUtc,
+    trialEndsAtUtc,
     user: currentUser,
     error: dailyUsed < DAILY_MESSAGES_FREE ? null : 'DAILY_LIMIT_REACHED',
   };

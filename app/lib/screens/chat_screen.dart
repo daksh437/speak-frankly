@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/models.dart';
 import '../services/analytics_service.dart';
 import '../services/api_service.dart';
@@ -41,6 +43,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _sending = false;
   bool _finishing = false;
   bool _limitReached = false;
+
+  /// Voice-first: the tutor speaks its replies aloud (TTS) so the whole session
+  /// is a real spoken conversation. Toggleable (public/quiet places) + persisted.
+  static const _kVoicePref = 'sf_chat_voice';
+  static const _kFirstReply = 'sf_first_reply_done';
+  bool _autoSpeak = true;
 
   Color get _accent => AppColors.forScenario(widget.scenario.theme);
 
@@ -97,10 +105,43 @@ class _ChatScreenState extends State<ChatScreen> {
     // Beginners see tap-to-reply choices from the very first turn.
     if (_isBeginner) _suggestions = _starterOptions;
     AnalyticsService.log('scenario_started', {'scenario': widget.scenario.id});
+    _initVoice();
+  }
+
+  /// Load the persisted voice preference and, if on, greet the learner out loud.
+  Future<void> _initVoice() async {
+    final p = await SharedPreferences.getInstance();
+    final on = p.getBool(_kVoicePref) ?? true;
+    if (!mounted) return;
+    setState(() => _autoSpeak = on);
+    if (on) SpeechService.instance.speak(widget.scenario.starter);
+  }
+
+  /// First-reply celebration — shown once, ever (persisted).
+  Future<void> _maybeCelebrateFirstReply() async {
+    final p = await SharedPreferences.getInstance();
+    if (p.getBool(_kFirstReply) ?? false) return;
+    await p.setBool(_kFirstReply, true);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(AppLocalizations.of(context)!.firstReplyWin),
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 5),
+    ));
+  }
+
+  Future<void> _toggleVoice() async {
+    final on = !_autoSpeak;
+    setState(() => _autoSpeak = on);
+    if (!on) SpeechService.instance.stopSpeaking();
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_kVoicePref, on);
   }
 
   @override
   void dispose() {
+    SpeechService.instance.stopListening();
+    SpeechService.instance.stopSpeaking();
     _controller.dispose();
     _scroll.dispose();
     super.dispose();
@@ -134,8 +175,13 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.add(ChatMessage(role: 'model', text: reply.reply));
         _suggestions = reply.suggestions;
       });
+      // Voice-first: speak the tutor's reply so it's a real spoken conversation.
+      if (_autoSpeak) SpeechService.instance.speak(reply.reply);
       // Reward practice: advances daily streak + adds XP.
       GamificationService.instance.recordActivity();
+      // Activation: celebrate the learner's very first reply ever — the moment
+      // they realise "I can actually do this".
+      _maybeCelebrateFirstReply();
     } on DailyLimitException {
       setState(() => _limitReached = true);
     } catch (_) {
@@ -185,6 +231,11 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            onPressed: _toggleVoice,
+            tooltip: _autoSpeak ? 'Mute tutor voice' : 'Hear tutor voice',
+            icon: Icon(_autoSpeak ? Icons.volume_up_rounded : Icons.volume_off_rounded),
+          ),
           if (_hasSpoken)
             _finishing
                 ? const Padding(
@@ -589,16 +640,43 @@ class _InputBar extends StatefulWidget {
 }
 
 class _InputBarState extends State<_InputBar> {
-  Future<void> _toggleMic() async {
+  static const _red = Color(0xFFEF4444);
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final has = widget.controller.text.trim().isNotEmpty;
+    if (has != _hasText) setState(() => _hasText = has);
+  }
+
+  /// Voice-first: start listening, stream the transcript into the field, and
+  /// auto-send when the recognizer finalizes — so a reply is just "tap, speak".
+  Future<void> _startMic() async {
     final s = SpeechService.instance;
     if (s.isListening) {
       await s.stopListening();
       return;
     }
+    await s.stopSpeaking(); // don't record the tutor's own voice
     final ok = await s.startListening(onResult: (text, isFinal) {
       widget.controller.text = text;
       widget.controller.selection = TextSelection.collapsed(offset: text.length);
-      if (isFinal) s.stopListening();
+      if (isFinal) {
+        s.stopListening();
+        final t = text.trim();
+        if (t.isNotEmpty) widget.onSend(t); // auto-send the spoken reply
+      }
     });
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -607,51 +685,64 @@ class _InputBarState extends State<_InputBar> {
     }
   }
 
+  void _onPrimaryTap(bool listening) {
+    if (!widget.enabled) return;
+    if (listening) {
+      SpeechService.instance.stopListening();
+    } else if (_hasText) {
+      widget.onSend(widget.controller.text);
+    } else {
+      _startMic();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(6, 6, 12, 10),
-        child: Row(
-          children: [
-            AnimatedBuilder(
-              animation: SpeechService.instance,
-              builder: (context, _) {
-                final listening = SpeechService.instance.isListening;
-                return IconButton(
-                  onPressed: widget.enabled ? _toggleMic : null,
-                  tooltip: 'Speak your reply',
-                  icon: Icon(listening ? Icons.mic_rounded : Icons.mic_none_rounded,
-                      color: listening ? const Color(0xFFEF4444) : scheme.onSurfaceVariant),
-                );
-              },
-            ),
-            Expanded(
-              child: TextField(
-                controller: widget.controller,
-                enabled: widget.enabled,
-                textInputAction: TextInputAction.send,
-                onSubmitted: widget.onSend,
-                decoration: const InputDecoration(hintText: 'Type or speak…'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: widget.enabled ? () => widget.onSend(widget.controller.text) : null,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: AppColors.gradient(widget.accent),
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: widget.accent.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))],
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+        child: AnimatedBuilder(
+          animation: SpeechService.instance,
+          builder: (context, _) {
+            final listening = SpeechService.instance.isListening;
+            // Primary action: mic when empty (voice-first), send when typing,
+            // stop while listening.
+            final IconData icon = listening
+                ? Icons.stop_rounded
+                : (_hasText ? Icons.arrow_upward_rounded : Icons.mic_rounded);
+            final Color color = listening ? _red : widget.accent;
+            return Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: widget.controller,
+                    enabled: widget.enabled && !listening,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: widget.onSend,
+                    decoration: InputDecoration(
+                      hintText: listening ? 'Listening… speak now' : 'Tap the mic to speak, or type…',
+                    ),
+                  ),
                 ),
-                child: const Icon(Icons.arrow_upward_rounded, color: Colors.white),
-              ),
-            ),
-          ],
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _onPrimaryTap(listening),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: listening ? 56 : 52,
+                    height: listening ? 56 : 52,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.gradient(color),
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: listening ? 18 : 12, offset: const Offset(0, 4))],
+                    ),
+                    child: Icon(icon, color: Colors.white, size: listening ? 30 : 26),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -717,6 +808,12 @@ class _LimitBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
+    final streak = GamificationService.instance.streak;
+    // Loss-aversion: if the learner has a streak going, lead with what they'd
+    // lose by stopping now — the strongest upsell moment.
+    final headline = streak >= 2 ? loc.streakLimitTitle(streak) : loc.limitReachedTitle;
+    final sub = streak >= 2 ? loc.streakLimitSub : loc.limitReachedSub;
     return SafeArea(
       top: false,
       child: Container(
@@ -727,17 +824,18 @@ class _LimitBanner extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("You've reached today's free limit 🎯",
+            Text(headline,
+                textAlign: TextAlign.center,
                 style: TextStyle(fontWeight: FontWeight.bold, color: scheme.onErrorContainer)),
             const SizedBox(height: 4),
-            Text('Go Premium for unlimited practice, or come back tomorrow.',
+            Text(sub,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: scheme.onErrorContainer, fontSize: 13)),
             const SizedBox(height: 10),
             FilledButton.icon(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen())),
               icon: const Text('👑', style: TextStyle(fontSize: 14)),
-              label: const Text('Upgrade to Premium'),
+              label: Text(loc.upgradeToPremium),
             ),
           ],
         ),

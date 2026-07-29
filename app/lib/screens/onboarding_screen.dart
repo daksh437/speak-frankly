@@ -6,7 +6,6 @@ import '../services/sync_service.dart';
 import '../services/user_session.dart';
 import '../widgets/app_logo.dart';
 import 'main_shell.dart';
-import 'premium_gate.dart';
 
 /// A friendly, step-by-step onboarding (BRD §6.1 / §7): one decision per screen,
 /// big tap targets, minimal text, a welcome hero, and a progress bar.
@@ -21,14 +20,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _page = PageController();
   int _index = 0;
 
+  String? _struggle;
   String? _lang;
   String? _goal;
   String _level = 'A2';
 
+  // Only languages the app UI is actually localized into are offered here, so a
+  // learner never lands in a half-translated app. (Arabic was removed — it needs
+  // a proper RTL localization first.) "Other" keeps the UI in English; tap-to-
+  // translate still works for any language via the AI backend.
   static const _languages = [
     ('🇮🇳', 'Hindi'),
     ('🇪🇸', 'Spanish'),
-    ('🇸🇦', 'Arabic'),
     ('🇧🇷', 'Portuguese'),
     ('🇫🇷', 'French'),
     ('🌐', 'Other'),
@@ -37,10 +40,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool get _canContinue {
     switch (_index) {
       case 1:
-        return _lang != null;
+        return _struggle != null;
       case 2:
-        return _goal != null;
+        return _lang != null;
       case 3:
+        return _goal != null;
+      case 4:
         return _level.isNotEmpty;
       default:
         return true;
@@ -48,7 +53,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _next() {
-    if (_index >= 3) {
+    if (_index >= 4) {
       _finish();
       return;
     }
@@ -65,12 +70,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       nativeLanguage: _lang!,
       goal: _goal!,
       level: _level,
+      struggle: _struggle ?? '',
     );
     SyncService.push(); // save this account's profile to the cloud
     if (!mounted) return;
-    // Onboarding done → now the hard paywall gates entry to the app.
+    // Onboarding done → straight into the app on the free trial (no paywall).
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => PremiumGate(child: const MainShell())),
+      MaterialPageRoute(builder: (_) => const MainShell()),
     );
   }
 
@@ -84,6 +90,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final loc = AppLocalizations.of(context)!;
+    final struggles = [
+      ('🥶', loc.struggleFreeze, 'freeze'),
+      ('🔄', loc.struggleSwitch, 'switch'),
+      ('😰', loc.struggleMistakes, 'mistakes'),
+      ('👂', loc.struggleUnderstand, 'understand'),
+    ];
     final goals = [
       ('💼', loc.goalJob, 'Job / Interview'),
       ('✈️', loc.goalTravel, 'Travel'),
@@ -123,7 +135,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         onPressed: _index == 0 ? null : _back,
                         icon: const Icon(Icons.arrow_back),
                       ),
-                      Expanded(child: _ProgressBar(step: _index, total: 3)),
+                      Expanded(child: _ProgressBar(step: _index, total: 4)),
                     ],
                   ),
                 ),
@@ -135,6 +147,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   onPageChanged: (i) => setState(() => _index = i),
                   children: [
                     _WelcomePage(onStart: _next),
+                    _ChoicePage(
+                      title: loc.qStruggle,
+                      subtitle: loc.qStruggleSub,
+                      children: [
+                        for (final s in struggles)
+                          _OptionCard(
+                            emoji: s.$1,
+                            label: s.$2,
+                            selected: _struggle == s.$3,
+                            onTap: () => setState(() => _struggle = s.$3),
+                          ),
+                      ],
+                    ),
                     _ChoicePage(
                       title: loc.qLanguage,
                       subtitle: loc.qLanguageSub,
@@ -194,7 +219,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: Text(
-                        _index == 3 ? '${loc.startLearning}  🎉' : loc.continueLabel,
+                        _index == 4 ? '${loc.startLearning}  🎉' : loc.continueLabel,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),

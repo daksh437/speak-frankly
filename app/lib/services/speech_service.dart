@@ -84,6 +84,13 @@ class SpeechService extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Stop any in-progress text-to-speech (e.g. when muting the tutor voice).
+  Future<void> stopSpeaking() async {
+    try {
+      await _tts.stop();
+    } catch (_) {}
+  }
+
   /// Start listening. Returns false if speech recognition is unavailable.
   /// [onResult] fires with partial then final transcripts.
   Future<bool> startListening({required void Function(String text, bool isFinal) onResult}) async {

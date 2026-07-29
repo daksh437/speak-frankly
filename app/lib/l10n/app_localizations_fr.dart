@@ -195,4 +195,74 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importText => 'Importer du texte';
+
+  @override
+  String get limitReachedTitle => 'Tu as atteint ta limite gratuite du jour 🎯';
+
+  @override
+  String streakLimitTitle(int streak) {
+    return 'Ne perds pas ta série de $streak jours ! 🔥';
+  }
+
+  @override
+  String get limitReachedSub =>
+      'Passe à Premium pour un entraînement illimité, ou reviens demain.';
+
+  @override
+  String get streakLimitSub =>
+      'Passe à Premium pour continuer aujourd\'hui et garder ta série, ou reviens demain.';
+
+  @override
+  String get upgradeToPremium => 'Passer à Premium';
+
+  @override
+  String get trialLabel => 'Essai gratuit';
+
+  @override
+  String trialDaysLeft(int days) {
+    return '$days jours restants · entraînement illimité';
+  }
+
+  @override
+  String get trialLastDay =>
+      'Dernier jour — entraînement illimité aujourd\'hui';
+
+  @override
+  String get offlinePremiumTitle => 'Fonction Premium 📥';
+
+  @override
+  String get offlinePremiumBody =>
+      'Les téléchargements hors ligne font partie de Premium, pour t\'entraîner sans internet. Passe à Premium pour débloquer.';
+
+  @override
+  String get notNow => 'Plus tard';
+
+  @override
+  String get goPremium => 'Passer à Premium';
+
+  @override
+  String get downloadOfflinePremium => 'Télécharger hors ligne (Premium)';
+
+  @override
+  String get qStruggle =>
+      'Qu\'est-ce qui est le plus dur quand tu parles anglais ?';
+
+  @override
+  String get qStruggleSub => 'On va t\'aider exactement là-dessus.';
+
+  @override
+  String get struggleFreeze => 'Je bloque, j\'ai un trou';
+
+  @override
+  String get struggleSwitch => 'Je repasse à ma langue';
+
+  @override
+  String get struggleMistakes => 'J\'ai peur de faire des fautes';
+
+  @override
+  String get struggleUnderstand => 'Je comprends mais je ne parle pas';
+
+  @override
+  String get firstReplyWin =>
+      '🎉 Tu viens de dire ta première phrase en anglais, le plus dur est fait. Continue !';
 }

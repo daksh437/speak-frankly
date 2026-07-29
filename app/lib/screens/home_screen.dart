@@ -6,6 +6,7 @@ import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../services/notification_service.dart';
+import '../services/plan_status.dart';
 import '../services/speech_service.dart';
 import '../services/user_session.dart';
 import '../services/word_of_day.dart';
@@ -14,6 +15,7 @@ import '../widgets/app_logo.dart';
 import '../widgets/dictionary_sheet.dart';
 import 'chat_screen.dart';
 import 'picture_match_screen.dart';
+import 'premium_screen.dart';
 import 'stories_list_screen.dart';
 
 /// XP needed to unlock the scenario at [index] (first two are always open).
@@ -45,6 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // Ask for notification permission + schedule the daily reminder once the
     // learner is in the app (fire-and-forget).
     NotificationService.instance.requestAndSchedule();
+    // Know the plan so we can surface the free-trial banner (fire-and-forget).
+    PlanStatus.instance.refresh();
   }
 
   List<Scenario> _applyFilters(List<Scenario> all) {
@@ -133,6 +137,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 return CustomScrollView(
                   slivers: [
                     const SliverToBoxAdapter(child: _Header()),
+                    const SliverPadding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 6),
+                      sliver: SliverToBoxAdapter(child: _TrialBanner()),
+                    ),
                     const SliverPadding(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _WordOfDayCard()),
@@ -325,6 +333,67 @@ class _StatChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Free-trial awareness strip. Only shows while the learner is on the trial —
+/// keeps the "you have unlimited access, for now" value + urgency visible, and
+/// taps through to the upgrade screen. Hidden for free/premium plans.
+class _TrialBanner extends StatelessWidget {
+  const _TrialBanner();
+
+  int? _daysLeft(DateTime? end) {
+    if (end == null) return null;
+    final diff = end.difference(DateTime.now());
+    if (diff.isNegative) return 0;
+    return diff.inHours ~/ 24 + (diff.inHours % 24 == 0 ? 0 : 1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: PlanStatus.instance,
+      builder: (context, _) {
+        if (!PlanStatus.instance.isTrial) return const SizedBox.shrink();
+        final loc = AppLocalizations.of(context)!;
+        final scheme = Theme.of(context).colorScheme;
+        final days = _daysLeft(PlanStatus.instance.trialEndsAt);
+        final sub = (days == null || days <= 1) ? loc.trialLastDay : loc.trialDaysLeft(days);
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen())),
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: scheme.primary.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  const Text('✨', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(loc.trialLabel,
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: scheme.onPrimaryContainer)),
+                        Text(sub,
+                            style: TextStyle(fontSize: 12.5, color: scheme.onPrimaryContainer.withValues(alpha: 0.85))),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: scheme.onPrimaryContainer),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

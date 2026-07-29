@@ -68,5 +68,27 @@
 
   "savedWords": "Mots enregistrés",
   "review": "Réviser",
-  "importText": "Importer du texte"
+  "importText": "Importer du texte",
+
+  "limitReachedTitle": "Tu as atteint ta limite gratuite du jour 🎯",
+  "streakLimitTitle": "Ne perds pas ta série de {streak} jours ! 🔥",
+  "limitReachedSub": "Passe à Premium pour un entraînement illimité, ou reviens demain.",
+  "streakLimitSub": "Passe à Premium pour continuer aujourd'hui et garder ta série, ou reviens demain.",
+  "upgradeToPremium": "Passer à Premium",
+  "trialLabel": "Essai gratuit",
+  "trialDaysLeft": "{days} jours restants · entraînement illimité",
+  "trialLastDay": "Dernier jour — entraînement illimité aujourd'hui",
+  "offlinePremiumTitle": "Fonction Premium 📥",
+  "offlinePremiumBody": "Les téléchargements hors ligne font partie de Premium, pour t'entraîner sans internet. Passe à Premium pour débloquer.",
+  "notNow": "Plus tard",
+  "goPremium": "Passer à Premium",
+  "downloadOfflinePremium": "Télécharger hors ligne (Premium)",
+
+  "qStruggle": "Qu'est-ce qui est le plus dur quand tu parles anglais ?",
+  "qStruggleSub": "On va t'aider exactement là-dessus.",
+  "struggleFreeze": "Je bloque, j'ai un trou",
+  "struggleSwitch": "Je repasse à ma langue",
+  "struggleMistakes": "J'ai peur de faire des fautes",
+  "struggleUnderstand": "Je comprends mais je ne parle pas",
+  "firstReplyWin": "🎉 Tu viens de dire ta première phrase en anglais, le plus dur est fait. Continue !"
 }

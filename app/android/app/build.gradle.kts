@@ -29,7 +29,9 @@ android {
     namespace = "com.speakfrankly"
     compileSdk = flutter.compileSdkVersion
     // Highest NDK required across Firebase/plugin deps (backward compatible).
-    ndkVersion = "27.0.12077973"
+    // Bumped to 28.x because speech_to_text (core voice-first feature) requires
+    // it; NDK is backward-compatible so other plugins are unaffected.
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         // Required by flutter_local_notifications (java.time backport on minSdk 24).

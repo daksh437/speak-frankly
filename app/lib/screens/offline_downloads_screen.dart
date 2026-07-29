@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/offline_service.dart';
+import '../services/plan_status.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
+import 'premium_screen.dart';
 
 /// Offline downloads (BRD §7.2). One tap caches the scenario library, speaking
 /// phrases, and picture-match items for the learner's level so they can keep
@@ -18,13 +21,41 @@ class _OfflineDownloadsScreenState extends State<OfflineDownloadsScreen> {
   void initState() {
     super.initState();
     OfflineService.instance.load();
+    PlanStatus.instance.refresh(); // know whether to gate the download
   }
 
   Future<void> _download() async {
+    // Offline packs are a Premium feature (trial users included). Free learners
+    // get an upgrade prompt instead.
+    if (!PlanStatus.instance.hasPremiumAccess) {
+      _showPremiumPrompt();
+      return;
+    }
     final ok = await OfflineService.instance.download();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(ok ? 'Downloaded for offline use ✅' : 'Download failed — check your connection.')),
+    );
+  }
+
+  void _showPremiumPrompt() {
+    final loc = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(loc.offlinePremiumTitle),
+        content: Text(loc.offlinePremiumBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(loc.notNow)),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen()));
+            },
+            child: Text(loc.goPremium),
+          ),
+        ],
+      ),
     );
   }
 
@@ -85,16 +116,26 @@ class _OfflineDownloadsScreenState extends State<OfflineDownloadsScreen> {
                     ),
                   ),
                 const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: FilledButton.icon(
-                    onPressed: svc.downloading ? null : _download,
-                    icon: svc.downloading
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.download_rounded),
-                    label: Text(svc.downloading ? 'Downloading…' : (svc.isDownloaded ? 'Update pack' : 'Download for offline')),
-                  ),
+                AnimatedBuilder(
+                  animation: PlanStatus.instance,
+                  builder: (context, _) {
+                    final locked = !PlanStatus.instance.hasPremiumAccess;
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: FilledButton.icon(
+                        onPressed: svc.downloading ? null : _download,
+                        icon: svc.downloading
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : Icon(locked ? Icons.lock_rounded : Icons.download_rounded),
+                        label: Text(svc.downloading
+                            ? 'Downloading…'
+                            : locked
+                                ? AppLocalizations.of(context)!.downloadOfflinePremium
+                                : (svc.isDownloaded ? 'Update pack' : 'Download for offline')),
+                      ),
+                    );
+                  },
                 ),
                 if (svc.isDownloaded && !svc.downloading) ...[
                   const SizedBox(height: 8),

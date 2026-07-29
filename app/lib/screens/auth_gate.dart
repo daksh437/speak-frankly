@@ -6,7 +6,6 @@ import '../services/user_session.dart';
 import 'login_screen.dart';
 import 'main_shell.dart';
 import 'onboarding_screen.dart';
-import 'premium_gate.dart';
 
 /// Routes by auth state: signed out → LoginScreen; signed in → prepare that
 /// account's session (reset+load if a different account) → onboarding/app.
@@ -49,11 +48,11 @@ class _AuthGateState extends State<AuthGate> {
           _prepare(user.uid); // async; shows loader until ready
           return const _Loader();
         }
-        // Flow after sign-in: new users do onboarding FIRST (no paywall), then
-        // hit the hard paywall before the app. Returning (onboarded) users go
-        // straight to the paywall → app.
+        // Flow after sign-in: new users onboard first, then straight into the
+        // app on a free trial (no paywall). Access limits are enforced by the
+        // server per request; the tutor screen surfaces the daily cap when hit.
         return UserSession.instance.onboarded
-            ? PremiumGate(child: const MainShell())
+            ? const MainShell()
             : const OnboardingScreen();
       },
     );

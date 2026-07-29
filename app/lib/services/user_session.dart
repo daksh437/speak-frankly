@@ -12,6 +12,7 @@ class UserSession {
   static const _kLevel = 'sf_level';
   static const _kOnboarded = 'sf_onboarded';
   static const _kName = 'sf_display_name';
+  static const _kStruggle = 'sf_struggle';
 
   String uid = '';
   String nativeLanguage = '';
@@ -19,6 +20,10 @@ class UserSession {
   String level = 'A2';
   String displayName = 'Learner';
   bool onboarded = false;
+
+  /// The learner's biggest speaking struggle (from onboarding) — the app's core
+  /// promise is to beat exactly this. One of: freeze/switch/mistakes/understand.
+  String struggle = '';
 
   static final UserSession instance = UserSession._();
   UserSession._();
@@ -35,6 +40,7 @@ class UserSession {
     level = p.getString(_kLevel) ?? 'A2';
     displayName = p.getString(_kName) ?? 'Learner';
     onboarded = p.getBool(_kOnboarded) ?? false;
+    struggle = p.getString(_kStruggle) ?? '';
   }
 
   Future<void> setDisplayName(String name) async {
@@ -63,15 +69,18 @@ class UserSession {
     required String nativeLanguage,
     required String goal,
     required String level,
+    String struggle = '',
   }) async {
     final p = await SharedPreferences.getInstance();
     this.nativeLanguage = nativeLanguage;
     this.goal = goal;
     this.level = level;
+    this.struggle = struggle;
     onboarded = true;
     await p.setString(_kNativeLang, nativeLanguage);
     await p.setString(_kGoal, goal);
     await p.setString(_kLevel, level);
+    await p.setString(_kStruggle, struggle);
     await p.setBool(_kOnboarded, true);
   }
 
@@ -81,12 +90,14 @@ class UserSession {
     goal = '';
     level = 'A2';
     displayName = 'Learner';
+    struggle = '';
     onboarded = false;
     final p = await SharedPreferences.getInstance();
     await p.remove(_kNativeLang);
     await p.remove(_kGoal);
     await p.remove(_kLevel);
     await p.remove(_kName);
+    await p.remove(_kStruggle);
     await p.remove(_kOnboarded);
   }
 
@@ -97,6 +108,7 @@ class UserSession {
         'goal': goal,
         'nativeLanguage': nativeLanguage,
         'displayName': displayName,
+        'struggle': struggle,
       };
 
   /// Apply a cloud profile (only if that account has completed onboarding).
@@ -107,12 +119,14 @@ class UserSession {
     goal = (m['goal'] ?? goal).toString();
     nativeLanguage = (m['nativeLanguage'] ?? nativeLanguage).toString();
     displayName = (m['displayName'] ?? displayName).toString();
+    struggle = (m['struggle'] ?? struggle).toString();
     final p = await SharedPreferences.getInstance();
     await p.setBool(_kOnboarded, true);
     await p.setString(_kLevel, level);
     await p.setString(_kGoal, goal);
     await p.setString(_kNativeLang, nativeLanguage);
     await p.setString(_kName, displayName);
+    await p.setString(_kStruggle, struggle);
   }
 
   String _generateUid() {

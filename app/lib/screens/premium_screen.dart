@@ -4,13 +4,13 @@ import '../services/auth_service.dart';
 import '../services/premium_service.dart';
 import '../theme/app_theme.dart';
 
-/// Premium upgrade screen — introductory ₹10 for 7 days, then ₹199/month.
-/// The actual price/offer comes from the Play Console subscription; the text
-/// below mirrors it as the marketing copy.
+/// Premium upgrade screen. Learners start with a free in-app trial; this screen
+/// is the paid upgrade — monthly (₹199/mo, ₹10 first-month intro) or annual
+/// (₹999/yr, best value). The actual prices come from the Play Console products.
 ///
 /// When [blocking] is true the screen acts as a hard paywall: no back button,
 /// a sign-out escape hatch, and on success [onSubscribed] is invoked (instead of
-/// popping) so the gate can reveal the app.
+/// popping) so a gate can reveal the app.
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key, this.blocking = false, this.onSubscribed});
   final bool blocking;
@@ -20,14 +20,24 @@ class PremiumScreen extends StatefulWidget {
 }
 
 class _PremiumScreenState extends State<PremiumScreen> {
+  // Which plan the learner has selected. Defaults to annual (best value) when
+  // it's offered, otherwise monthly.
+  String _selected = PremiumService.annualId;
+
   @override
   void initState() {
     super.initState();
     PremiumService.instance.init();
+    // If annual isn't available (product not created yet), fall back to monthly.
+    if (!PremiumService.instance.hasAnnual) _selected = PremiumService.monthlyId;
   }
 
   Future<void> _subscribe() async {
-    final ok = await PremiumService.instance.buy();
+    final svc = PremiumService.instance;
+    // Guard: if the selected plan isn't available, use whatever is.
+    var plan = _selected;
+    if (plan == PremiumService.annualId && !svc.hasAnnual) plan = PremiumService.monthlyId;
+    final ok = await svc.buy(plan);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Subscriptions are not available yet. Please try again later.')),
@@ -76,7 +86,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
                       const Center(child: Text('Go Premium', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800))),
                       const SizedBox(height: 8),
                       Center(
-                        child: Text('Unlimited practice, no daily limits.',
+                        child: Text('Your 3-day free trial keeps everything unlocked.\nKeep it going with Premium.',
+                            textAlign: TextAlign.center,
                             style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14.5)),
                       ),
                       const SizedBox(height: 26),
@@ -85,28 +96,25 @@ class _PremiumScreenState extends State<PremiumScreen> {
                       _benefit(context, '🔓', 'Everything unlocked', 'All scenarios, games and daily challenges.'),
                       _benefit(context, '🚀', 'Faster progress', 'The best way to become fluent quickly.'),
                       const SizedBox(height: 20),
-                      // Offer card
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: scheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: scheme.primary.withValues(alpha: 0.3), width: 1.5),
+                      // Plan selector
+                      if (svc.hasAnnual)
+                        _planTile(
+                          context,
+                          id: PremiumService.annualId,
+                          title: 'Annual',
+                          price: svc.annual?.price ?? '₹999',
+                          per: 'per year',
+                          note: 'Best value · save ~58%',
+                          highlight: true,
                         ),
-                        child: Column(
-                          children: [
-                            Text('₹10 for your first 7 days',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: scheme.onPrimaryContainer)),
-                            const SizedBox(height: 4),
-                            Text('then ₹199/month · cancel anytime',
-                                style: TextStyle(fontSize: 13.5, color: scheme.onPrimaryContainer.withValues(alpha: 0.85))),
-                            if (svc.product != null) ...[
-                              const SizedBox(height: 6),
-                              Text('Billed via Google Play (${svc.product!.price})',
-                                  style: TextStyle(fontSize: 11.5, color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
-                            ],
-                          ],
-                        ),
+                      if (svc.hasAnnual) const SizedBox(height: 12),
+                      _planTile(
+                        context,
+                        id: PremiumService.monthlyId,
+                        title: 'Monthly',
+                        price: svc.monthly?.price ?? '₹199',
+                        per: 'per month',
+                        note: 'Just ₹10 for your first month',
                       ),
                     ],
                   ),
@@ -122,11 +130,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
                           onPressed: svc.purchasePending ? null : _subscribe,
                           child: svc.purchasePending
                               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Text('Start for ₹10', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              : Text(_selected == PremiumService.annualId ? 'Continue · Annual' : 'Continue · ₹10 first month',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text('Payment charged to your Google Play account. Renews monthly at ₹199 until cancelled.',
+                      Text('Billed via Google Play. Cancel anytime. Renews automatically until cancelled.',
                           textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11.5)),
                     ],
                   ),
@@ -134,6 +143,70 @@ class _PremiumScreenState extends State<PremiumScreen> {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _planTile(
+    BuildContext context, {
+    required String id,
+    required String title,
+    required String price,
+    required String per,
+    required String note,
+    bool highlight = false,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final selected = _selected == id;
+    return InkWell(
+      onTap: () => setState(() => _selected = id),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: selected ? scheme.primaryContainer : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? scheme.primary : scheme.outlineVariant,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                color: selected ? scheme.primary : scheme.onSurfaceVariant),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      if (highlight) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(20)),
+                          child: Text('POPULAR', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: scheme.onPrimary)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(note, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(price, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                Text(per, style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+              ],
+            ),
+          ],
         ),
       ),
     );

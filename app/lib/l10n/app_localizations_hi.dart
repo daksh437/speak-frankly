@@ -192,4 +192,72 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get importText => 'टेक्स्ट आयात करें';
+
+  @override
+  String get limitReachedTitle => 'आज की फ्री लिमिट पूरी हो गई 🎯';
+
+  @override
+  String streakLimitTitle(int streak) {
+    return 'अपनी $streak-दिन की स्ट्रीक न टूटने दें! 🔥';
+  }
+
+  @override
+  String get limitReachedSub =>
+      'अनलिमिटेड प्रैक्टिस के लिए प्रीमियम लें, या कल वापस आएँ।';
+
+  @override
+  String get streakLimitSub =>
+      'आज प्रैक्टिस जारी रखने और अपनी स्ट्रीक बचाने के लिए प्रीमियम लें — या कल वापस आएँ।';
+
+  @override
+  String get upgradeToPremium => 'प्रीमियम में अपग्रेड करें';
+
+  @override
+  String get trialLabel => 'फ्री ट्रायल';
+
+  @override
+  String trialDaysLeft(int days) {
+    return '$days दिन बाकी · अनलिमिटेड प्रैक्टिस';
+  }
+
+  @override
+  String get trialLastDay => 'आख़िरी दिन — आज अनलिमिटेड प्रैक्टिस';
+
+  @override
+  String get offlinePremiumTitle => 'प्रीमियम फ़ीचर 📥';
+
+  @override
+  String get offlinePremiumBody =>
+      'ऑफ़लाइन डाउनलोड प्रीमियम का हिस्सा है, ताकि आप बिना इंटरनेट के भी प्रैक्टिस कर सकें। अनलॉक करने के लिए अपग्रेड करें।';
+
+  @override
+  String get notNow => 'अभी नहीं';
+
+  @override
+  String get goPremium => 'प्रीमियम लें';
+
+  @override
+  String get downloadOfflinePremium => 'ऑफ़लाइन के लिए डाउनलोड (प्रीमियम)';
+
+  @override
+  String get qStruggle => 'अंग्रेज़ी बोलने में सबसे मुश्किल क्या लगता है?';
+
+  @override
+  String get qStruggleSub => 'हम बिलकुल इसी को ठीक करने में मदद करेंगे।';
+
+  @override
+  String get struggleFreeze => 'अटक जाता/जाती हूँ, दिमाग़ ख़ाली हो जाता है';
+
+  @override
+  String get struggleSwitch => 'अपनी भाषा पर चला/चली जाता/जाती हूँ';
+
+  @override
+  String get struggleMistakes => 'ग़लती करने से डर लगता है';
+
+  @override
+  String get struggleUnderstand => 'समझ आता है पर बोल नहीं पाता/पाती';
+
+  @override
+  String get firstReplyWin =>
+      '🎉 आपने अपना पहला अंग्रेज़ी वाक्य बोल लिया — यही सबसे मुश्किल हिस्सा था। बढ़ते रहिए!';
 }

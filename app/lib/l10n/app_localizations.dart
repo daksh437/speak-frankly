@@ -469,6 +469,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import text'**
   String get importText;
+
+  /// No description provided for @limitReachedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve reached today\'s free limit 🎯'**
+  String get limitReachedTitle;
+
+  /// No description provided for @streakLimitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t lose your {streak}-day streak! 🔥'**
+  String streakLimitTitle(int streak);
+
+  /// No description provided for @limitReachedSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Premium for unlimited practice, or come back tomorrow.'**
+  String get limitReachedSub;
+
+  /// No description provided for @streakLimitSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Premium to keep practising today and protect your streak — or come back tomorrow.'**
+  String get streakLimitSub;
+
+  /// No description provided for @upgradeToPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Premium'**
+  String get upgradeToPremium;
+
+  /// No description provided for @trialLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Free trial'**
+  String get trialLabel;
+
+  /// No description provided for @trialDaysLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days left · unlimited practice'**
+  String trialDaysLeft(int days);
+
+  /// No description provided for @trialLastDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Last day — unlimited practice today'**
+  String get trialLastDay;
+
+  /// No description provided for @offlinePremiumTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium feature 📥'**
+  String get offlinePremiumTitle;
+
+  /// No description provided for @offlinePremiumBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline downloads are part of Premium, so you can keep practising with no internet. Upgrade to unlock.'**
+  String get offlinePremiumBody;
+
+  /// No description provided for @notNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notNow;
+
+  /// No description provided for @goPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Premium'**
+  String get goPremium;
+
+  /// No description provided for @downloadOfflinePremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Download for offline (Premium)'**
+  String get downloadOfflinePremium;
+
+  /// No description provided for @qStruggle.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s hard about speaking English?'**
+  String get qStruggle;
+
+  /// No description provided for @qStruggleSub.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll help you beat exactly this.'**
+  String get qStruggleSub;
+
+  /// No description provided for @struggleFreeze.
+  ///
+  /// In en, this message translates to:
+  /// **'I freeze / go blank'**
+  String get struggleFreeze;
+
+  /// No description provided for @struggleSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'I switch to my language'**
+  String get struggleSwitch;
+
+  /// No description provided for @struggleMistakes.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m scared of making mistakes'**
+  String get struggleMistakes;
+
+  /// No description provided for @struggleUnderstand.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand but can\'t speak'**
+  String get struggleUnderstand;
+
+  /// No description provided for @firstReplyWin.
+  ///
+  /// In en, this message translates to:
+  /// **'🎉 You just spoke your first English sentence — that\'s the hardest part. Keep going!'**
+  String get firstReplyWin;
 }
 
 class _AppLocalizationsDelegate

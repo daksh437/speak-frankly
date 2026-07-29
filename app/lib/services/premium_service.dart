@@ -5,23 +5,33 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'api_service.dart';
 
-/// Google Play subscription for Premium. The Play Console product (base plan
-/// ₹199/month + a 7-day intro offer at ₹10) is referenced by [productId].
-/// On a confirmed purchase we grant premium on the backend (server-authoritative).
+/// Google Play subscriptions for Premium. Two plans (create both in Play Console):
+///  - [monthlyId] `premium_monthly` — ₹199/month, with a ₹10 first-month intro offer.
+///  - [annualId]  `premium_annual`  — ₹999/year (best value; ~58% off monthly).
+/// On a confirmed purchase we grant premium on the backend, which VERIFIES the
+/// purchase token with the Play Developer API (server-authoritative).
 class PremiumService extends ChangeNotifier {
   static final PremiumService instance = PremiumService._();
   PremiumService._();
 
-  /// Must match the subscription product ID created in Play Console.
-  static const String productId = 'premium_monthly';
+  /// Must match the subscription product IDs created in Play Console.
+  static const String monthlyId = 'premium_monthly';
+  static const String annualId = 'premium_annual';
+  static const Set<String> _ids = {monthlyId, annualId};
 
   final InAppPurchase _iap = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _sub;
 
   bool available = false;
-  ProductDetails? product;
+  final Map<String, ProductDetails> _products = {};
   bool purchasePending = false;
   bool justActivated = false;
+
+  ProductDetails? get monthly => _products[monthlyId];
+  ProductDetails? get annual => _products[annualId];
+
+  /// Whether the annual plan is offered (only if the Play product exists).
+  bool get hasAnnual => _products.containsKey(annualId);
 
   Future<void> init() async {
     try {
@@ -34,30 +44,32 @@ class PremiumService extends ChangeNotifier {
       return;
     }
     _sub ??= _iap.purchaseStream.listen(_onPurchases, onError: (_) {});
-    await _loadProduct();
+    await _loadProducts();
     try {
       await _iap.restorePurchases(); // re-grant an active subscription on this account
     } catch (_) {}
   }
 
-  Future<void> _loadProduct() async {
+  Future<void> _loadProducts() async {
     try {
-      final resp = await _iap.queryProductDetails({productId});
-      if (resp.productDetails.isNotEmpty) {
-        product = resp.productDetails.first;
-        notifyListeners();
+      final resp = await _iap.queryProductDetails(_ids);
+      for (final p in resp.productDetails) {
+        _products[p.id] = p;
       }
+      notifyListeners();
     } catch (_) {}
   }
 
-  /// Launch the Play purchase flow. Returns false if unavailable.
-  Future<bool> buy() async {
+  /// Launch the Play purchase flow for [productId] (defaults to monthly).
+  /// Returns false if that product is unavailable.
+  Future<bool> buy(String productId) async {
+    final product = _products[productId];
     if (product == null) return false;
     purchasePending = true;
     justActivated = false;
     notifyListeners();
     try {
-      return await _iap.buyNonConsumable(purchaseParam: PurchaseParam(productDetails: product!));
+      return await _iap.buyNonConsumable(purchaseParam: PurchaseParam(productDetails: product));
     } catch (_) {
       purchasePending = false;
       notifyListeners();
