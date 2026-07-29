@@ -260,4 +260,96 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get firstReplyWin =>
       '🎉 Você acabou de falar sua primeira frase em inglês, a parte mais difícil. Continue!';
+
+  @override
+  String get premiumTitle => 'Speak Frankly Premium';
+
+  @override
+  String get premiumSubtitle =>
+      'Seu teste grátis mantém tudo desbloqueado.\nContinue com o Premium.';
+
+  @override
+  String get signOut => 'Sair';
+
+  @override
+  String get compareWhatYouGet => 'O que você recebe';
+
+  @override
+  String get compareFree => 'Grátis';
+
+  @override
+  String get comparePremium => 'Premium 👑';
+
+  @override
+  String get featAiChats => 'Conversas com o tutor de IA';
+
+  @override
+  String get featSpeaking => 'Fala e pronúncia';
+
+  @override
+  String get featScenarios => 'Todos os cenários, histórias e jogos';
+
+  @override
+  String get featOffline => 'Pacotes de download offline';
+
+  @override
+  String get featNoLimits => 'Sem limites diários';
+
+  @override
+  String get valLimited => 'Limitado';
+
+  @override
+  String get valUnlimited => 'Ilimitado';
+
+  @override
+  String get planAnnual => 'Anual';
+
+  @override
+  String get planMonthly => 'Mensal';
+
+  @override
+  String get perYear => 'por ano';
+
+  @override
+  String get perMonth => 'por mês';
+
+  @override
+  String get planBestValue => 'Melhor valor · economize ~58%';
+
+  @override
+  String get planMonthlyNote => 'Apenas ₹10 no primeiro mês';
+
+  @override
+  String get planPopular => 'POPULAR';
+
+  @override
+  String get continueAnnual => 'Continuar · Anual';
+
+  @override
+  String get continueMonthly => 'Continuar · ₹10 no primeiro mês';
+
+  @override
+  String get billingNote =>
+      'Cobrado via Google Play. Cancele quando quiser. Renova automaticamente até o cancelamento.';
+
+  @override
+  String get subsUnavailable =>
+      'As assinaturas ainda não estão disponíveis. Tente novamente mais tarde.';
+
+  @override
+  String get youArePremiumExcl => 'Você é Premium!';
+
+  @override
+  String get enjoyUnlimited => 'Aproveite a prática ilimitada. Bons estudos!';
+
+  @override
+  String get youArePremium => 'Você é Premium';
+
+  @override
+  String get premiumStatusBody =>
+      'Conversas ilimitadas, prática de fala e pacotes offline — tudo desbloqueado. Obrigado por apoiar o Speak Frankly! 💜';
+
+  @override
+  String get manageInPlay =>
+      'Gerencie ou cancele quando quiser no Google Play → Assinaturas';
 }

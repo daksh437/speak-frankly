@@ -21,16 +21,25 @@ class AccountService {
     await UserSession.instance.setUid(uid);
 
     if (last != uid) {
-      // A different account signed in on this device → wipe local first.
+      // A DIFFERENT account signed in on this device → wipe local first, then we
+      // MUST wait for the cloud pull, because routing (onboarding vs app) and the
+      // UI language depend on this account's profile. This path is rare (first
+      // sign-in / new device), and the backend was warmed on the login screen.
       await GamificationService.instance.reset();
       await VocabularyService.instance.reset();
       await UserSession.instance.resetProfile();
       await p.setString(_kSyncedUid, uid);
+      await SyncService.pullAndApply();
+      LocaleController.setFromLanguage(UserSession.instance.nativeLanguage);
+    } else {
+      // SAME account reopening the app (the common case) — local data is already
+      // correct, so open INSTANTLY and refresh from cloud in the background. This
+      // is the key fix: a sleeping (cold) backend no longer delays app startup.
+      SyncService.pullAndApply().then((_) {
+        LocaleController.setFromLanguage(UserSession.instance.nativeLanguage);
+      });
     }
 
-    // Load this account's cloud data (after a reset, this is a clean load).
-    await SyncService.pullAndApply();
-    LocaleController.setFromLanguage(UserSession.instance.nativeLanguage);
     // Persist merged state / create the doc — fire-and-forget so it doesn't block
     // the login → app transition (esp. on a cold backend).
     SyncService.push();

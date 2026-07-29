@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/auth_service.dart';
+import '../services/plan_status.dart';
 import '../services/premium_service.dart';
 import '../theme/app_theme.dart';
 
@@ -28,6 +30,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
   void initState() {
     super.initState();
     PremiumService.instance.init();
+    PlanStatus.instance.refresh(); // know if already premium / on trial
     // If annual isn't available (product not created yet), fall back to monthly.
     if (!PremiumService.instance.hasAnnual) _selected = PremiumService.monthlyId;
   }
@@ -40,7 +43,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     final ok = await svc.buy(plan);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Subscriptions are not available yet. Please try again later.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.subsUnavailable)),
       );
     }
   }
@@ -48,25 +51,28 @@ class _PremiumScreenState extends State<PremiumScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Speak Frankly Premium'),
+        title: Text(loc.premiumTitle),
         automaticallyImplyLeading: !widget.blocking,
         actions: widget.blocking
             ? [
                 TextButton(
                   onPressed: () => AuthService.signOut(),
-                  child: const Text('Sign out'),
+                  child: Text(loc.signOut),
                 ),
               ]
             : null,
       ),
       body: SafeArea(
         child: AnimatedBuilder(
-          animation: PremiumService.instance,
+          animation: Listenable.merge([PremiumService.instance, PlanStatus.instance]),
           builder: (context, _) {
             final svc = PremiumService.instance;
             if (svc.justActivated) return _success(context);
+            // Already subscribed → show a status screen, not a sales pitch.
+            if (PlanStatus.instance.isPremium) return _premiumStatus(context);
             return Column(
               children: [
                 Expanded(
@@ -83,38 +89,35 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      const Center(child: Text('Go Premium', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800))),
+                      Center(child: Text(loc.goPremium, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800))),
                       const SizedBox(height: 8),
                       Center(
-                        child: Text('Your 3-day free trial keeps everything unlocked.\nKeep it going with Premium.',
+                        child: Text(loc.premiumSubtitle,
                             textAlign: TextAlign.center,
                             style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14.5)),
                       ),
-                      const SizedBox(height: 26),
-                      _benefit(context, '💬', 'Unlimited AI conversations', 'No daily message cap — talk as much as you want.'),
-                      _benefit(context, '🎙️', 'Unlimited speaking practice', 'Practise pronunciation without limits.'),
-                      _benefit(context, '🔓', 'Everything unlocked', 'All scenarios, games and daily challenges.'),
-                      _benefit(context, '🚀', 'Faster progress', 'The best way to become fluent quickly.'),
+                      const SizedBox(height: 22),
+                      _comparisonTable(context),
                       const SizedBox(height: 20),
                       // Plan selector
                       if (svc.hasAnnual)
                         _planTile(
                           context,
                           id: PremiumService.annualId,
-                          title: 'Annual',
+                          title: loc.planAnnual,
                           price: svc.annual?.price ?? '₹999',
-                          per: 'per year',
-                          note: 'Best value · save ~58%',
+                          per: loc.perYear,
+                          note: loc.planBestValue,
                           highlight: true,
                         ),
                       if (svc.hasAnnual) const SizedBox(height: 12),
                       _planTile(
                         context,
                         id: PremiumService.monthlyId,
-                        title: 'Monthly',
+                        title: loc.planMonthly,
                         price: svc.monthly?.price ?? '₹199',
-                        per: 'per month',
-                        note: 'Just ₹10 for your first month',
+                        per: loc.perMonth,
+                        note: loc.planMonthlyNote,
                       ),
                     ],
                   ),
@@ -130,12 +133,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
                           onPressed: svc.purchasePending ? null : _subscribe,
                           child: svc.purchasePending
                               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                              : Text(_selected == PremiumService.annualId ? 'Continue · Annual' : 'Continue · ₹10 first month',
+                              : Text(_selected == PremiumService.annualId ? loc.continueAnnual : loc.continueMonthly,
                                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text('Billed via Google Play. Cancel anytime. Renews automatically until cancelled.',
+                      Text(loc.billingNote,
                           textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11.5)),
                     ],
                   ),
@@ -189,7 +192,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(20)),
-                          child: Text('POPULAR', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: scheme.onPrimary)),
+                          child: Text(AppLocalizations.of(context)!.planPopular, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: scheme.onPrimary)),
                         ),
                       ],
                     ],
@@ -212,23 +215,102 @@ class _PremiumScreenState extends State<PremiumScreen> {
     );
   }
 
-  Widget _benefit(BuildContext context, String emoji, String title, String sub) {
+  /// A clear Free vs Premium comparison so learners see exactly what they get.
+  Widget _comparisonTable(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final loc = AppLocalizations.of(context)!;
+    // rows: (label, free value, premium value). A bool → tick/cross; a String → text.
+    final rows = <(String, Object, Object)>[
+      (loc.featAiChats, loc.valLimited, loc.valUnlimited),
+      (loc.featSpeaking, true, true),
+      (loc.featScenarios, true, true),
+      (loc.featOffline, false, true),
+      (loc.featNoLimits, false, true),
+    ];
+    return Container(
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF1E1B26),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
+            child: Row(
               children: [
-                Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                Text(sub, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant, height: 1.3)),
+                Expanded(child: Text(loc.compareWhatYouGet, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5))),
+                SizedBox(width: 64, child: Text(loc.compareFree, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: scheme.onSurfaceVariant))),
+                SizedBox(width: 74, child: Text(loc.comparePremium, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: scheme.primary))),
               ],
             ),
+          ),
+          Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+          for (int i = 0; i < rows.length; i++) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              child: Row(
+                children: [
+                  Expanded(child: Text(rows[i].$1, style: const TextStyle(fontSize: 13.5))),
+                  SizedBox(width: 64, child: Center(child: _cell(context, rows[i].$2, premium: false))),
+                  SizedBox(width: 74, child: Center(child: _cell(context, rows[i].$3, premium: true))),
+                ],
+              ),
+            ),
+            if (i < rows.length - 1) Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(BuildContext context, Object v, {required bool premium}) {
+    final scheme = Theme.of(context).colorScheme;
+    if (v is bool) {
+      return v
+          ? Icon(Icons.check_circle_rounded, size: 20, color: premium ? scheme.primary : AppColors.success)
+          : Icon(Icons.remove_rounded, size: 18, color: scheme.onSurfaceVariant.withValues(alpha: 0.5));
+    }
+    return Text(
+      v.toString(),
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 12.5,
+        fontWeight: premium ? FontWeight.w800 : FontWeight.w500,
+        color: premium ? scheme.primary : scheme.onSurfaceVariant,
+      ),
+    );
+  }
+
+  /// Shown when the learner is already Premium — a thank-you status, not a pitch.
+  Widget _premiumStatus(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(gradient: AppColors.gradient(AppTheme.seed), shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: AppTheme.seed.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 10))]),
+            child: const Center(child: Text('👑', style: TextStyle(fontSize: 46))),
+          ),
+          const SizedBox(height: 18),
+          Text(loc.youArePremium, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text(loc.premiumStatusBody,
+              textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14.5, height: 1.4)),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(14)),
+            child: Text(loc.manageInPlay,
+                textAlign: TextAlign.center, style: TextStyle(color: scheme.onPrimaryContainer, fontSize: 12.5)),
           ),
         ],
       ),
@@ -236,6 +318,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
   }
 
   Widget _success(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -243,9 +326,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
         children: [
           const Text('🎉', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
-          const Text("You're Premium!", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+          Text(loc.youArePremiumExcl, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          Text('Enjoy unlimited practice. Happy learning!',
+          Text(loc.enjoyUnlimited,
               textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
           const SizedBox(height: 32),
           SizedBox(
@@ -253,13 +336,14 @@ class _PremiumScreenState extends State<PremiumScreen> {
             height: 52,
             child: FilledButton(
               onPressed: () {
+                PlanStatus.instance.refresh();
                 if (widget.onSubscribed != null) {
                   widget.onSubscribed!();
-                } else {
+                } else if (Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
                 }
               },
-              child: const Text('Done'),
+              child: Text(loc.done),
             ),
           ),
         ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import 'home_screen.dart';
+import 'premium_screen.dart';
 import 'profile_screen.dart';
 import 'speak_screen.dart';
 import 'vocab_screen.dart';
@@ -27,6 +28,7 @@ class _MainShellState extends State<MainShell> {
           HomeScreen(),
           SpeakScreen(),
           VocabScreen(),
+          PremiumScreen(),
           ProfileScreen(),
         ],
       ),
@@ -37,6 +39,7 @@ class _MainShellState extends State<MainShell> {
           NavigationDestination(icon: const Icon(Icons.chat_bubble_outline_rounded), selectedIcon: const Icon(Icons.chat_bubble_rounded), label: l.navPractice),
           NavigationDestination(icon: const Icon(Icons.mic_none_rounded), selectedIcon: const Icon(Icons.mic_rounded), label: l.navSpeak),
           NavigationDestination(icon: const Icon(Icons.bookmark_border_rounded), selectedIcon: const Icon(Icons.bookmark_rounded), label: l.navWords),
+          const NavigationDestination(icon: Icon(Icons.workspace_premium_outlined), selectedIcon: Icon(Icons.workspace_premium_rounded), label: 'Premium'),
           NavigationDestination(icon: const Icon(Icons.person_outline_rounded), selectedIcon: const Icon(Icons.person_rounded), label: l.navProfile),
         ],
       ),

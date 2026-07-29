@@ -589,6 +589,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'🎉 You just spoke your first English sentence — that\'s the hardest part. Keep going!'**
   String get firstReplyWin;
+
+  /// No description provided for @premiumTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak Frankly Premium'**
+  String get premiumTitle;
+
+  /// No description provided for @premiumSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your free trial keeps everything unlocked.\nKeep it going with Premium.'**
+  String get premiumSubtitle;
+
+  /// No description provided for @signOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get signOut;
+
+  /// No description provided for @compareWhatYouGet.
+  ///
+  /// In en, this message translates to:
+  /// **'What you get'**
+  String get compareWhatYouGet;
+
+  /// No description provided for @compareFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get compareFree;
+
+  /// No description provided for @comparePremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium 👑'**
+  String get comparePremium;
+
+  /// No description provided for @featAiChats.
+  ///
+  /// In en, this message translates to:
+  /// **'AI tutor conversations'**
+  String get featAiChats;
+
+  /// No description provided for @featSpeaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaking & pronunciation'**
+  String get featSpeaking;
+
+  /// No description provided for @featScenarios.
+  ///
+  /// In en, this message translates to:
+  /// **'All scenarios, stories & games'**
+  String get featScenarios;
+
+  /// No description provided for @featOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline download packs'**
+  String get featOffline;
+
+  /// No description provided for @featNoLimits.
+  ///
+  /// In en, this message translates to:
+  /// **'No daily limits'**
+  String get featNoLimits;
+
+  /// No description provided for @valLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Limited'**
+  String get valLimited;
+
+  /// No description provided for @valUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited'**
+  String get valUnlimited;
+
+  /// No description provided for @planAnnual.
+  ///
+  /// In en, this message translates to:
+  /// **'Annual'**
+  String get planAnnual;
+
+  /// No description provided for @planMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get planMonthly;
+
+  /// No description provided for @perYear.
+  ///
+  /// In en, this message translates to:
+  /// **'per year'**
+  String get perYear;
+
+  /// No description provided for @perMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'per month'**
+  String get perMonth;
+
+  /// No description provided for @planBestValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Best value · save ~58%'**
+  String get planBestValue;
+
+  /// No description provided for @planMonthlyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Just ₹10 for your first month'**
+  String get planMonthlyNote;
+
+  /// No description provided for @planPopular.
+  ///
+  /// In en, this message translates to:
+  /// **'POPULAR'**
+  String get planPopular;
+
+  /// No description provided for @continueAnnual.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue · Annual'**
+  String get continueAnnual;
+
+  /// No description provided for @continueMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue · ₹10 first month'**
+  String get continueMonthly;
+
+  /// No description provided for @billingNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Billed via Google Play. Cancel anytime. Renews automatically until cancelled.'**
+  String get billingNote;
+
+  /// No description provided for @subsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscriptions are not available yet. Please try again later.'**
+  String get subsUnavailable;
+
+  /// No description provided for @youArePremiumExcl.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re Premium!'**
+  String get youArePremiumExcl;
+
+  /// No description provided for @enjoyUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoy unlimited practice. Happy learning!'**
+  String get enjoyUnlimited;
+
+  /// No description provided for @youArePremium.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re Premium'**
+  String get youArePremium;
+
+  /// No description provided for @premiumStatusBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited conversations, speaking practice and offline packs — all unlocked. Thank you for supporting Speak Frankly! 💜'**
+  String get premiumStatusBody;
+
+  /// No description provided for @manageInPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage or cancel anytime in Google Play → Subscriptions'**
+  String get manageInPlay;
 }
 
 class _AppLocalizationsDelegate

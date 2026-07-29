@@ -260,4 +260,96 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get firstReplyWin =>
       '🎉 You just spoke your first English sentence — that\'s the hardest part. Keep going!';
+
+  @override
+  String get premiumTitle => 'Speak Frankly Premium';
+
+  @override
+  String get premiumSubtitle =>
+      'Your free trial keeps everything unlocked.\nKeep it going with Premium.';
+
+  @override
+  String get signOut => 'Sign out';
+
+  @override
+  String get compareWhatYouGet => 'What you get';
+
+  @override
+  String get compareFree => 'Free';
+
+  @override
+  String get comparePremium => 'Premium 👑';
+
+  @override
+  String get featAiChats => 'AI tutor conversations';
+
+  @override
+  String get featSpeaking => 'Speaking & pronunciation';
+
+  @override
+  String get featScenarios => 'All scenarios, stories & games';
+
+  @override
+  String get featOffline => 'Offline download packs';
+
+  @override
+  String get featNoLimits => 'No daily limits';
+
+  @override
+  String get valLimited => 'Limited';
+
+  @override
+  String get valUnlimited => 'Unlimited';
+
+  @override
+  String get planAnnual => 'Annual';
+
+  @override
+  String get planMonthly => 'Monthly';
+
+  @override
+  String get perYear => 'per year';
+
+  @override
+  String get perMonth => 'per month';
+
+  @override
+  String get planBestValue => 'Best value · save ~58%';
+
+  @override
+  String get planMonthlyNote => 'Just ₹10 for your first month';
+
+  @override
+  String get planPopular => 'POPULAR';
+
+  @override
+  String get continueAnnual => 'Continue · Annual';
+
+  @override
+  String get continueMonthly => 'Continue · ₹10 first month';
+
+  @override
+  String get billingNote =>
+      'Billed via Google Play. Cancel anytime. Renews automatically until cancelled.';
+
+  @override
+  String get subsUnavailable =>
+      'Subscriptions are not available yet. Please try again later.';
+
+  @override
+  String get youArePremiumExcl => 'You\'re Premium!';
+
+  @override
+  String get enjoyUnlimited => 'Enjoy unlimited practice. Happy learning!';
+
+  @override
+  String get youArePremium => 'You\'re Premium';
+
+  @override
+  String get premiumStatusBody =>
+      'Unlimited conversations, speaking practice and offline packs — all unlocked. Thank you for supporting Speak Frankly! 💜';
+
+  @override
+  String get manageInPlay =>
+      'Manage or cancel anytime in Google Play → Subscriptions';
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/auth_gate.dart';
 import 'services/analytics_service.dart';
+import 'services/api_service.dart';
 import 'services/gamification_service.dart';
 import 'services/locale_controller.dart';
 import 'services/notification_service.dart';
@@ -27,6 +28,10 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('[Firebase] init failed: $e');
   }
+
+  // Wake the (Render free-tier) backend the instant the app launches, so it's
+  // warm by the time we pull progress / fetch scenarios. Fire-and-forget.
+  ApiService.instance.warmup();
 
   // Best-effort cloud sync of progress + saved words (non-blocking).
   SyncService.start();

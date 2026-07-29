@@ -260,4 +260,96 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get firstReplyWin =>
       '🎉 आपने अपना पहला अंग्रेज़ी वाक्य बोल लिया — यही सबसे मुश्किल हिस्सा था। बढ़ते रहिए!';
+
+  @override
+  String get premiumTitle => 'Speak Frankly Premium';
+
+  @override
+  String get premiumSubtitle =>
+      'आपका फ्री ट्रायल सब कुछ अनलॉक रखता है।\nप्रीमियम से इसे जारी रखें।';
+
+  @override
+  String get signOut => 'साइन आउट';
+
+  @override
+  String get compareWhatYouGet => 'आपको क्या मिलता है';
+
+  @override
+  String get compareFree => 'फ्री';
+
+  @override
+  String get comparePremium => 'प्रीमियम 👑';
+
+  @override
+  String get featAiChats => 'AI ट्यूटर से बातचीत';
+
+  @override
+  String get featSpeaking => 'बोलना और उच्चारण';
+
+  @override
+  String get featScenarios => 'सभी सिनारियो, कहानियाँ और गेम';
+
+  @override
+  String get featOffline => 'ऑफ़लाइन डाउनलोड पैक';
+
+  @override
+  String get featNoLimits => 'कोई दैनिक सीमा नहीं';
+
+  @override
+  String get valLimited => 'सीमित';
+
+  @override
+  String get valUnlimited => 'असीमित';
+
+  @override
+  String get planAnnual => 'सालाना';
+
+  @override
+  String get planMonthly => 'मासिक';
+
+  @override
+  String get perYear => 'प्रति वर्ष';
+
+  @override
+  String get perMonth => 'प्रति माह';
+
+  @override
+  String get planBestValue => 'सबसे बढ़िया · ~58% बचत';
+
+  @override
+  String get planMonthlyNote => 'पहले महीने के लिए सिर्फ़ ₹10';
+
+  @override
+  String get planPopular => 'लोकप्रिय';
+
+  @override
+  String get continueAnnual => 'आगे बढ़ें · सालाना';
+
+  @override
+  String get continueMonthly => 'आगे बढ़ें · पहला महीना ₹10';
+
+  @override
+  String get billingNote =>
+      'Google Play के ज़रिए बिलिंग। कभी भी रद्द करें। रद्द करने तक अपने-आप रिन्यू होता है।';
+
+  @override
+  String get subsUnavailable =>
+      'सब्सक्रिप्शन अभी उपलब्ध नहीं है। कृपया बाद में फिर कोशिश करें।';
+
+  @override
+  String get youArePremiumExcl => 'आप प्रीमियम हैं!';
+
+  @override
+  String get enjoyUnlimited => 'असीमित प्रैक्टिस का आनंद लें। सीखते रहिए!';
+
+  @override
+  String get youArePremium => 'आप प्रीमियम हैं';
+
+  @override
+  String get premiumStatusBody =>
+      'असीमित बातचीत, बोलने की प्रैक्टिस और ऑफ़लाइन पैक — सब अनलॉक। Speak Frankly का साथ देने के लिए धन्यवाद! 💜';
+
+  @override
+  String get manageInPlay =>
+      'Google Play → सब्सक्रिप्शन में कभी भी मैनेज या रद्द करें';
 }
