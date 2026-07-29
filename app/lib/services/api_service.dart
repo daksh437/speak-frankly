@@ -210,6 +210,51 @@ class ApiService {
     if (data == null) return null;
     return DictionaryCard.fromJson(data);
   }
+
+  // ---- Admin panel (server verifies admin from the Firebase email) ----
+
+  /// Whether the current user is an admin → { isAdmin, isOwner, email }.
+  Future<Map<String, dynamic>> adminMe() async {
+    final res = await _client.get(_u('/admin/me'), headers: _headers).timeout(_timeout);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return (body['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<List<Map<String, dynamic>>> adminListAdmins() async {
+    final res = await _client.get(_u('/admin/admins'), headers: _headers).timeout(_timeout);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final data = (body['data'] as Map<String, dynamic>?) ?? {};
+    return ((data['admins'] as List?) ?? []).whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<bool> adminAddAdmin(String email) async {
+    final res = await _client
+        .post(_u('/admin/admins'), headers: _headers, body: jsonEncode({'email': email}))
+        .timeout(_timeout);
+    return res.statusCode == 200;
+  }
+
+  Future<bool> adminRemoveAdmin(String email) async {
+    final res = await _client
+        .delete(_u('/admin/admins/${Uri.encodeComponent(email)}'), headers: _headers)
+        .timeout(_timeout);
+    return res.statusCode == 200;
+  }
+
+  Future<Map<String, dynamic>> adminStats() async {
+    final res = await _client.get(_u('/admin/stats'), headers: _headers).timeout(_timeout);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return (body['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  /// Grant premium to a user by email for [days]. Returns the server response.
+  Future<Map<String, dynamic>> adminGrantPremium(String email, {int days = 31}) async {
+    final res = await _client
+        .post(_u('/admin/grant-premium'), headers: _headers, body: jsonEncode({'email': email, 'days': days}))
+        .timeout(_timeout);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return {'ok': res.statusCode == 200, ...body};
+  }
 }
 
 class DailyLimitException implements Exception {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/models.dart';
+import '../services/admin_service.dart';
 import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
@@ -13,6 +14,7 @@ import '../services/word_of_day.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/dictionary_sheet.dart';
+import 'admin_panel_screen.dart';
 import 'chat_screen.dart';
 import 'picture_match_screen.dart';
 import 'premium_screen.dart';
@@ -49,6 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
     NotificationService.instance.requestAndSchedule();
     // Know the plan so we can surface the free-trial banner (fire-and-forget).
     PlanStatus.instance.refresh();
+    // Check admin status (shows the Admin entry only for admins).
+    AdminService.instance.check();
   }
 
   List<Scenario> _applyFilters(List<Scenario> all) {
@@ -137,6 +141,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 return CustomScrollView(
                   slivers: [
                     const SliverToBoxAdapter(child: _Header()),
+                    const SliverPadding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 6),
+                      sliver: SliverToBoxAdapter(child: _AdminEntry()),
+                    ),
                     const SliverPadding(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _TrialBanner()),
@@ -333,6 +341,47 @@ class _StatChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Admin entry — only rendered for admins (server-decided via AdminService).
+class _AdminEntry extends StatelessWidget {
+  const _AdminEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: AdminService.instance,
+      builder: (context, _) {
+        if (!AdminService.instance.isAdmin) return const SizedBox.shrink();
+        final scheme = Theme.of(context).colorScheme;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminPanelScreen())),
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.admin_panel_settings_rounded, color: scheme.primary),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('Admin panel', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
