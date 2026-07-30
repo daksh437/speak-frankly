@@ -88,14 +88,68 @@ class VocabScreen extends StatelessWidget {
           ),
           body: words.isEmpty
               ? const _EmptyVocab()
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  itemCount: words.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _WordCard(word: words[i]),
+              : Column(
+                  children: [
+                    if (VocabularyService.instance.dueCount > 0)
+                      _DueBanner(count: VocabularyService.instance.dueCount),
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        itemCount: words.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) => _WordCard(word: words[i]),
+                      ),
+                    ),
+                  ],
                 ),
         );
       },
+    );
+  }
+}
+
+/// "N words due for review" — the spaced-repetition nudge; taps into Review.
+class _DueBanner extends StatelessWidget {
+  final int count;
+  const _DueBanner({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReviewScreen())),
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: AppColors.gradient(AppTheme.seed),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: AppTheme.seed.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+            ),
+            child: Row(
+              children: [
+                const Text('🔁', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('$count ${count == 1 ? 'word' : 'words'} due for review',
+                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                      const Text('Review now to make them stick',
+                          style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

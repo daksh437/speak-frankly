@@ -23,6 +23,26 @@ import 'stories_list_screen.dart';
 /// XP needed to unlock the scenario at [index] (first two are always open).
 int _unlockXp(int index) => index < 2 ? 0 : (index - 1) * 60;
 
+/// Keywords per onboarding goal → used to surface scenarios relevant to the
+/// learner ("Recommended for you"). Matched against title/theme/keywords/desc.
+const Map<String, List<String>> _goalKeywords = {
+  'Job / Interview': ['job', 'interview', 'office', 'meeting', 'work', 'email', 'presentation', 'business', 'career', 'colleague'],
+  'Travel': ['travel', 'airport', 'hotel', 'taxi', 'direction', 'restaurant', 'trip', 'tourist', 'ticket', 'flight', 'order'],
+  'Study abroad': ['study', 'school', 'university', 'class', 'campus', 'student', 'exam', 'library', 'teacher', 'lecture'],
+  'Just talking': ['friend', 'hobby', 'movie', 'small talk', 'weekend', 'music', 'chat', 'family', 'food', 'shopping'],
+};
+
+/// Up to [limit] scenarios that best match the learner's goal.
+List<Scenario> _recommendedFor(List<Scenario> all, String goal, {int limit = 5}) {
+  final terms = _goalKeywords[goal];
+  if (terms == null) return const [];
+  bool matches(Scenario s) {
+    final hay = '${s.title} ${s.theme} ${s.description} ${s.keywords.join(' ')}'.toLowerCase();
+    return terms.any(hay.contains);
+  }
+  return all.where(matches).take(limit).toList();
+}
+
 void _showLocked(BuildContext context, int needed, int xp) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text('Locked — earn $needed XP to unlock (you have $xp). Keep practicing! 🔥')),
@@ -138,6 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 final xp = GamificationService.instance.xp;
                 final levels = (scenarios.map((s) => s.level).toSet().toList()..sort());
                 final filtered = _applyFilters(scenarios);
+                // Personalized picks (only when not searching/filtering).
+                final recommended = (_query.trim().isEmpty && _levelFilter == null)
+                    ? _recommendedFor(scenarios, UserSession.instance.goal)
+                    : const <Scenario>[];
                 return CustomScrollView(
                   slivers: [
                     const SliverToBoxAdapter(child: _Header()),
@@ -183,6 +207,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
+                    if (recommended.isNotEmpty)
+                      SliverToBoxAdapter(child: _RecommendedStrip(scenarios: recommended)),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                       sliver: SliverToBoxAdapter(
@@ -612,6 +638,89 @@ class _ScenarioFilters extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "Recommended for you" — a horizontal strip of scenarios matched to the
+/// learner's goal (personalization, BRD §6.1).
+class _RecommendedStrip extends StatelessWidget {
+  final List<Scenario> scenarios;
+  const _RecommendedStrip({required this.scenarios});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+          child: Row(
+            children: [
+              const Text('⭐', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 6),
+              Text('Recommended for you',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: scheme.onSurface)),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 116,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: scenarios.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, i) {
+              final s = scenarios[i];
+              final accent = AppColors.forScenario(s.theme);
+              final isLight = Theme.of(context).brightness == Brightness.light;
+              return SizedBox(
+                width: 160,
+                child: Material(
+                  color: isLight ? Colors.white : const Color(0xFF1E1B26),
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => ChatScreen(scenario: s)),
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Ink(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: isLight
+                            ? [BoxShadow(color: accent.withValues(alpha: 0.12), blurRadius: 14, offset: const Offset(0, 6))]
+                            : null,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(color: accent.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
+                            child: Center(child: Text(s.emoji, style: const TextStyle(fontSize: 22))),
+                          ),
+                          const Spacer(),
+                          Text(s.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
+                          const SizedBox(height: 2),
+                          Text(s.level, style: TextStyle(fontSize: 11.5, color: accent, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 6),
+      ],
     );
   }
 }

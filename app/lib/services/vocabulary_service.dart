@@ -5,14 +5,43 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
 
-/// A saved vocabulary word.
+/// A saved vocabulary word, with spaced-repetition schedule (Leitner boxes).
 class SavedWord {
   final String word;
   final String? phonetic;
   final String definition;
   final String? translation;
   final String? audio;
-  SavedWord({required this.word, this.phonetic, required this.definition, this.translation, this.audio});
+
+  /// Spaced repetition: Leitner box (0..5) and when the word is next due (epoch
+  /// ms; 0 = due now). Higher box = longer interval between reviews.
+  int box;
+  int dueAtMs;
+
+  SavedWord({
+    required this.word,
+    this.phonetic,
+    required this.definition,
+    this.translation,
+    this.audio,
+    this.box = 0,
+    this.dueAtMs = 0,
+  });
+
+  /// Days until the next review for each box.
+  static const List<int> _intervalsDays = [0, 1, 3, 7, 16, 35];
+
+  bool get isDue => dueAtMs <= DateTime.now().millisecondsSinceEpoch;
+
+  /// Update the schedule after a review. [known] false → reset to box 0 and
+  /// resurface soon; true → promote to the next box (longer interval).
+  void schedule(bool known) {
+    box = known ? (box + 1).clamp(0, _intervalsDays.length - 1) : 0;
+    final now = DateTime.now();
+    dueAtMs = known
+        ? now.add(Duration(days: _intervalsDays[box])).millisecondsSinceEpoch
+        : now.add(const Duration(minutes: 10)).millisecondsSinceEpoch; // "again" → soon
+  }
 
   Map<String, dynamic> toJson() => {
         'word': word,
@@ -20,6 +49,8 @@ class SavedWord {
         'definition': definition,
         'translation': translation,
         'audio': audio,
+        'box': box,
+        'dueAtMs': dueAtMs,
       };
 
   factory SavedWord.fromJson(Map<String, dynamic> j) => SavedWord(
@@ -28,6 +59,8 @@ class SavedWord {
         definition: j['definition'] ?? '',
         translation: j['translation'],
         audio: j['audio'],
+        box: (j['box'] is num) ? (j['box'] as num).toInt() : 0,
+        dueAtMs: (j['dueAtMs'] is num) ? (j['dueAtMs'] as num).toInt() : 0,
       );
 
   factory SavedWord.fromCard(DictionaryCard c) => SavedWord(
@@ -49,6 +82,25 @@ class VocabularyService extends ChangeNotifier {
 
   List<SavedWord> get words => List.unmodifiable(_words.reversed); // newest first
   int get count => _words.length;
+
+  /// Words due for spaced-repetition review right now (soonest-due first).
+  List<SavedWord> get dueWords {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final due = _words.where((w) => w.dueAtMs <= now).toList();
+    due.sort((a, b) => a.dueAtMs.compareTo(b.dueAtMs));
+    return due;
+  }
+
+  int get dueCount => dueWords.length;
+
+  /// Record a spaced-repetition review result and reschedule the word.
+  Future<void> review(String word, bool known) async {
+    final i = _words.indexWhere((w) => w.word.toLowerCase() == word.toLowerCase());
+    if (i == -1) return;
+    _words[i].schedule(known);
+    await _persist();
+    notifyListeners();
+  }
 
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();

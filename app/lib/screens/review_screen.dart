@@ -5,9 +5,10 @@ import '../services/gamification_service.dart';
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
 
-/// Flashcard review of saved words. Tap a card to flip (word → meaning), then
-/// self-rate "Still learning" / "Got it". Each review earns XP and counts as
-/// practice (advances the daily streak). Groundwork for full spaced repetition.
+/// Spaced-repetition flashcard review. Prefers words that are DUE (per each
+/// word's Leitner schedule); if nothing is due, falls back to a shuffled set so
+/// review is always available. Rating "Still learning"/"Got it" reschedules the
+/// word (sooner vs later). Each review earns XP and advances the daily streak.
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
   @override
@@ -25,7 +26,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
   @override
   void initState() {
     super.initState();
-    _cards = List.of(VocabularyService.instance.words)..shuffle();
+    // Review due words first (spaced repetition); if none are due, review all.
+    final due = VocabularyService.instance.dueWords;
+    _cards = due.isNotEmpty ? List.of(due) : (List.of(VocabularyService.instance.words)..shuffle());
   }
 
   @override
@@ -36,6 +39,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   void _rate(bool known) {
     if (known) _known++;
+    // Reschedule this word per the spaced-repetition algorithm.
+    VocabularyService.instance.review(_cards[_index].word, known);
     GamificationService.instance.recordActivity(xpGain: 2);
     if (_index + 1 >= _cards.length) {
       setState(() => _done = true);
