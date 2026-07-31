@@ -25,6 +25,14 @@ services:
       - key: FIREBASE_PROJECT_ID
         sync: false
       - key: DAILY_MESSAGES_FREE
-        value: "25"
+        value: "8"
       - key: TRIAL_DAYS
-        value: "7"
+        value: "3"
+      - key: TRIAL_DAILY_CAP
+        value: "50"
+      # Enables Google Play purchase verification. Requires Play Console →
+      # Setup → API access: link this GCP project + grant the service account
+      # financial/orders permission. Until that's done, purchases fall back to a
+      # short grace window (see premiumController).
+      - key: PLAY_PACKAGE_NAME
+        value: com.speakfrankly
