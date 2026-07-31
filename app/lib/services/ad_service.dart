@@ -6,15 +6,14 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 /// Rewarded ads: free learners can watch a short ad for bonus daily messages.
 /// Only rewarded ads are used (opt-in) — no banners/interstitials.
 ///
-/// The ad unit IDs below are Google's official TEST ids. REPLACE them with your
-/// real AdMob rewarded unit ids before production (and the App ID in
-/// AndroidManifest.xml).
+/// Android uses the real "Bonus messages" rewarded unit. (iOS is not shipped;
+/// its id stays a Google TEST unit as a harmless placeholder.)
 class AdService {
   static final AdService instance = AdService._();
   AdService._();
 
-  // Google test rewarded ad unit ids.
-  static const String _androidTestUnit = 'ca-app-pub-3940256099942544/5224354917';
+  // Real AdMob rewarded unit (Speak Frankly · Android). App ID is in AndroidManifest.xml.
+  static const String _androidTestUnit = 'ca-app-pub-6637437102244163/2959275179';
   static const String _iosTestUnit = 'ca-app-pub-3940256099942544/1712485313';
 
   bool _sdkReady = false;
