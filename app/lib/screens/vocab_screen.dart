@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
+import 'cloze_game_screen.dart';
 import 'import_text_screen.dart';
 import 'match_game_screen.dart';
 import 'review_screen.dart';
@@ -44,6 +45,16 @@ void _showReviewModes(BuildContext context) {
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WordGuessScreen()));
+              },
+            ),
+          if (VocabularyService.instance.clozeWords.length >= 3)
+            ListTile(
+              leading: Icon(Icons.short_text_rounded, color: AppTheme.seed),
+              title: const Text('Cloze — fill the blank'),
+              subtitle: const Text('Complete the sentence in context'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ClozeGameScreen()));
               },
             ),
           const SizedBox(height: 8),

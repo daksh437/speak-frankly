@@ -13,6 +13,9 @@ class SavedWord {
   final String? translation;
   final String? audio;
 
+  /// An example sentence (from the dictionary) — powers the Cloze game.
+  final String? example;
+
   /// Spaced repetition: Leitner box (0..5) and when the word is next due (epoch
   /// ms; 0 = due now). Higher box = longer interval between reviews.
   int box;
@@ -24,9 +27,14 @@ class SavedWord {
     required this.definition,
     this.translation,
     this.audio,
+    this.example,
     this.box = 0,
     this.dueAtMs = 0,
   });
+
+  /// True if this word has a usable cloze (an example that contains the word).
+  bool get hasCloze =>
+      (example ?? '').toLowerCase().contains(word.toLowerCase()) && word.trim().isNotEmpty;
 
   /// Days until the next review for each box.
   static const List<int> _intervalsDays = [0, 1, 3, 7, 16, 35];
@@ -49,6 +57,7 @@ class SavedWord {
         'definition': definition,
         'translation': translation,
         'audio': audio,
+        'example': example,
         'box': box,
         'dueAtMs': dueAtMs,
       };
@@ -59,17 +68,22 @@ class SavedWord {
         definition: j['definition'] ?? '',
         translation: j['translation'],
         audio: j['audio'],
+        example: j['example'],
         box: (j['box'] is num) ? (j['box'] as num).toInt() : 0,
         dueAtMs: (j['dueAtMs'] is num) ? (j['dueAtMs'] as num).toInt() : 0,
       );
 
-  factory SavedWord.fromCard(DictionaryCard c) => SavedWord(
-        word: c.word,
-        phonetic: c.phonetic,
-        definition: c.meanings.isNotEmpty ? c.meanings.first.definition : '',
-        translation: c.translation,
-        audio: c.audio,
-      );
+  factory SavedWord.fromCard(DictionaryCard c) {
+    final m = c.meanings.isNotEmpty ? c.meanings.first : null;
+    return SavedWord(
+      word: c.word,
+      phonetic: c.phonetic,
+      definition: m?.definition ?? '',
+      translation: c.translation,
+      audio: c.audio,
+      example: (m?.example.isNotEmpty ?? false) ? m!.example : null,
+    );
+  }
 }
 
 /// Local saved-words store. ChangeNotifier for live UI updates.
@@ -92,6 +106,9 @@ class VocabularyService extends ChangeNotifier {
   }
 
   int get dueCount => dueWords.length;
+
+  /// Words that have a usable example sentence for the Cloze game.
+  List<SavedWord> get clozeWords => _words.where((w) => w.hasCloze).toList();
 
   /// Record a spaced-repetition review result and reschedule the word.
   Future<void> review(String word, bool known) async {
