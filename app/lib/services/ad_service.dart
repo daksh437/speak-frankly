@@ -1,0 +1,86 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+/// Rewarded ads: free learners can watch a short ad for bonus daily messages.
+/// Only rewarded ads are used (opt-in) — no banners/interstitials.
+///
+/// The ad unit IDs below are Google's official TEST ids. REPLACE them with your
+/// real AdMob rewarded unit ids before production (and the App ID in
+/// AndroidManifest.xml).
+class AdService {
+  static final AdService instance = AdService._();
+  AdService._();
+
+  // Google test rewarded ad unit ids.
+  static const String _androidTestUnit = 'ca-app-pub-3940256099942544/5224354917';
+  static const String _iosTestUnit = 'ca-app-pub-3940256099942544/1712485313';
+
+  bool _sdkReady = false;
+  RewardedAd? _ad;
+  bool _loading = false;
+
+  String get _unitId => Platform.isIOS ? _iosTestUnit : _androidTestUnit;
+
+  /// Initialize the Mobile Ads SDK (call once at startup, non-blocking).
+  Future<void> init() async {
+    try {
+      await MobileAds.instance.initialize();
+      _sdkReady = true;
+      _preload();
+    } catch (e) {
+      debugPrint('[Ads] init failed: $e');
+    }
+  }
+
+  void _preload() {
+    if (!_sdkReady || _loading || _ad != null) return;
+    _loading = true;
+    RewardedAd.load(
+      adUnitId: _unitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _ad = ad;
+          _loading = false;
+        },
+        onAdFailedToLoad: (err) {
+          _ad = null;
+          _loading = false;
+          debugPrint('[Ads] load failed: $err');
+        },
+      ),
+    );
+  }
+
+  /// Whether a rewarded ad is loaded and ready to show right now.
+  bool get isReady => _ad != null;
+
+  /// Show the rewarded ad. Calls [onReward] only if the user earns the reward
+  /// (watches enough). Returns false if no ad was available. Preloads the next.
+  Future<bool> showRewarded({required VoidCallback onReward}) async {
+    final ad = _ad;
+    if (ad == null) {
+      _preload();
+      return false;
+    }
+    _ad = null; // consumed
+    var earned = false;
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        _preload(); // ready for next time
+      },
+      onAdFailedToShowFullScreenContent: (ad, err) {
+        ad.dispose();
+        _preload();
+      },
+    );
+    await ad.show(onUserEarnedReward: (_, __) {
+      earned = true;
+      onReward();
+    });
+    return earned;
+  }
+}

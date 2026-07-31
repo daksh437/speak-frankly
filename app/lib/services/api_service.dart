@@ -185,6 +185,17 @@ class ApiService {
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
 
+  /// Grant ad-reward bonus messages after a rewarded ad (server-authoritative).
+  /// Returns true if bonus was granted (false if the daily reward cap is hit).
+  Future<bool> rewardAd() async {
+    try {
+      final res = await _client.post(_u('/access/reward-ad'), headers: _headers).timeout(_timeout);
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Translate an English tutor line into [target] language (a name, e.g.
   /// "Hindi"). Returns '' on failure so the UI can fall back gracefully.
   Future<String> translate({required String text, required String target}) async {

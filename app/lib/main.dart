@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'l10n/app_localizations.dart';
 import 'screens/auth_gate.dart';
+import 'services/ad_service.dart';
 import 'services/analytics_service.dart';
 import 'services/api_service.dart';
 import 'services/gamification_service.dart';
@@ -38,6 +39,9 @@ Future<void> main() async {
 
   // Daily practice reminder — schedule in the background (non-blocking).
   NotificationService.instance.init();
+
+  // Rewarded ads SDK — initialize in the background (non-blocking).
+  AdService.instance.init();
 
   runApp(const SpeakFranklyApp());
 }

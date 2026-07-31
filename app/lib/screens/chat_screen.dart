@@ -3,9 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/models.dart';
+import '../services/ad_service.dart';
 import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
+import '../services/plan_status.dart';
 import '../services/rate_prompt.dart';
 import '../services/speech_service.dart';
 import '../services/user_session.dart';
@@ -265,7 +267,10 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           if (_suggestions.isNotEmpty && !_limitReached)
             _SuggestionBar(suggestions: _suggestions, accent: _accent, onTap: _send, beginner: _isBeginner),
-          if (_limitReached) const _LimitBanner() else _InputBar(controller: _controller, accent: _accent, onSend: _send, enabled: !_sending),
+          if (_limitReached)
+            _LimitBanner(onRewarded: () => setState(() => _limitReached = false))
+          else
+            _InputBar(controller: _controller, accent: _accent, onSend: _send, enabled: !_sending),
         ],
       ),
     );
@@ -806,8 +811,39 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
   }
 }
 
-class _LimitBanner extends StatelessWidget {
-  const _LimitBanner();
+class _LimitBanner extends StatefulWidget {
+  final VoidCallback onRewarded;
+  const _LimitBanner({required this.onRewarded});
+  @override
+  State<_LimitBanner> createState() => _LimitBannerState();
+}
+
+class _LimitBannerState extends State<_LimitBanner> {
+  bool _watching = false;
+
+  /// Free learners can watch a rewarded ad for bonus messages today.
+  bool get _canWatchAd => PlanStatus.instance.planType == 'free' && AdService.instance.isReady;
+
+  Future<void> _watchAd() async {
+    if (_watching) return;
+    setState(() => _watching = true);
+    await AdService.instance.showRewarded(onReward: () async {
+      final ok = await ApiService.instance.rewardAd(); // server grants the bonus
+      if (!mounted) return;
+      if (ok) {
+        widget.onRewarded(); // reveal the input again
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('+5 messages added — keep practising! 🎉')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You've used all ad rewards for today.")),
+        );
+      }
+    });
+    if (mounted) setState(() => _watching = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -840,6 +876,17 @@ class _LimitBanner extends StatelessWidget {
               icon: const Text('👑', style: TextStyle(fontSize: 14)),
               label: Text(loc.upgradeToPremium),
             ),
+            if (_canWatchAd) ...[
+              const SizedBox(height: 6),
+              TextButton.icon(
+                onPressed: _watching ? null : _watchAd,
+                icon: _watching
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('🎬', style: TextStyle(fontSize: 14)),
+                label: Text(_watching ? 'Loading…' : 'Watch a short ad → +5 messages',
+                    style: TextStyle(color: scheme.onErrorContainer, fontWeight: FontWeight.w600)),
+              ),
+            ],
           ],
         ),
       ),

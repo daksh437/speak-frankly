@@ -19,6 +19,10 @@ const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS || '3', 10);
 // Soft cap during the trial — high enough to feel unlimited, low enough to stop
 // abuse (a bot chatting thousands of times and running up the AI bill).
 const TRIAL_DAILY_CAP = parseInt(process.env.TRIAL_DAILY_CAP || '50', 10);
+// Rewarded ads: a free user can watch an ad for REWARD_MESSAGES more messages,
+// up to MAX_AD_REWARDS_PER_DAY times/day (server-authoritative — client can't fake).
+const REWARD_MESSAGES = parseInt(process.env.REWARD_MESSAGES || '5', 10);
+const MAX_AD_REWARDS_PER_DAY = parseInt(process.env.MAX_AD_REWARDS_PER_DAY || '3', 10);
 // Default = freemium (trial → free daily limit). Set REQUIRE_PREMIUM=true to
 // instead hard-gate free users (post-trial) behind a paywall.
 const REQUIRE_PREMIUM = process.env.REQUIRE_PREMIUM === 'true' || process.env.REQUIRE_PREMIUM === '1';
@@ -171,19 +175,54 @@ async function getAiAccess(uid, deviceId) {
     };
   }
 
-  // free (default) — daily message cap. Reuses usedToday computed above.
-  const dailyUsed = Math.max(0, Math.min(DAILY_MESSAGES_FREE, Math.floor(usedToday)));
+  // free (default) — daily message cap + any ad-earned bonus for today.
+  const bonusToday = (currentUser.bonusDate === today && typeof currentUser.bonusMessages === 'number')
+    ? Math.max(0, currentUser.bonusMessages)
+    : 0;
+  const effectiveLimit = DAILY_MESSAGES_FREE + bonusToday;
+  const dailyUsed = Math.max(0, Math.floor(usedToday));
 
   return {
-    allowed: dailyUsed < DAILY_MESSAGES_FREE,
+    allowed: dailyUsed < effectiveLimit,
     planType: 'free',
     dailyUsed,
-    dailyLimit: DAILY_MESSAGES_FREE,
+    dailyLimit: effectiveLimit,
+    bonusMessages: bonusToday,
     resetAtUtc,
     trialEndsAtUtc,
     user: currentUser,
-    error: dailyUsed < DAILY_MESSAGES_FREE ? null : 'DAILY_LIMIT_REACHED',
+    error: dailyUsed < effectiveLimit ? null : 'DAILY_LIMIT_REACHED',
   };
+}
+
+/**
+ * Grant ad-reward bonus messages for today (server-authoritative). Free plan
+ * only; capped at MAX_AD_REWARDS_PER_DAY. Returns { ok, bonusMessages, rewardsUsed }.
+ */
+async function grantAdReward(uid) {
+  const db = getDb();
+  if (!db || !uid) return { ok: false, error: 'no_db' };
+  const ref = db.collection(USERS).doc(uid);
+  const today = todayDateStr();
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { ok: false, error: 'no_user' };
+      const data = snap.data();
+      if (resolvePlan(data) !== 'free') return { ok: false, error: 'not_free' }; // trial/premium don't need it
+      const rollover = data.bonusDate !== today;
+      const rewardsUsed = rollover ? 0 : (typeof data.adRewardsToday === 'number' ? data.adRewardsToday : 0);
+      if (rewardsUsed >= MAX_AD_REWARDS_PER_DAY) {
+        return { ok: false, error: 'daily_reward_limit', rewardsUsed, maxPerDay: MAX_AD_REWARDS_PER_DAY };
+      }
+      const bonus = (rollover ? 0 : (typeof data.bonusMessages === 'number' ? data.bonusMessages : 0)) + REWARD_MESSAGES;
+      tx.update(ref, { bonusMessages: bonus, bonusDate: today, adRewardsToday: rewardsUsed + 1 });
+      return { ok: true, bonusMessages: bonus, rewardsUsed: rewardsUsed + 1, maxPerDay: MAX_AD_REWARDS_PER_DAY, added: REWARD_MESSAGES };
+    });
+  } catch (e) {
+    console.warn('[aiAccess] grantAdReward error:', e.message);
+    return { ok: false, error: 'tx_failed' };
+  }
 }
 
 /** Express middleware: require x-user-uid, enforce plan. Sets req.uid, req.aiAccessAllowed. */
@@ -286,6 +325,7 @@ module.exports = {
   wrapAiHandler,
   recordAiUsage,
   getAiAccess,
+  grantAdReward,
   resolvePlan,
   DAILY_MESSAGES_FREE,
   TRIAL_DAYS,
