@@ -13,8 +13,12 @@ class UserSession {
   static const _kOnboarded = 'sf_onboarded';
   static const _kName = 'sf_display_name';
   static const _kStruggle = 'sf_struggle';
+  static const _kDeviceId = 'sf_device_id';
 
   String uid = '';
+  /// Stable per-install id (survives account switches, resets on reinstall).
+  /// Sent as `x-device-id` so the backend can grant one trial per device.
+  String deviceId = '';
   String nativeLanguage = '';
   String goal = '';
   String level = 'A2';
@@ -34,6 +38,11 @@ class UserSession {
     if (uid.isEmpty) {
       uid = _generateUid();
       await p.setString(_kUid, uid);
+    }
+    deviceId = p.getString(_kDeviceId) ?? '';
+    if (deviceId.isEmpty) {
+      deviceId = _generateUid();
+      await p.setString(_kDeviceId, deviceId);
     }
     nativeLanguage = p.getString(_kNativeLang) ?? '';
     goal = p.getString(_kGoal) ?? '';

@@ -10,7 +10,8 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   const uid = (req.headers['x-user-uid'] || req.headers['x-user-id'] || '').toString().trim();
   if (!uid) return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Missing x-user-uid' });
-  const access = await getAiAccess(uid);
+  const deviceId = (req.headers['x-device-id'] || '').toString().trim();
+  const access = await getAiAccess(uid, deviceId);
   const { user, ...safe } = access; // never leak the full user doc
   return res.json({ success: true, data: safe });
 });

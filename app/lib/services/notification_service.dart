@@ -14,6 +14,7 @@ class NotificationService extends ChangeNotifier {
 
   static const _kEnabled = 'sf_reminder_enabled';
   static const int _id = 1001;
+  static const int _trialId = 1002; // one-time "trial ending" reminder
   static const int _hour = 19; // 7:00 PM local
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
@@ -94,6 +95,36 @@ class NotificationService extends ChangeNotifier {
     try {
       await _plugin.cancel(_id);
     } catch (_) {}
+  }
+
+  /// One-time nudge ~24h before the free trial ends — the strongest moment to
+  /// convert to Premium. Idempotent (same id just reschedules). No-ops if
+  /// notifications are off or the trial ends too soon.
+  Future<void> scheduleTrialEnding(DateTime trialEndsAt) async {
+    if (!_ready) await init();
+    if (!_ready || !enabled) return;
+    final fireAt = trialEndsAt.toLocal().subtract(const Duration(hours: 24));
+    if (fireAt.isBefore(DateTime.now())) return; // trial already ending — too late to nudge
+    try {
+      await _plugin.zonedSchedule(
+        _trialId,
+        'Your free trial ends tomorrow ⏳',
+        'Keep unlimited conversations — go Premium so your practice never stops.',
+        tz.TZDateTime.from(fireAt, tz.local),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'trial_ending',
+            'Trial ending',
+            channelDescription: 'A reminder before your free trial ends.',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        // one-time (no matchDateTimeComponents → does not repeat)
+      );
+    } catch (_) {/* best-effort */}
   }
 
   tz.TZDateTime _next7pm() {

@@ -13,8 +13,12 @@
 const { getDb } = require('../utils/firestoreAdmin');
 
 const USERS = 'users';
+const DEVICES = 'trial_devices'; // device-level anti-abuse: one trial per device
 const DAILY_MESSAGES_FREE = parseInt(process.env.DAILY_MESSAGES_FREE || '10', 10);
 const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS || '3', 10);
+// Soft cap during the trial — high enough to feel unlimited, low enough to stop
+// abuse (a bot chatting thousands of times and running up the AI bill).
+const TRIAL_DAILY_CAP = parseInt(process.env.TRIAL_DAILY_CAP || '50', 10);
 // Default = freemium (trial → free daily limit). Set REQUIRE_PREMIUM=true to
 // instead hard-gate free users (post-trial) behind a paywall.
 const REQUIRE_PREMIUM = process.env.REQUIRE_PREMIUM === 'true' || process.env.REQUIRE_PREMIUM === '1';
@@ -70,20 +74,35 @@ async function loadUser(uid) {
  * daily limit. Premium is granted only via a paid subscription.
  * Returns the created user object, or null if the write failed.
  */
-async function createTrialUser(uid) {
+async function createTrialUser(uid, deviceId) {
   const db = getDb();
   if (!db) return null;
   const now = new Date();
-  const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
-  const doc = {
-    createdAt: now,
-    planType: 'trial',
-    trialStartedAt: now,
-    trialEndsAt,
-    dailyAiUsed: 0,
-    dailyAiDate: todayDateStr(),
-    totalAiUsed: 0,
-  };
+
+  // Device-level anti-abuse: only the FIRST account on a device gets a trial;
+  // signing in with a fresh Google account on the same device won't farm another.
+  let deviceAlreadyTrialed = false;
+  const did = (deviceId || '').toString().trim();
+  if (did) {
+    try {
+      const dref = db.collection(DEVICES).doc(did);
+      const dsnap = await dref.get();
+      if (dsnap.exists) deviceAlreadyTrialed = true;
+      else await dref.set({ firstUid: uid, trialUsedAt: now });
+    } catch (e) {
+      console.warn('[aiAccess] device check error:', e.message);
+    }
+  }
+
+  const base = { createdAt: now, dailyAiUsed: 0, dailyAiDate: todayDateStr(), totalAiUsed: 0 };
+  const doc = deviceAlreadyTrialed
+    ? { ...base, planType: 'free' } // trial already consumed on this device
+    : {
+        ...base,
+        planType: 'trial',
+        trialStartedAt: now,
+        trialEndsAt: new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
+      };
   try {
     await db.collection(USERS).doc(uid).set(doc, { merge: true });
     return { id: uid, ...doc };
@@ -94,7 +113,7 @@ async function createTrialUser(uid) {
 }
 
 /** Compute access state for a uid. */
-async function getAiAccess(uid) {
+async function getAiAccess(uid, deviceId) {
   const resetAtUtc = getNextMidnightUtc();
   const { user, firestoreOk } = await loadUser(uid);
 
@@ -104,8 +123,8 @@ async function getAiAccess(uid) {
   }
   let currentUser = user;
   if (!currentUser) {
-    // New signed-in learner → start their free trial (unlimited for TRIAL_DAYS).
-    currentUser = await createTrialUser(uid);
+    // New signed-in learner → start their free trial (unless this device already used one).
+    currentUser = await createTrialUser(uid, deviceId);
     if (!currentUser) {
       return { allowed: true, planType: 'free', dailyUsed: 0, dailyLimit: DAILY_MESSAGES_FREE, resetAtUtc, trialEndsAtUtc: null, user: null, degraded: true };
     }
@@ -115,14 +134,27 @@ async function getAiAccess(uid) {
   const planType = resolvePlan(currentUser, now);
   const trialEndsAt = toDate(currentUser.trialEndsAt || currentUser.trial_ends_at);
   const trialEndsAtUtc = trialEndsAt ? trialEndsAt.toISOString() : null;
+  const today = todayDateStr();
+  let usedToday = typeof currentUser.dailyAiUsed === 'number' ? currentUser.dailyAiUsed : 0;
+  if ((currentUser.dailyAiDate || '') !== today) usedToday = 0;
 
   if (planType === 'premium') {
     return { allowed: true, planType: 'premium', dailyUsed: null, dailyLimit: null, resetAtUtc: null, trialEndsAtUtc: null, user: currentUser };
   }
 
-  // trial — unlimited AI until trialEndsAt.
+  // trial — effectively unlimited, but a daily soft cap stops abuse/cost blowups.
   if (planType === 'trial') {
-    return { allowed: true, planType: 'trial', dailyUsed: null, dailyLimit: null, resetAtUtc: null, trialEndsAtUtc, user: currentUser };
+    const used = Math.max(0, Math.min(TRIAL_DAILY_CAP, Math.floor(usedToday)));
+    return {
+      allowed: used < TRIAL_DAILY_CAP,
+      planType: 'trial',
+      dailyUsed: used,
+      dailyLimit: TRIAL_DAILY_CAP,
+      resetAtUtc,
+      trialEndsAtUtc,
+      user: currentUser,
+      error: used < TRIAL_DAILY_CAP ? null : 'DAILY_LIMIT_REACHED',
+    };
   }
 
   // free + optional hard paywall: no AI access at all.
@@ -139,11 +171,8 @@ async function getAiAccess(uid) {
     };
   }
 
-  // free (default) — daily message cap.
-  const today = todayDateStr();
-  let dailyUsed = typeof currentUser.dailyAiUsed === 'number' ? currentUser.dailyAiUsed : 0;
-  if ((currentUser.dailyAiDate || '') !== today) dailyUsed = 0;
-  dailyUsed = Math.max(0, Math.min(DAILY_MESSAGES_FREE, Math.floor(dailyUsed)));
+  // free (default) — daily message cap. Reuses usedToday computed above.
+  const dailyUsed = Math.max(0, Math.min(DAILY_MESSAGES_FREE, Math.floor(usedToday)));
 
   return {
     allowed: dailyUsed < DAILY_MESSAGES_FREE,
@@ -172,7 +201,8 @@ async function requireAiAccess(req, res, next) {
     return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Missing x-user-uid header' });
   }
 
-  const access = await getAiAccess(uid);
+  const deviceId = (req.headers['x-device-id'] || '').toString().trim();
+  const access = await getAiAccess(uid, deviceId);
   req.uid = uid;
   req.aiAccess = access;
 
@@ -237,7 +267,7 @@ async function recordAiUsage(uid) {
       const snap = await tx.get(ref);
       if (!snap.exists) return;
       const data = snap.data();
-      if (resolvePlan(data) !== 'free') return; // trial/premium: no decrement
+      if (resolvePlan(data) === 'premium') return; // premium: no metering (free + trial both count)
       const rollover = (data.dailyAiDate || '') !== today;
       const used = rollover ? 0 : (typeof data.dailyAiUsed === 'number' ? data.dailyAiUsed : 0);
       tx.update(ref, {

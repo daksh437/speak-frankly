@@ -20,6 +20,7 @@ class ApiService {
         'Content-Type': 'application/json',
         'x-user-uid': UserSession.instance.uid,
         'x-user-id': UserSession.instance.uid,
+        'x-device-id': UserSession.instance.deviceId,
       };
 
   Uri _u(String path, [Map<String, dynamic>? query]) =>

@@ -69,8 +69,14 @@ class _HomeScreenState extends State<HomeScreen> {
     // Ask for notification permission + schedule the daily reminder once the
     // learner is in the app (fire-and-forget).
     NotificationService.instance.requestAndSchedule();
-    // Know the plan so we can surface the free-trial banner (fire-and-forget).
-    PlanStatus.instance.refresh();
+    // Know the plan so we can surface the free-trial banner + schedule the
+    // trial-ending reminder (a strong conversion nudge).
+    PlanStatus.instance.refresh().then((_) {
+      final ps = PlanStatus.instance;
+      if (ps.isTrial && ps.trialEndsAt != null) {
+        NotificationService.instance.scheduleTrialEnding(ps.trialEndsAt!);
+      }
+    });
     // Check admin status (shows the Admin entry only for admins).
     AdminService.instance.check();
   }
