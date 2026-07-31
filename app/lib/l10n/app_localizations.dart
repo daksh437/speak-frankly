@@ -763,6 +763,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage or cancel anytime in Google Play → Subscriptions'**
   String get manageInPlay;
+
+  /// No description provided for @featAdFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad-free experience'**
+  String get featAdFree;
 }
 
 class _AppLocalizationsDelegate

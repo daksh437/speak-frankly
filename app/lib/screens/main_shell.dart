@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/plan_status.dart';
+import '../widgets/ad_banner.dart';
 import 'home_screen.dart';
 import 'premium_screen.dart';
 import 'profile_screen.dart';
@@ -22,14 +24,29 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: const [
-          HomeScreen(),
-          SpeakScreen(),
-          VocabScreen(),
-          PremiumScreen(),
-          ProfileScreen(),
+      body: Column(
+        children: [
+          Expanded(
+            child: IndexedStack(
+              index: _index,
+              children: const [
+                HomeScreen(),
+                SpeakScreen(),
+                VocabScreen(),
+                PremiumScreen(),
+                ProfileScreen(),
+              ],
+            ),
+          ),
+          // Banner ad for FREE users only, and only on the calm tabs (Home/Words)
+          // — never on Speak (mic), Premium (paywall) or Profile.
+          AnimatedBuilder(
+            animation: PlanStatus.instance,
+            builder: (context, _) {
+              final showBanner = PlanStatus.instance.planType == 'free' && (_index == 0 || _index == 2);
+              return showBanner ? const AdBannerWidget() : const SizedBox.shrink();
+            },
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(

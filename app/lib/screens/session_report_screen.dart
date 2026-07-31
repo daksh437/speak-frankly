@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/ad_service.dart';
+import '../services/plan_status.dart';
 import '../services/sync_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
@@ -103,7 +105,14 @@ class SessionReportScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 54,
                 child: FilledButton(
-                  onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+                  onPressed: () async {
+                    // Free users: show a (frequency-capped) interstitial at this
+                    // natural break before returning home. Trial/premium: none.
+                    if (PlanStatus.instance.planType == 'free') {
+                      await AdService.instance.maybeShowInterstitial();
+                    }
+                    if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+                  },
                   child: const Text('Done'),
                 ),
               ),

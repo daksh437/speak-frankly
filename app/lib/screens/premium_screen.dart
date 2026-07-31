@@ -226,6 +226,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
       (loc.featSpeaking, true, true),
       (loc.featScenarios, true, true),
       (loc.featOffline, false, true),
+      (loc.featAdFree, false, true),
       (loc.featNoLimits, false, true),
     ];
     return Container(

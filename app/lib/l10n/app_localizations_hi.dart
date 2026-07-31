@@ -352,4 +352,7 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get manageInPlay =>
       'Google Play → सब्सक्रिप्शन में कभी भी मैनेज या रद्द करें';
+
+  @override
+  String get featAdFree => 'बिना विज्ञापन (ad-free)';
 }

@@ -352,4 +352,7 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get manageInPlay =>
       'Gerencie ou cancele quando quiser no Google Play → Assinaturas';
+
+  @override
+  String get featAdFree => 'Sem anúncios';
 }
