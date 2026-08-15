@@ -121,5 +121,26 @@
   "youArePremium": "Tu es Premium",
   "premiumStatusBody": "Conversations illimitées, entraînement à l'oral et packs hors ligne — tout est débloqué. Merci de soutenir Speak Frankly ! 💜",
   "manageInPlay": "Gère ou annule à tout moment dans Google Play → Abonnements",
-  "featAdFree": "Sans publicité"
+  "featAdFree": "Sans publicité",
+
+  "continueWithGoogle": "Continuer avec Google",
+  "signInFailed": "Connexion impossible. Veuillez réessayer.",
+  "agreeToPrefix": "En continuant, vous acceptez nos ",
+  "agreeToSuffix": "",
+  "andWord": " et ",
+  "termsLabel": "Conditions",
+  "privacyLabel": "Politique de confidentialité",
+
+  "shadowingTitle": "Pratique de répétition",
+  "newPhrases": "Nouvelles phrases",
+  "shadowingHint": "Écoutez, puis répétez à voix haute",
+  "listenLabel": "Écouter",
+  "speechUnavailable": "La reconnaissance vocale n'est pas disponible sur cet appareil.",
+  "shadowingListening": "Enregistrement… appuyez pour arrêter",
+  "shadowingTapMic": "Appuyez sur le micro et répétez la phrase",
+  "nextPhrase": "Phrase suivante",
+  "youSaid": "Vous avez dit",
+  "scoreExcellent": "Excellent ! 🌟",
+  "scoreGood": "Bien, continuez 👍",
+  "scoreKeepPracticing": "Continuez à pratiquer 🔁"
 }

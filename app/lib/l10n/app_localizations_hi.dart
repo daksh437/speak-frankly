@@ -355,4 +355,61 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get featAdFree => 'बिना विज्ञापन (ad-free)';
+
+  @override
+  String get continueWithGoogle => 'Google से जारी रखें';
+
+  @override
+  String get signInFailed => 'साइन इन नहीं हो सका। कृपया फिर कोशिश करें।';
+
+  @override
+  String get agreeToPrefix => 'जारी रखने पर आप हमारी ';
+
+  @override
+  String get agreeToSuffix => ' से सहमत होते हैं';
+
+  @override
+  String get andWord => ' और ';
+
+  @override
+  String get termsLabel => 'शर्तें';
+
+  @override
+  String get privacyLabel => 'प्राइवेसी पॉलिसी';
+
+  @override
+  String get shadowingTitle => 'शैडोइंग प्रैक्टिस';
+
+  @override
+  String get newPhrases => 'नए वाक्य';
+
+  @override
+  String get shadowingHint => 'सुनें, फिर वैसा ही ज़ोर से बोलें';
+
+  @override
+  String get listenLabel => 'सुनें';
+
+  @override
+  String get speechUnavailable => 'इस डिवाइस पर स्पीच पहचान उपलब्ध नहीं है।';
+
+  @override
+  String get shadowingListening => 'सुन रहे हैं… रोकने के लिए टैप करें';
+
+  @override
+  String get shadowingTapMic => 'माइक दबाएँ और वाक्य दोहराएँ';
+
+  @override
+  String get nextPhrase => 'अगला वाक्य';
+
+  @override
+  String get youSaid => 'आपने कहा';
+
+  @override
+  String get scoreExcellent => 'बहुत बढ़िया! 🌟';
+
+  @override
+  String get scoreGood => 'अच्छा, ऐसे ही बढ़ते रहें 👍';
+
+  @override
+  String get scoreKeepPracticing => 'प्रैक्टिस जारी रखें 🔁';
 }

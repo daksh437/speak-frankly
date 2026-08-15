@@ -11,10 +11,19 @@
  * DEV_SKIP_LIMITS=true bypasses all checks for local testing.
  */
 const { getDb } = require('../utils/firestoreAdmin');
+const { authenticate } = require('./auth');
 
 const USERS = 'users';
 const DEVICES = 'trial_devices'; // device-level anti-abuse: one trial per device
 const DAILY_MESSAGES_FREE = parseInt(process.env.DAILY_MESSAGES_FREE || '10', 10);
+// "Aux" AI = the small helper calls around the conversation (translate a line,
+// daily speaking phrases, picture-match items, vocab extraction, custom
+// scenario). They're cheap individually but they ALL hit Gemini, so they get
+// their own daily budget: metering them against chat messages would eat a free
+// learner's 8 messages, but leaving them uncounted (as they were) let anyone
+// spam /translate for unlimited AI calls on our bill.
+const DAILY_AUX_FREE = parseInt(process.env.DAILY_AUX_FREE || '30', 10);
+const DAILY_AUX_TRIAL = parseInt(process.env.DAILY_AUX_TRIAL || '80', 10);
 const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS || '3', 10);
 // Soft cap during the trial — high enough to feel unlimited, low enough to stop
 // abuse (a bot chatting thousands of times and running up the AI bill).
@@ -225,9 +234,93 @@ async function grantAdReward(uid) {
   }
 }
 
-/** Express middleware: require x-user-uid, enforce plan. Sets req.uid, req.aiAccessAllowed. */
+/**
+ * Daily budget for the aux AI helpers (see DAILY_AUX_FREE above). Separate
+ * counter (dailyAuxUsed) so these never eat the learner's chat messages —
+ * and never run unbounded either.
+ */
+async function getAuxAccess(uid, deviceId) {
+  const base = await getAiAccess(uid, deviceId);
+  if (base.degraded || !base.user) {
+    return { allowed: true, planType: base.planType, auxUsed: 0, auxLimit: DAILY_AUX_FREE, degraded: true };
+  }
+  if (base.planType === 'premium') {
+    return { allowed: true, planType: 'premium', auxUsed: null, auxLimit: null };
+  }
+  if (base.planType === 'free' && REQUIRE_PREMIUM) {
+    return { allowed: false, planType: 'free', auxUsed: 0, auxLimit: 0, error: 'PREMIUM_REQUIRED' };
+  }
+
+  const limit = base.planType === 'trial' ? DAILY_AUX_TRIAL : DAILY_AUX_FREE;
+  const today = todayDateStr();
+  const u = base.user;
+  const used = (u.dailyAuxDate === today && typeof u.dailyAuxUsed === 'number') ? Math.max(0, Math.floor(u.dailyAuxUsed)) : 0;
+  return {
+    allowed: used < limit,
+    planType: base.planType,
+    auxUsed: used,
+    auxLimit: limit,
+    resetAtUtc: base.resetAtUtc,
+    error: used < limit ? null : 'DAILY_LIMIT_REACHED',
+  };
+}
+
+/** Count one aux AI call (free + trial; premium is unmetered). */
+async function recordAuxUsage(uid) {
+  if (DEV_SKIP_LIMITS || !uid) return;
+  const db = getDb();
+  if (!db) return;
+  const ref = db.collection(USERS).doc(uid);
+  const today = todayDateStr();
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const data = snap.data();
+      if (resolvePlan(data) === 'premium') return;
+      const rollover = (data.dailyAuxDate || '') !== today;
+      const used = rollover ? 0 : (typeof data.dailyAuxUsed === 'number' ? data.dailyAuxUsed : 0);
+      tx.update(ref, { dailyAuxUsed: used + 1, dailyAuxDate: today });
+    });
+  } catch (e) {
+    console.warn('[aiAccess] recordAuxUsage error:', e.message);
+  }
+}
+
+/** Express middleware for the aux AI helpers. Sets req.uid + req.auxAccess. */
+async function requireAuxAccess(req, res, next) {
+  await authenticate(req);
+  const uid = req.uid;
+
+  if (DEV_SKIP_LIMITS) {
+    req.uid = uid || 'dev-skip';
+    req.auxAccess = { allowed: true, planType: 'premium' };
+    return next();
+  }
+  if (!uid) {
+    return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Sign in to use this feature' });
+  }
+
+  const deviceId = (req.headers['x-device-id'] || '').toString().trim();
+  const access = await getAuxAccess(uid, deviceId);
+  req.auxAccess = access;
+  if (!access.allowed) {
+    return res.status(403).json({
+      success: false,
+      error: access.error || 'DAILY_LIMIT_REACHED',
+      code: access.error || 'DAILY_LIMIT_REACHED',
+      message: 'Daily limit reached for this feature. Upgrade to Premium for unlimited practice.',
+      dailyLimit: access.auxLimit,
+      resetAtUtc: access.resetAtUtc,
+    });
+  }
+  next();
+}
+
+/** Express middleware: authenticate the learner, enforce plan. Sets req.uid, req.aiAccessAllowed. */
 async function requireAiAccess(req, res, next) {
-  const uid = (req.headers['x-user-uid'] || req.headers['x-user-id'] || req.body?.uid || '').toString().trim();
+  await authenticate(req);
+  const uid = req.uid;
 
   if (DEV_SKIP_LIMITS) {
     req.uid = uid || 'dev-skip';
@@ -237,7 +330,7 @@ async function requireAiAccess(req, res, next) {
   }
 
   if (!uid) {
-    return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Missing x-user-uid header' });
+    return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Sign in to use the AI tutor' });
   }
 
   const deviceId = (req.headers['x-device-id'] || '').toString().trim();
@@ -322,12 +415,17 @@ async function recordAiUsage(uid) {
 
 module.exports = {
   requireAiAccess,
+  requireAuxAccess,
   wrapAiHandler,
   recordAiUsage,
+  recordAuxUsage,
   getAiAccess,
+  getAuxAccess,
   grantAdReward,
   resolvePlan,
   DAILY_MESSAGES_FREE,
+  DAILY_AUX_FREE,
+  DAILY_AUX_TRIAL,
   TRIAL_DAYS,
   REQUIRE_PREMIUM,
   DEV_SKIP_LIMITS,

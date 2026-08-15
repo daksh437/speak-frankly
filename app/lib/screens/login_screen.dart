@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_logo.dart';
@@ -41,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't sign in. Please try again.")),
+          SnackBar(content: Text(AppLocalizations.of(context)!.signInFailed)),
         );
       }
     } finally {
@@ -52,6 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -81,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text('Speak Frankly', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 12),
                 Text(
-                  'Learn English by talking —\nno fear, just real conversation.',
+                  l.welcomeSubtitle,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant, height: 1.4),
                 ),
@@ -104,7 +106,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: [
                               const _GoogleG(),
                               const SizedBox(width: 12),
-                              const Text('Continue with Google', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                              Flexible(
+                                child: Text(
+                                  l.continueWithGoogle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                ),
+                              ),
                             ],
                           ),
                   ),
@@ -114,16 +123,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: WrapAlignment.center,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text('By continuing you agree to our ', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
+                    Text(l.agreeToPrefix, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
                     GestureDetector(
                       onTap: () => _open(AppConfig.termsUrl),
-                      child: Text('Terms', style: TextStyle(color: scheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                      child: Text(l.termsLabel, style: TextStyle(color: scheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
                     ),
-                    Text(' & ', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
+                    Text(l.andWord, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
                     GestureDetector(
                       onTap: () => _open(AppConfig.privacyUrl),
-                      child: Text('Privacy Policy', style: TextStyle(color: scheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                      child: Text(l.privacyLabel, style: TextStyle(color: scheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
                     ),
+                    // Languages that need a trailing clause (e.g. Hindi
+                    // "…से सहमत होते हैं"); empty in English.
+                    if (l.agreeToSuffix.isNotEmpty)
+                      Text(l.agreeToSuffix, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)),
                   ],
                 ),
                 const SizedBox(height: 8),

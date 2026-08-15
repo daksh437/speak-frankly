@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Local learner session. For the MVP we identify the user with a locally
-/// generated id stored in prefs; once Firebase Auth is wired this `uid` becomes
-/// the Firebase UID (the backend already trusts the `x-user-uid` header, so the
-/// swap is transparent to the API layer).
+/// Local learner session. `uid` starts as a locally generated placeholder and
+/// becomes the Firebase UID at sign-in (see [setUid]).
+///
+/// The placeholder is NOT an identity as far as the backend is concerned:
+/// ApiService authenticates with the Firebase ID token and takes the uid from
+/// the signed-in user, so a pre-sign-in id never reaches the server.
 class UserSession {
   static const _kUid = 'sf_uid';
   static const _kNativeLang = 'sf_native_language';
@@ -65,8 +67,9 @@ class UserSession {
     await p.setString(_kLevel, newLevel);
   }
 
-  /// Adopt the Firebase UID as the authoritative id once anonymous auth resolves.
-  /// The backend keys the user doc + usage limits on this uid (x-user-uid header).
+  /// Adopt the Firebase UID as the authoritative id once sign-in resolves.
+  /// The backend keys the user doc + usage limits on this uid (proven by the
+  /// ID token ApiService sends).
   Future<void> setUid(String firebaseUid) async {
     if (firebaseUid.isEmpty || firebaseUid == uid) return;
     uid = firebaseUid;

@@ -355,4 +355,62 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get featAdFree => 'Ad-free experience';
+
+  @override
+  String get continueWithGoogle => 'Continue with Google';
+
+  @override
+  String get signInFailed => 'Couldn\'t sign in. Please try again.';
+
+  @override
+  String get agreeToPrefix => 'By continuing you agree to our ';
+
+  @override
+  String get agreeToSuffix => '';
+
+  @override
+  String get andWord => ' & ';
+
+  @override
+  String get termsLabel => 'Terms';
+
+  @override
+  String get privacyLabel => 'Privacy Policy';
+
+  @override
+  String get shadowingTitle => 'Shadowing Practice';
+
+  @override
+  String get newPhrases => 'New phrases';
+
+  @override
+  String get shadowingHint => 'Listen, then shadow it — repeat out loud';
+
+  @override
+  String get listenLabel => 'Listen';
+
+  @override
+  String get speechUnavailable =>
+      'Speech recognition is not available on this device.';
+
+  @override
+  String get shadowingListening => 'Shadowing… tap to stop';
+
+  @override
+  String get shadowingTapMic => 'Tap the mic and shadow the phrase';
+
+  @override
+  String get nextPhrase => 'Next phrase';
+
+  @override
+  String get youSaid => 'You said';
+
+  @override
+  String get scoreExcellent => 'Excellent! 🌟';
+
+  @override
+  String get scoreGood => 'Good, keep going 👍';
+
+  @override
+  String get scoreKeepPracticing => 'Keep practicing 🔁';
 }

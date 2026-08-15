@@ -1,13 +1,15 @@
 const express = require('express');
 const { speakingPhrases } = require('../controllers/tutorController');
-const { requireAiAccess } = require('../middleware/aiAccess');
+const { requireAuxAccess, recordAuxUsage } = require('../middleware/aiAccess');
 
 const router = express.Router();
 
-// Premium-gated AI. The client caches one set of phrases per day (~1 call/day).
-router.post('/phrases', requireAiAccess, async (req, res) => {
+// Metered against the daily AUX budget. The client caches one set per day, so
+// a normal learner spends 1 — but the budget stops a scripted caller.
+router.post('/phrases', requireAuxAccess, async (req, res) => {
   try {
     const data = await speakingPhrases(req);
+    if (!data.fallback && !data.mock) recordAuxUsage(req.uid).catch(() => {});
     res.json({ success: true, data });
   } catch (e) {
     console.warn('[speaking] route error:', e.message);

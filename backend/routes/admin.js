@@ -4,20 +4,21 @@
  */
 const express = require('express');
 const { getDb, getAdmin } = require('../utils/firestoreAdmin');
-const { requireAdmin, isAdminEmail, emailForUid, OWNER_EMAILS, ADMINS } = require('../middleware/adminAuth');
+const { requireAdmin, adminEmailOf, isAdminEmail, OWNER_EMAILS, ADMINS } = require('../middleware/adminAuth');
 const { resolvePlan } = require('../middleware/aiAccess');
 
 const router = express.Router();
 
-function uidOf(req) {
-  return (req.headers['x-user-uid'] || req.headers['x-user-id'] || '').toString().trim();
-}
-
-/** Whether the caller is an admin (app shows/hides the Admin entry from this). */
+/**
+ * Whether the caller is an admin (app shows/hides the Admin entry from this).
+ * Only answers for a verified sign-in — it used to hand back the email behind
+ * any claimed uid, which leaked account emails to anyone who had a uid.
+ */
 router.get('/me', async (req, res) => {
-  const email = await emailForUid(uidOf(req));
+  const email = await adminEmailOf(req);
+  if (!email) return res.json({ success: true, data: { isAdmin: false, isOwner: false, email: null } });
   const { isAdmin, isOwner } = await isAdminEmail(email);
-  res.json({ success: true, data: { isAdmin, isOwner, email: email || null } });
+  res.json({ success: true, data: { isAdmin, isOwner, email } });
 });
 
 // ---- everything below requires admin ----

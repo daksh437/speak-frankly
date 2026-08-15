@@ -361,4 +361,62 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get featAdFree => 'Sans publicité';
+
+  @override
+  String get continueWithGoogle => 'Continuer avec Google';
+
+  @override
+  String get signInFailed => 'Connexion impossible. Veuillez réessayer.';
+
+  @override
+  String get agreeToPrefix => 'En continuant, vous acceptez nos ';
+
+  @override
+  String get agreeToSuffix => '';
+
+  @override
+  String get andWord => ' et ';
+
+  @override
+  String get termsLabel => 'Conditions';
+
+  @override
+  String get privacyLabel => 'Politique de confidentialité';
+
+  @override
+  String get shadowingTitle => 'Pratique de répétition';
+
+  @override
+  String get newPhrases => 'Nouvelles phrases';
+
+  @override
+  String get shadowingHint => 'Écoutez, puis répétez à voix haute';
+
+  @override
+  String get listenLabel => 'Écouter';
+
+  @override
+  String get speechUnavailable =>
+      'La reconnaissance vocale n\'est pas disponible sur cet appareil.';
+
+  @override
+  String get shadowingListening => 'Enregistrement… appuyez pour arrêter';
+
+  @override
+  String get shadowingTapMic => 'Appuyez sur le micro et répétez la phrase';
+
+  @override
+  String get nextPhrase => 'Phrase suivante';
+
+  @override
+  String get youSaid => 'Vous avez dit';
+
+  @override
+  String get scoreExcellent => 'Excellent ! 🌟';
+
+  @override
+  String get scoreGood => 'Bien, continuez 👍';
+
+  @override
+  String get scoreKeepPracticing => 'Continuez à pratiquer 🔁';
 }

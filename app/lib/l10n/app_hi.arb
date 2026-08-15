@@ -121,5 +121,26 @@
   "youArePremium": "आप प्रीमियम हैं",
   "premiumStatusBody": "असीमित बातचीत, बोलने की प्रैक्टिस और ऑफ़लाइन पैक — सब अनलॉक। Speak Frankly का साथ देने के लिए धन्यवाद! 💜",
   "manageInPlay": "Google Play → सब्सक्रिप्शन में कभी भी मैनेज या रद्द करें",
-  "featAdFree": "बिना विज्ञापन (ad-free)"
+  "featAdFree": "बिना विज्ञापन (ad-free)",
+
+  "continueWithGoogle": "Google से जारी रखें",
+  "signInFailed": "साइन इन नहीं हो सका। कृपया फिर कोशिश करें।",
+  "agreeToPrefix": "जारी रखने पर आप हमारी ",
+  "agreeToSuffix": " से सहमत होते हैं",
+  "andWord": " और ",
+  "termsLabel": "शर्तें",
+  "privacyLabel": "प्राइवेसी पॉलिसी",
+
+  "shadowingTitle": "शैडोइंग प्रैक्टिस",
+  "newPhrases": "नए वाक्य",
+  "shadowingHint": "सुनें, फिर वैसा ही ज़ोर से बोलें",
+  "listenLabel": "सुनें",
+  "speechUnavailable": "इस डिवाइस पर स्पीच पहचान उपलब्ध नहीं है।",
+  "shadowingListening": "सुन रहे हैं… रोकने के लिए टैप करें",
+  "shadowingTapMic": "माइक दबाएँ और वाक्य दोहराएँ",
+  "nextPhrase": "अगला वाक्य",
+  "youSaid": "आपने कहा",
+  "scoreExcellent": "बहुत बढ़िया! 🌟",
+  "scoreGood": "अच्छा, ऐसे ही बढ़ते रहें 👍",
+  "scoreKeepPracticing": "प्रैक्टिस जारी रखें 🔁"
 }

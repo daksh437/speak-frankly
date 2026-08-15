@@ -1,13 +1,16 @@
 const express = require('express');
 const { translate } = require('../controllers/tutorController');
-const { requireAiAccess } = require('../middleware/aiAccess');
+const { requireAuxAccess, recordAuxUsage } = require('../middleware/aiAccess');
 
 const router = express.Router();
 
-// Premium-gated AI: translate a tutor line into the learner's native language.
-router.post('/', requireAiAccess, async (req, res) => {
+// Metered against the daily AUX budget (not the learner's chat messages).
+// Previously this only checked plan access and never counted, so a free user —
+// or anyone with a uid — could call it in a loop for unlimited Gemini calls.
+router.post('/', requireAuxAccess, async (req, res) => {
   try {
     const data = await translate(req);
+    if (data.translation) recordAuxUsage(req.uid).catch(() => {});
     res.json({ success: true, data });
   } catch (e) {
     console.warn('[translate] route error:', e.message);

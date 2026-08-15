@@ -25,8 +25,9 @@ const customRoutes = require('./routes/custom');
 const progressRoutes = require('./routes/progress');
 const gamesRoutes = require('./routes/games');
 const vocabRoutes = require('./routes/vocab');
-const { hasKey, MODEL } = require('./utils/geminiClient');
+const { hasKey, MODEL, MODELS, getAiStats } = require('./utils/geminiClient');
 const { getInitStatus } = require('./utils/firestoreAdmin');
+const { getAuthStats, REQUIRE_AUTH_TOKEN } = require('./middleware/auth');
 const { DEV_SKIP_LIMITS, DAILY_MESSAGES_FREE, REQUIRE_PREMIUM } = require('./middleware/aiAccess');
 
 const app = express();
@@ -51,7 +52,19 @@ if (!IS_PROD) {
 }
 
 app.get('/', (_req, res) => res.json({ success: true, message: 'Speak Frankly Backend API' }));
-app.get('/health', (_req, res) => res.json({ status: 'ok', success: true }));
+/**
+ * Liveness + operational truth. `ai` shows whether the model chain is actually
+ * serving (fallbacks/failed > 0 means learners are getting canned replies), and
+ * `auth.legacyHeader` shows how many callers are still on an app build that
+ * doesn't send an ID token — flip REQUIRE_AUTH_TOKEN=true once that flatlines.
+ */
+app.get('/health', (_req, res) =>
+  res.json({
+    status: 'ok',
+    success: true,
+    ai: getAiStats(),
+    auth: getAuthStats(),
+  }));
 
 app.use('/', require('./routes/legal')); // GET /privacy, /terms (public HTML)
 
@@ -89,8 +102,9 @@ function startServer() {
   const fb = getInitStatus();
   return app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Speak Frankly backend on port ${PORT} (${NODE_ENV})`);
-    console.log(`🤖 Gemini: ${hasKey() ? `REAL (${MODEL})` : 'MOCK MODE (no GEMINI_API_KEY)'}`);
+    console.log(`🤖 Gemini: ${hasKey() ? `REAL (${MODEL}) → fallbacks: ${MODELS.slice(1).join(', ') || 'none'}` : 'MOCK MODE (no GEMINI_API_KEY)'}`);
     console.log(`🔥 Firestore: ${fb.firestoreReady ? `ready (${fb.projectId})` : 'degraded / not configured'}`);
+    console.log(`🔐 Auth: ${REQUIRE_AUTH_TOKEN ? 'ID token REQUIRED' : 'ID token preferred, legacy x-user-uid still accepted'}`);
     console.log(`🎫 Plan: ${REQUIRE_PREMIUM ? 'premium required for AI (no free tier)' : `free ${DAILY_MESSAGES_FREE} msg/day`} → premium unlimited`);
     if (DEV_SKIP_LIMITS) console.log('⚠️  DEV_SKIP_LIMITS on — limits bypassed.');
     console.log(`📊 Health: http://localhost:${PORT}/health`);

@@ -769,6 +769,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ad-free experience'**
   String get featAdFree;
+
+  /// No description provided for @continueWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get continueWithGoogle;
+
+  /// No description provided for @signInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sign in. Please try again.'**
+  String get signInFailed;
+
+  /// No description provided for @agreeToPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'By continuing you agree to our '**
+  String get agreeToPrefix;
+
+  /// No description provided for @agreeToSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **''**
+  String get agreeToSuffix;
+
+  /// No description provided for @andWord.
+  ///
+  /// In en, this message translates to:
+  /// **' & '**
+  String get andWord;
+
+  /// No description provided for @termsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms'**
+  String get termsLabel;
+
+  /// No description provided for @privacyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyLabel;
+
+  /// No description provided for @shadowingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shadowing Practice'**
+  String get shadowingTitle;
+
+  /// No description provided for @newPhrases.
+  ///
+  /// In en, this message translates to:
+  /// **'New phrases'**
+  String get newPhrases;
+
+  /// No description provided for @shadowingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen, then shadow it — repeat out loud'**
+  String get shadowingHint;
+
+  /// No description provided for @listenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen'**
+  String get listenLabel;
+
+  /// No description provided for @speechUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech recognition is not available on this device.'**
+  String get speechUnavailable;
+
+  /// No description provided for @shadowingListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Shadowing… tap to stop'**
+  String get shadowingListening;
+
+  /// No description provided for @shadowingTapMic.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the mic and shadow the phrase'**
+  String get shadowingTapMic;
+
+  /// No description provided for @nextPhrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Next phrase'**
+  String get nextPhrase;
+
+  /// No description provided for @youSaid.
+  ///
+  /// In en, this message translates to:
+  /// **'You said'**
+  String get youSaid;
+
+  /// No description provided for @scoreExcellent.
+  ///
+  /// In en, this message translates to:
+  /// **'Excellent! 🌟'**
+  String get scoreExcellent;
+
+  /// No description provided for @scoreGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Good, keep going 👍'**
+  String get scoreGood;
+
+  /// No description provided for @scoreKeepPracticing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep practicing 🔁'**
+  String get scoreKeepPracticing;
 }
 
 class _AppLocalizationsDelegate

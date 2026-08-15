@@ -39,23 +39,29 @@ function normalizeServiceAccount(raw) {
 function getAdmin() {
   if (admin) return admin;
   try {
-    admin = require('firebase-admin');
-    if (!admin.apps.length) {
+    // NOTE: only cache the namespace once an app is actually initialized.
+    // Caching it before the credential check meant the first (degraded) call
+    // returned null but every later call handed back an UNinitialized
+    // namespace — and `a.firestore()` on that throws app/no-app, crashing the
+    // process on the second request instead of staying degraded.
+    const a = require('firebase-admin');
+    if (!a.apps.length) {
       const key = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
       if (key && key.trim()) {
         const cred = normalizeServiceAccount(key);
-        admin.initializeApp({
-          credential: admin.credential.cert(cred),
+        a.initializeApp({
+          credential: a.credential.cert(cred),
           projectId: resolveProjectId(cred),
         });
       } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        admin.initializeApp({ projectId: resolveProjectId() });
+        a.initializeApp({ projectId: resolveProjectId() });
       } else {
         // No credentials — degraded mode. Not fatal in development.
         initError = new Error('No Firebase credentials set (degraded mode)');
         return null;
       }
     }
+    admin = a;
     initError = null;
     return admin;
   } catch (e) {
@@ -69,8 +75,14 @@ function getDb() {
   if (db) return db;
   const a = getAdmin();
   if (!a) return null;
-  db = a.firestore();
-  return db;
+  try {
+    db = a.firestore();
+    return db;
+  } catch (e) {
+    initError = e;
+    console.warn('[FirestoreAdmin] firestore() failed:', e.message);
+    return null;
+  }
 }
 
 function getInitStatus() {

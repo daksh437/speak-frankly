@@ -127,5 +127,26 @@
   "youArePremium": "You're Premium",
   "premiumStatusBody": "Unlimited conversations, speaking practice and offline packs — all unlocked. Thank you for supporting Speak Frankly! 💜",
   "manageInPlay": "Manage or cancel anytime in Google Play → Subscriptions",
-  "featAdFree": "Ad-free experience"
+  "featAdFree": "Ad-free experience",
+
+  "continueWithGoogle": "Continue with Google",
+  "signInFailed": "Couldn't sign in. Please try again.",
+  "agreeToPrefix": "By continuing you agree to our ",
+  "agreeToSuffix": "",
+  "andWord": " & ",
+  "termsLabel": "Terms",
+  "privacyLabel": "Privacy Policy",
+
+  "shadowingTitle": "Shadowing Practice",
+  "newPhrases": "New phrases",
+  "shadowingHint": "Listen, then shadow it — repeat out loud",
+  "listenLabel": "Listen",
+  "speechUnavailable": "Speech recognition is not available on this device.",
+  "shadowingListening": "Shadowing… tap to stop",
+  "shadowingTapMic": "Tap the mic and shadow the phrase",
+  "nextPhrase": "Next phrase",
+  "youSaid": "You said",
+  "scoreExcellent": "Excellent! 🌟",
+  "scoreGood": "Good, keep going 👍",
+  "scoreKeepPracticing": "Keep practicing 🔁"
 }

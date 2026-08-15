@@ -69,9 +69,16 @@ android {
     buildTypes {
         release {
             // Use the upload keystore when present; else fall back to debug signing.
+            // A debug-signed release CANNOT be uploaded to Play — shout about it
+            // rather than handing back a bundle that fails at upload time.
+            if (!hasKeystore) {
+                logger.warn("⚠️  android/key.properties not found — this release build is DEBUG-SIGNED and cannot be uploaded to Play.")
+            }
             signingConfig = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8: shrink + obfuscate. Keeps live in proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }

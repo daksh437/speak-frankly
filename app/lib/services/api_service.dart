@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,7 +9,12 @@ import 'offline_scenarios.dart';
 import 'user_session.dart';
 
 /// All backend calls funnel through here (mirrors InstaFlow's ApiService).
-/// Auth is the Firebase-style UID sent as `x-user-uid` / `x-user-id`.
+///
+/// Auth is the learner's Firebase **ID token** (`Authorization: Bearer …`),
+/// which the backend verifies with the Admin SDK. The old `x-user-uid` header
+/// is still sent so app versions and server versions can roll out
+/// independently, but it is only a hint — the server prefers the token, and
+/// once REQUIRE_AUTH_TOKEN is on there it stops accepting the header at all.
 class ApiService {
   static final ApiService instance = ApiService._();
   ApiService._();
@@ -16,12 +22,29 @@ class ApiService {
   final _client = http.Client();
   static const _timeout = Duration(seconds: 30);
 
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'x-user-uid': UserSession.instance.uid,
-        'x-user-id': UserSession.instance.uid,
-        'x-device-id': UserSession.instance.deviceId,
-      };
+  /// Headers for an authenticated call. The uid comes from the signed-in
+  /// Firebase user when there is one — never from the local prefs id, which is
+  /// a placeholder generated before sign-in and would create junk user docs
+  /// (and burn this device's one free trial) if it ever reached the server.
+  Future<Map<String, String>> _authHeaders() async {
+    String uid = UserSession.instance.uid;
+    String? token;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        uid = user.uid;
+        token = await user.getIdToken();
+      }
+    } catch (_) {/* Firebase unavailable → fall back to the session uid */}
+
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      'x-user-uid': uid,
+      'x-user-id': uid,
+      'x-device-id': UserSession.instance.deviceId,
+    };
+  }
 
   Uri _u(String path, [Map<String, dynamic>? query]) =>
       Uri.parse('${AppConfig.baseUrl}$path').replace(
@@ -38,7 +61,7 @@ class ApiService {
   /// a small bundled copy.
   Future<List<Scenario>> fetchScenarios() async {
     try {
-      final res = await _client.get(_u('/scenarios'), headers: _headers).timeout(_timeout);
+      final res = await _client.get(_u('/scenarios'), headers: await _authHeaders()).timeout(_timeout);
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       final data = (body['data'] as List?) ?? [];
       final list = data.whereType<Map<String, dynamic>>().map(Scenario.fromJson).toList();
@@ -66,7 +89,7 @@ class ApiService {
     final res = await _client
         .post(
           _u('/custom/scenario'),
-          headers: _headers,
+          headers: await _authHeaders(),
           body: jsonEncode({'topic': topic, 'level': UserSession.instance.level}),
         )
         .timeout(const Duration(seconds: 45));
@@ -87,7 +110,7 @@ class ApiService {
     final res = await _client
         .post(
           _u('/tutor/chat'),
-          headers: _headers,
+          headers: await _authHeaders(),
           body: jsonEncode({
             'scenarioId': scenarioId,
             'context': context,
@@ -114,7 +137,7 @@ class ApiService {
     final res = await _client
         .post(
           _u('/tutor/feedback'),
-          headers: _headers,
+          headers: await _authHeaders(),
           body: jsonEncode({
             'scenarioId': scenarioId,
             'level': UserSession.instance.level,
@@ -131,7 +154,7 @@ class ApiService {
     final res = await _client
         .post(
           _u('/speaking/phrases'),
-          headers: _headers,
+          headers: await _authHeaders(),
           body: jsonEncode({'level': level, 'goal': goal, 'count': count}),
         )
         .timeout(const Duration(seconds: 45));
@@ -143,7 +166,7 @@ class ApiService {
   /// Fresh, level-aware picture-match items (emoji scene + sentences).
   Future<List<Map<String, dynamic>>> fetchPictureMatch({required String level, int count = 10}) async {
     final res = await _client
-        .post(_u('/games/picture-match'), headers: _headers, body: jsonEncode({'level': level, 'count': count}))
+        .post(_u('/games/picture-match'), headers: await _authHeaders(), body: jsonEncode({'level': level, 'count': count}))
         .timeout(const Duration(seconds: 45));
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final data = (body['data'] as Map<String, dynamic>?) ?? {};
@@ -153,7 +176,7 @@ class ApiService {
   /// Extract useful vocabulary (word + meaning) from pasted text.
   Future<List<Map<String, dynamic>>> extractVocab(String text) async {
     final res = await _client
-        .post(_u('/vocab/extract'), headers: _headers, body: jsonEncode({'text': text, 'level': UserSession.instance.level}))
+        .post(_u('/vocab/extract'), headers: await _authHeaders(), body: jsonEncode({'text': text, 'level': UserSession.instance.level}))
         .timeout(const Duration(seconds: 45));
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final data = (body['data'] as Map<String, dynamic>?) ?? {};
@@ -162,25 +185,25 @@ class ApiService {
 
   /// Cloud-synced progress (gamification + saved words).
   Future<Map<String, dynamic>> fetchProgress() async {
-    final res = await _client.get(_u('/progress'), headers: _headers).timeout(_timeout);
+    final res = await _client.get(_u('/progress'), headers: await _authHeaders()).timeout(_timeout);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
 
   Future<void> saveProgress(Map<String, dynamic> data) async {
-    await _client.post(_u('/progress'), headers: _headers, body: jsonEncode(data)).timeout(_timeout);
+    await _client.post(_u('/progress'), headers: await _authHeaders(), body: jsonEncode(data)).timeout(_timeout);
   }
 
   /// Grant premium after a confirmed Google Play subscription purchase.
   Future<void> activatePremium({String? purchaseToken}) async {
     await _client
-        .post(_u('/premium/activate'), headers: _headers, body: jsonEncode({'purchaseToken': purchaseToken}))
+        .post(_u('/premium/activate'), headers: await _authHeaders(), body: jsonEncode({'purchaseToken': purchaseToken}))
         .timeout(_timeout);
   }
 
   /// The learner's plan + remaining daily messages (server is authoritative).
   Future<Map<String, dynamic>> fetchAccess() async {
-    final res = await _client.get(_u('/access'), headers: _headers).timeout(_timeout);
+    final res = await _client.get(_u('/access'), headers: await _authHeaders()).timeout(_timeout);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
@@ -189,7 +212,7 @@ class ApiService {
   /// Returns true if bonus was granted (false if the daily reward cap is hit).
   Future<bool> rewardAd() async {
     try {
-      final res = await _client.post(_u('/access/reward-ad'), headers: _headers).timeout(_timeout);
+      final res = await _client.post(_u('/access/reward-ad'), headers: await _authHeaders()).timeout(_timeout);
       return res.statusCode == 200;
     } catch (_) {
       return false;
@@ -201,7 +224,7 @@ class ApiService {
   Future<String> translate({required String text, required String target}) async {
     try {
       final res = await _client
-          .post(_u('/translate'), headers: _headers, body: jsonEncode({'text': text, 'target': target}))
+          .post(_u('/translate'), headers: await _authHeaders(), body: jsonEncode({'text': text, 'target': target}))
           .timeout(_timeout);
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       final data = (body['data'] as Map<String, dynamic>?) ?? {};
@@ -214,7 +237,7 @@ class ApiService {
   /// Dictionary card for a word, optionally translated into [target] language.
   Future<DictionaryCard?> lookupWord(String word, {String? target}) async {
     final res = await _client
-        .get(_u('/dictionary/$word', target != null ? {'target': target} : null), headers: _headers)
+        .get(_u('/dictionary/$word', target != null ? {'target': target} : null), headers: await _authHeaders())
         .timeout(_timeout);
     if (res.statusCode == 404) return null;
     final body = jsonDecode(res.body) as Map<String, dynamic>;
@@ -227,13 +250,13 @@ class ApiService {
 
   /// Whether the current user is an admin → { isAdmin, isOwner, email }.
   Future<Map<String, dynamic>> adminMe() async {
-    final res = await _client.get(_u('/admin/me'), headers: _headers).timeout(_timeout);
+    final res = await _client.get(_u('/admin/me'), headers: await _authHeaders()).timeout(_timeout);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
 
   Future<List<Map<String, dynamic>>> adminListAdmins() async {
-    final res = await _client.get(_u('/admin/admins'), headers: _headers).timeout(_timeout);
+    final res = await _client.get(_u('/admin/admins'), headers: await _authHeaders()).timeout(_timeout);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final data = (body['data'] as Map<String, dynamic>?) ?? {};
     return ((data['admins'] as List?) ?? []).whereType<Map<String, dynamic>>().toList();
@@ -241,20 +264,20 @@ class ApiService {
 
   Future<bool> adminAddAdmin(String email) async {
     final res = await _client
-        .post(_u('/admin/admins'), headers: _headers, body: jsonEncode({'email': email}))
+        .post(_u('/admin/admins'), headers: await _authHeaders(), body: jsonEncode({'email': email}))
         .timeout(_timeout);
     return res.statusCode == 200;
   }
 
   Future<bool> adminRemoveAdmin(String email) async {
     final res = await _client
-        .delete(_u('/admin/admins/${Uri.encodeComponent(email)}'), headers: _headers)
+        .delete(_u('/admin/admins/${Uri.encodeComponent(email)}'), headers: await _authHeaders())
         .timeout(_timeout);
     return res.statusCode == 200;
   }
 
   Future<Map<String, dynamic>> adminStats() async {
-    final res = await _client.get(_u('/admin/stats'), headers: _headers).timeout(_timeout);
+    final res = await _client.get(_u('/admin/stats'), headers: await _authHeaders()).timeout(_timeout);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
@@ -262,7 +285,7 @@ class ApiService {
   /// Grant premium to a user by email for [days]. Returns the server response.
   Future<Map<String, dynamic>> adminGrantPremium(String email, {int days = 31}) async {
     final res = await _client
-        .post(_u('/admin/grant-premium'), headers: _headers, body: jsonEncode({'email': email, 'days': days}))
+        .post(_u('/admin/grant-premium'), headers: await _authHeaders(), body: jsonEncode({'email': email, 'days': days}))
         .timeout(_timeout);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return {'ok': res.statusCode == 200, ...body};

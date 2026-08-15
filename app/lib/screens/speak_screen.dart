@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
 import '../services/gamification_service.dart';
 import '../services/speaking_phrases.dart';
@@ -64,7 +65,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
     );
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Speech recognition is not available on this device.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.speechUnavailable)),
       );
     }
   }
@@ -97,14 +98,15 @@ class _SpeakScreenState extends State<SpeakScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shadowing Practice'),
+        title: Text(l.shadowingTitle),
         actions: [
           IconButton(
             onPressed: _loadingPhrases ? null : () => _loadPhrases(forceRefresh: true),
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'New phrases',
+            tooltip: l.newPhrases,
           ),
           if (_phrases != null)
             Center(child: Text('${_index + 1}/${_phrases!.length}', style: TextStyle(color: scheme.onSurfaceVariant))),
@@ -119,7 +121,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
           child: Column(
             children: [
               const SizedBox(height: 8),
-              Text('Listen, then shadow it — repeat out loud', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14)),
+              Text(l.shadowingHint, textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14)),
               const SizedBox(height: 16),
               // Phrase card
               Container(
@@ -139,7 +141,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
                     OutlinedButton.icon(
                       onPressed: _listen,
                       icon: const Icon(Icons.volume_up_rounded),
-                      label: const Text('Listen'),
+                      label: Text(l.listenLabel),
                       style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                     ),
                   ],
@@ -157,7 +159,8 @@ class _SpeakScreenState extends State<SpeakScreen> {
                     children: [
                       _Waveform(levels: SpeechService.instance.waveform, active: listening, color: AppTheme.seed),
                       const SizedBox(height: 8),
-                      Text(listening ? 'Shadowing… tap to stop' : 'Tap the mic and shadow the phrase',
+                      Text(listening ? l.shadowingListening : l.shadowingTapMic,
+                          textAlign: TextAlign.center,
                           style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
                       const SizedBox(height: 10),
                       GestureDetector(
@@ -188,7 +191,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
               SizedBox(
                 width: double.infinity,
                 height: 52,
-                child: FilledButton(onPressed: _next, child: const Text('Next phrase')),
+                child: FilledButton(onPressed: _next, child: Text(l.nextPhrase)),
               ),
             ],
           ),
@@ -257,6 +260,7 @@ class _ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
     Color color;
     String label;
     if (score == null) {
@@ -264,13 +268,13 @@ class _ResultCard extends StatelessWidget {
       label = '';
     } else if (score! >= 85) {
       color = AppColors.success;
-      label = 'Excellent! 🌟';
+      label = l.scoreExcellent;
     } else if (score! >= 60) {
       color = const Color(0xFFF59E0B);
-      label = 'Good, keep going 👍';
+      label = l.scoreGood;
     } else {
       color = const Color(0xFFEF4444);
-      label = 'Keep practicing 🔁';
+      label = l.scoreKeepPracticing;
     }
 
     return Container(
@@ -282,7 +286,7 @@ class _ResultCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('You said', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5)),
+              Text(l.youSaid, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5)),
               const Spacer(),
               if (score != null)
                 Text('$score%', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: color)),
