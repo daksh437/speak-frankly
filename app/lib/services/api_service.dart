@@ -234,6 +234,35 @@ class ApiService {
     }
   }
 
+  /// Report an AI reply the learner found offensive/unsafe/wrong. Required by
+  /// Play's generative-AI policy; the owner reviews these in the admin panel.
+  /// Returns false only if the report couldn't be sent at all.
+  Future<bool> reportAiContent({
+    required String text,
+    required String reason,
+    String? note,
+    String? scenarioId,
+  }) async {
+    try {
+      final res = await _client
+          .post(
+            _u('/report'),
+            headers: await _authHeaders(),
+            body: jsonEncode({
+              'text': text,
+              'reason': reason,
+              'note': note ?? '',
+              'scenarioId': scenarioId ?? '',
+              'level': UserSession.instance.level,
+            }),
+          )
+          .timeout(_timeout);
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Dictionary card for a word, optionally translated into [target] language.
   Future<DictionaryCard?> lookupWord(String word, {String? target}) async {
     final res = await _client
@@ -257,7 +286,7 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> adminListAdmins() async {
     final res = await _client.get(_u('/admin/admins'), headers: await _authHeaders()).timeout(_timeout);
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final body = _decodeAdmin(res);
     final data = (body['data'] as Map<String, dynamic>?) ?? {};
     return ((data['admins'] as List?) ?? []).whereType<Map<String, dynamic>>().toList();
   }
@@ -276,10 +305,55 @@ class ApiService {
     return res.statusCode == 200;
   }
 
+  /// Dashboard numbers, all computed server-side from live data.
+  /// Throws [AdminApiException] on a non-200 so the panel can show the real
+  /// reason (not-an-admin, outdated app, server error) instead of empty cards.
   Future<Map<String, dynamic>> adminStats() async {
     final res = await _client.get(_u('/admin/stats'), headers: await _authHeaders()).timeout(_timeout);
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final body = _decodeAdmin(res);
     return (body['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  /// Recent learners with their real plan + usage.
+  Future<List<Map<String, dynamic>>> adminUsers({int limit = 50}) async {
+    final res = await _client
+        .get(_u('/admin/users', {'limit': limit}), headers: await _authHeaders())
+        .timeout(_timeout);
+    final body = _decodeAdmin(res);
+    final data = (body['data'] as Map<String, dynamic>?) ?? {};
+    return ((data['users'] as List?) ?? []).whereType<Map<String, dynamic>>().toList();
+  }
+
+  Map<String, dynamic> _decodeAdmin(http.Response res) {
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw AdminApiException(res.statusCode, 'Unexpected server response');
+    }
+    if (res.statusCode != 200) {
+      throw AdminApiException(
+        res.statusCode,
+        (body['message'] ?? body['error'] ?? 'Request failed').toString(),
+      );
+    }
+    return body;
+  }
+
+  /// Reported AI replies, newest first (admin only).
+  Future<List<Map<String, dynamic>>> adminListReports() async {
+    final res = await _client.get(_u('/admin/reports'), headers: await _authHeaders()).timeout(_timeout);
+    final body = _decodeAdmin(res);
+    final data = (body['data'] as Map<String, dynamic>?) ?? {};
+    return ((data['reports'] as List?) ?? []).whereType<Map<String, dynamic>>().toList();
+  }
+
+  /// Mark a report reviewed (admin only).
+  Future<bool> adminReviewReport(String id) async {
+    final res = await _client
+        .post(_u('/admin/reports/${Uri.encodeComponent(id)}/review'), headers: await _authHeaders())
+        .timeout(_timeout);
+    return res.statusCode == 200;
   }
 
   /// Grant premium to a user by email for [days]. Returns the server response.
@@ -290,6 +364,24 @@ class ApiService {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return {'ok': res.statusCode == 200, ...body};
   }
+}
+
+/// An admin call the server refused — carries the real status + message so the
+/// panel can tell "you are not an admin" apart from "the server is down".
+class AdminApiException implements Exception {
+  final int status;
+  final String message;
+  AdminApiException(this.status, this.message);
+
+  String get friendly => switch (status) {
+        401 => 'Sign in again with your admin account (this app version may be out of date).',
+        403 => 'This account is not an admin.',
+        503 => 'The database is unavailable right now.',
+        _ => message,
+      };
+
+  @override
+  String toString() => 'AdminApiException($status): $message';
 }
 
 class DailyLimitException implements Exception {

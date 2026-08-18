@@ -1,13 +1,65 @@
 /**
  * Admin panel API. `GET /admin/me` is callable by anyone (the app uses it to
  * decide whether to show the Admin entry). Everything else requires admin.
+ *
+ * Everything here is computed from live Firestore documents plus the running
+ * process's own counters — there are no placeholder or sample numbers. When a
+ * value cannot be read we say so (`degraded: true`) instead of returning zeros
+ * that look like real data.
  */
 const express = require('express');
 const { getDb, getAdmin } = require('../utils/firestoreAdmin');
 const { requireAdmin, adminEmailOf, isAdminEmail, OWNER_EMAILS, ADMINS } = require('../middleware/adminAuth');
-const { resolvePlan } = require('../middleware/aiAccess');
+const {
+  resolvePlan,
+  DAILY_MESSAGES_FREE,
+  DAILY_AUX_FREE,
+  TRIAL_DAYS,
+  REQUIRE_PREMIUM,
+} = require('../middleware/aiAccess');
+const { getAiStats, MODEL, MODELS, hasKey } = require('../utils/geminiClient');
+const { getAuthStats } = require('../middleware/auth');
 
 const router = express.Router();
+
+const USERS = 'users';
+const REPORTS = 'ai_reports';
+const DEVICES = 'trial_devices';
+
+const dayStr = (d) => d.toISOString().slice(0, 10);
+
+function toDate(v) {
+  if (v == null) return null;
+  if (typeof v.toDate === 'function') return v.toDate();
+  if (v instanceof Date) return v;
+  if (typeof v._seconds === 'number') return new Date(v._seconds * 1000);
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const iso = (v) => {
+  const d = toDate(v);
+  return d ? d.toISOString() : null;
+};
+
+/** Collection size via the aggregate API, with a bounded fallback. */
+async function countOf(db, name, filter) {
+  try {
+    let q = db.collection(name);
+    if (filter) q = q.where(filter[0], filter[1], filter[2]);
+    const agg = await q.count().get();
+    return agg.data().count;
+  } catch (_) {
+    try {
+      let q = db.collection(name);
+      if (filter) q = q.where(filter[0], filter[1], filter[2]);
+      const snap = await q.limit(1000).get();
+      return snap.size;
+    } catch (_e) {
+      return null;
+    }
+  }
+}
 
 /**
  * Whether the caller is an admin (app shows/hides the Admin entry from this).
@@ -57,7 +109,7 @@ router.post('/admins', async (req, res) => {
   }
 });
 
-/** Revoke admin. Owners (from env) can't be removed here. */
+/** Revoke admin. Owners (from env) cannot be removed here. */
 router.delete('/admins/:email', async (req, res) => {
   const email = (req.params.email || '').trim().toLowerCase();
   if (OWNER_EMAILS.includes(email)) return res.status(400).json({ success: false, error: 'CANNOT_REMOVE_OWNER' });
@@ -71,22 +123,222 @@ router.delete('/admins/:email', async (req, res) => {
   }
 });
 
-/** Basic stats for the dashboard. */
+/**
+ * Dashboard numbers. One pass over the users collection produces the plan mix,
+ * signups, active learners and today's AI usage; the rest comes from the
+ * reports/devices collections and this process's own AI + auth counters.
+ */
 router.get('/stats', async (req, res) => {
   const db = getDb();
-  if (!db) return res.json({ success: true, data: { total: 0, premium: 0, trial: 0, free: 0, degraded: true } });
+  const config = {
+    dailyMessagesFree: DAILY_MESSAGES_FREE,
+    dailyAuxFree: DAILY_AUX_FREE,
+    trialDays: TRIAL_DAYS,
+    requirePremium: REQUIRE_PREMIUM,
+    geminiModel: MODEL,
+    geminiModels: MODELS,
+    geminiLive: hasKey(),
+  };
+  if (!db) {
+    return res.json({ success: true, data: { degraded: true, config, ai: getAiStats(), auth: getAuthStats() } });
+  }
+
   try {
-    const snap = await db.collection('users').get();
-    let total = 0, premium = 0, trial = 0, free = 0;
     const now = new Date();
-    snap.forEach((d) => {
-      total++;
-      const p = resolvePlan(d.data(), now);
-      if (p === 'premium') premium++;
-      else if (p === 'trial') trial++;
-      else free++;
+    const today = dayStr(now);
+    const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const snap = await db.collection(USERS).get();
+    const s = {
+      total: 0, premium: 0, trial: 0, free: 0,
+      premiumVerified: 0, premiumGranted: 0,
+      newToday: 0, new7d: 0, new30d: 0,
+      activeToday: 0, active7d: 0,
+      messagesToday: 0, auxToday: 0, adRewardsToday: 0,
+      messagesAllTime: 0, atLimitToday: 0, withEmail: 0,
+    };
+
+    snap.forEach((doc) => {
+      const u = doc.data();
+      s.total++;
+
+      const plan = resolvePlan(u, now);
+      if (plan === 'premium') {
+        s.premium++;
+        if (u.premiumVerified === true) s.premiumVerified++;
+        else s.premiumGranted++;
+      } else if (plan === 'trial') s.trial++;
+      else s.free++;
+
+      const created = toDate(u.createdAt);
+      if (created) {
+        if (dayStr(created) === today) s.newToday++;
+        if (created >= since7) s.new7d++;
+        if (created >= since30) s.new30d++;
+      }
+
+      const usedToday = u.dailyAiDate === today ? Number(u.dailyAiUsed) || 0 : 0;
+      if (usedToday > 0) s.activeToday++;
+      s.messagesToday += usedToday;
+      if (plan === 'free' && usedToday >= DAILY_MESSAGES_FREE) s.atLimitToday++;
+
+      // lastActive is written by the app's progress sync as YYYY-MM-DD.
+      const last = toDate(u.lastSeenAt) || toDate(u.lastActive) || toDate(u.dailyAiDate);
+      if (last && last >= since7) s.active7d++;
+
+      s.auxToday += u.dailyAuxDate === today ? Number(u.dailyAuxUsed) || 0 : 0;
+      s.adRewardsToday += u.bonusDate === today ? Number(u.adRewardsToday) || 0 : 0;
+      s.messagesAllTime += Number(u.totalAiUsed) || 0;
+      if (u.email) s.withEmail++;
     });
-    res.json({ success: true, data: { total, premium, trial, free } });
+
+    const [reportsTotal, reportsNew, trialDevices] = await Promise.all([
+      countOf(db, REPORTS),
+      countOf(db, REPORTS, ['status', '==', 'new']),
+      countOf(db, DEVICES),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        ...s,
+        reportsTotal,
+        reportsNew,
+        trialDevices,
+        ai: getAiStats(),
+        auth: getAuthStats(),
+        config,
+        generatedAt: now.toISOString(),
+      },
+    });
+  } catch (e) {
+    console.warn('[admin] stats error:', e.message);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+/**
+ * Recent learners, newest first. Emails come from Firebase Auth (batched, max
+ * 100 per call) so the list shows real accounts even for docs written before we
+ * started storing the email alongside the usage counters.
+ */
+router.get('/users', async (req, res) => {
+  const db = getDb();
+  const a = getAdmin();
+  if (!db) return res.json({ success: true, data: { users: [], degraded: true } });
+
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
+  try {
+    let docs = [];
+    try {
+      const snap = await db.collection(USERS).orderBy('createdAt', 'desc').limit(limit).get();
+      docs = snap.docs;
+    } catch (_) {
+      docs = [];
+    }
+    if (docs.length < limit) {
+      // Docs written before we started stamping createdAt (progress sync used to
+      // create them) are invisible to orderBy — top the page up so the list
+      // shows every real learner, not just the recently provisioned ones.
+      const seen = new Set(docs.map((d) => d.id));
+      const extra = await db.collection(USERS).limit(limit).get();
+      extra.docs.forEach((d) => {
+        if (!seen.has(d.id) && docs.length < limit) docs.push(d);
+      });
+    }
+
+    // Batch-resolve emails for docs that do not carry one yet. A uid with no
+    // Firebase Auth account is not a learner at all — it is a leftover doc from
+    // a curl/smoke check, so we flag it instead of showing it as a real user.
+    const missing = docs.filter((d) => !d.data().email).map((d) => ({ uid: d.id }));
+    const emails = new Map();
+    const known = new Set();
+    if (a && missing.length) {
+      try {
+        const result = await a.auth().getUsers(missing.slice(0, 100));
+        result.users.forEach((u) => {
+          known.add(u.uid);
+          emails.set(u.uid, (u.email || '').toLowerCase() || null);
+        });
+      } catch (e) {
+        console.warn('[admin] getUsers error:', e.message);
+      }
+    }
+
+    const now = new Date();
+    const today = dayStr(now);
+    const users = docs.map((d) => {
+      const u = d.data();
+      return {
+        uid: d.id,
+        email: u.email || emails.get(d.id) || null,
+        displayName: u.displayName || null,
+        // No email on the doc AND no Auth account behind the uid → leftover
+        // test document, not a person.
+        hasAccount: !!(u.email || known.has(d.id)),
+        plan: resolvePlan(u, now),
+        premiumVerified: u.premiumVerified === true,
+        level: u.level || null,
+        streak: Number(u.streak) || 0,
+        xp: Number(u.xp) || 0,
+        savedWords: Array.isArray(u.savedWords) ? u.savedWords.length : 0,
+        messagesToday: u.dailyAiDate === today ? Number(u.dailyAiUsed) || 0 : 0,
+        messagesAllTime: Number(u.totalAiUsed) || 0,
+        createdAt: iso(u.createdAt),
+        lastSeenAt: iso(u.lastSeenAt) || iso(u.lastActive),
+        trialEndsAt: iso(u.trialEndsAt),
+        premiumExpiry: iso(u.premiumExpiry),
+      };
+    });
+
+    res.json({ success: true, data: { users, count: users.length } });
+  } catch (e) {
+    console.warn('[admin] users error:', e.message);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+/**
+ * Reported AI replies (Play's generative-AI policy expects us to act on these).
+ * Newest first; `status` flips to 'reviewed' via POST /admin/reports/:id/review.
+ */
+router.get('/reports', async (req, res) => {
+  const db = getDb();
+  if (!db) return res.json({ success: true, data: { reports: [], degraded: true } });
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+    const snap = await db.collection(REPORTS).orderBy('createdAt', 'desc').limit(limit).get();
+    const reports = snap.docs.map((d) => {
+      const r = d.data();
+      return {
+        id: d.id,
+        text: r.text || '',
+        reason: r.reason || 'other',
+        note: r.note || '',
+        scenarioId: r.scenarioId || '',
+        email: r.email || null,
+        status: r.status || 'new',
+        createdAt: iso(r.createdAt),
+      };
+    });
+    res.json({ success: true, data: { reports, newCount: reports.filter((r) => r.status === 'new').length } });
+  } catch (e) {
+    console.warn('[admin] reports error:', e.message);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+/** Mark a report reviewed (so the queue shows what still needs attention). */
+router.post('/reports/:id/review', async (req, res) => {
+  const db = getDb();
+  if (!db) return res.status(503).json({ success: false, error: 'NO_DB' });
+  try {
+    await db.collection(REPORTS).doc(req.params.id).set(
+      { status: 'reviewed', reviewedBy: req.adminEmail, reviewedAt: new Date() },
+      { merge: true },
+    );
+    res.json({ success: true, data: { id: req.params.id, status: 'reviewed' } });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -103,7 +355,7 @@ router.post('/grant-premium', async (req, res) => {
   try {
     const user = await a.auth().getUserByEmail(email);
     const premiumExpiry = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-    await db.collection('users').doc(user.uid).set(
+    await db.collection(USERS).doc(user.uid).set(
       { planType: 'premium', premiumExpiry, premiumVerified: false, grantedByAdmin: req.adminEmail, grantedAt: new Date() },
       { merge: true },
     );

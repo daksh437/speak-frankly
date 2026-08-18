@@ -71,6 +71,15 @@ function runMode(mode) {
         const premiumNoCreds = await axios.post(`${base}/premium/activate`, { purchaseToken: 'x' }, any);
         check('POST /premium/activate with no credentials → 401', premiumNoCreds.status === 401);
 
+        const reportNoCreds = await axios.post(`${base}/report`, { text: 'bad reply' }, any);
+        check('POST /report with no credentials → 401', reportNoCreds.status === 401);
+
+        const reportOk = await axios.post(`${base}/report`, { text: 'bad reply', reason: 'offensive' }, claimed);
+        check('POST /report signed in → accepted', reportOk.status === 200 && reportOk.data?.data?.ok === true);
+
+        const reportEmpty = await axios.post(`${base}/report`, { text: '   ' }, claimed);
+        check('POST /report with empty text → 400', reportEmpty.status === 400);
+
         const me = await axios.get(`${base}/admin/me`, claimed);
         check('GET /admin/me with a claimed uid → not admin', me.data?.data?.isAdmin === false);
         check('GET /admin/me with a claimed uid → leaks no email', me.data?.data?.email === null);

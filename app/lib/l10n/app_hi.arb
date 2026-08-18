@@ -142,5 +142,17 @@
   "youSaid": "आपने कहा",
   "scoreExcellent": "बहुत बढ़िया! 🌟",
   "scoreGood": "अच्छा, ऐसे ही बढ़ते रहें 👍",
-  "scoreKeepPracticing": "प्रैक्टिस जारी रखें 🔁"
+  "scoreKeepPracticing": "प्रैक्टिस जारी रखें 🔁",
+
+  "cancelLabel": "रद्द करें",
+  "reportLabel": "रिपोर्ट",
+  "reportTitle": "इस जवाब की रिपोर्ट करें",
+  "reportSubtitle": "बताएँ क्या ग़लत है — हम इसकी जाँच करेंगे।",
+  "reasonOffensive": "आपत्तिजनक या अनुचित",
+  "reasonWrong": "ग़लत या भ्रामक",
+  "reasonUnsafe": "असुरक्षित या हानिकारक",
+  "reasonOther": "कुछ और",
+  "reportThanks": "धन्यवाद — हम इस जवाब की जाँच करेंगे।",
+  "reportFailed": "रिपोर्ट नहीं भेजी जा सकी। कृपया फिर कोशिश करें।",
+  "translationUnavailable": "अनुवाद अभी उपलब्ध नहीं है।"
 }

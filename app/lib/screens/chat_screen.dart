@@ -261,7 +261,7 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: _messages.length + (_sending ? 1 : 0),
               itemBuilder: (context, i) {
                 if (i >= _messages.length) return _TypingBubble(accent: _accent);
-                return _MessageBubble(message: _messages[i], accent: _accent);
+                return _MessageBubble(message: _messages[i], accent: _accent, scenarioId: widget.scenario.id);
               },
             ),
           ),
@@ -280,7 +280,8 @@ class _ChatScreenState extends State<ChatScreen> {
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final Color accent;
-  const _MessageBubble({required this.message, required this.accent});
+  final String scenarioId;
+  const _MessageBubble({required this.message, required this.accent, required this.scenarioId});
 
   @override
   Widget build(BuildContext context) {
@@ -313,7 +314,7 @@ class _MessageBubble extends StatelessWidget {
               ? Text(message.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.35))
               : _TappableWords(text: message.text, color: scheme.onSurface),
         ),
-        if (!isUser) _TutorActions(text: message.text, accent: accent),
+        if (!isUser) _TutorActions(text: message.text, accent: accent, scenarioId: scenarioId),
         ...message.corrections.map((c) => _CorrectionCard(correction: c)),
         const SizedBox(height: 10),
       ],
@@ -321,12 +322,15 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-/// Under each tutor line: hear it aloud (🔊) and translate it (🌐) into the
-/// learner's native language.
+/// Under each tutor line: hear it aloud (🔊), translate it (🌐) into the
+/// learner's native language, and report it (⚑) if the AI said something
+/// offensive or unsafe — the in-app reporting path Play's generative-AI policy
+/// requires. Reports land in Firestore and are reviewed from the admin panel.
 class _TutorActions extends StatefulWidget {
   final String text;
   final Color accent;
-  const _TutorActions({required this.text, required this.accent});
+  final String scenarioId;
+  const _TutorActions({required this.text, required this.accent, required this.scenarioId});
   @override
   State<_TutorActions> createState() => _TutorActionsState();
 }
@@ -335,6 +339,8 @@ class _TutorActionsState extends State<_TutorActions> {
   String? _translation;
   bool _loading = false;
   bool _show = false;
+  bool _reported = false;
+  bool _reporting = false;
 
   String get _target {
     final n = UserSession.instance.nativeLanguage.trim();
@@ -356,14 +362,76 @@ class _TutorActionsState extends State<_TutorActions> {
     });
     if (t.isEmpty && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Translation not available right now.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.translationUnavailable)),
       );
     }
+  }
+
+  /// Ask which kind of problem it is, then send the report. One tap per reason
+  /// (no extra confirm step) so reporting something offensive is never a chore.
+  Future<void> _report() async {
+    if (_reporting || _reported) return;
+    final l = AppLocalizations.of(context)!;
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+              child: Text(l.reportTitle, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                l.reportSubtitle,
+                style: TextStyle(fontSize: 13, color: Theme.of(sheetContext).colorScheme.onSurfaceVariant),
+              ),
+            ),
+            _ReportReasonTile(icon: Icons.report_gmailerrorred_rounded, label: l.reasonOffensive, value: 'offensive'),
+            _ReportReasonTile(icon: Icons.dangerous_outlined, label: l.reasonUnsafe, value: 'unsafe'),
+            _ReportReasonTile(icon: Icons.error_outline_rounded, label: l.reasonWrong, value: 'wrong'),
+            _ReportReasonTile(icon: Icons.more_horiz_rounded, label: l.reasonOther, value: 'other'),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                child: TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: Text(l.cancelLabel),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (reason == null || !mounted) return;
+
+    setState(() => _reporting = true);
+    final ok = await ApiService.instance.reportAiContent(
+      text: widget.text,
+      reason: reason,
+      scenarioId: widget.scenarioId,
+    );
+    AnalyticsService.log('ai_content_reported', {'reason': reason});
+    if (!mounted) return;
+    setState(() {
+      _reporting = false;
+      _reported = ok;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? l.reportThanks : l.reportFailed)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
     // English-immersion learners don't need an English→English translation.
     final showTranslate = _target.toLowerCase() != 'english';
     return Padding(
@@ -375,7 +443,7 @@ class _TutorActionsState extends State<_TutorActions> {
             children: [
               _ActionChip(
                 icon: Icons.volume_up_rounded,
-                label: 'Listen',
+                label: l.listenLabel,
                 color: widget.accent,
                 onTap: () => SpeechService.instance.speak(widget.text),
               ),
@@ -389,6 +457,16 @@ class _TutorActionsState extends State<_TutorActions> {
                   active: _show && (_translation?.isNotEmpty ?? false),
                   onTap: _translate,
                 ),
+              const SizedBox(width: 6),
+              // Muted on purpose: always available, never competing with the
+              // learning actions above.
+              _ActionChip(
+                icon: _reported ? Icons.check_rounded : Icons.flag_outlined,
+                label: l.reportLabel,
+                color: scheme.onSurfaceVariant,
+                loading: _reporting,
+                onTap: _report,
+              ),
             ],
           ),
           if (_show && (_translation?.isNotEmpty ?? false))
@@ -405,6 +483,24 @@ class _TutorActionsState extends State<_TutorActions> {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// One reason row in the report sheet; popping with its value sends the report.
+class _ReportReasonTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _ReportReasonTile({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      leading: Icon(icon, size: 21, color: Theme.of(context).colorScheme.onSurfaceVariant),
+      title: Text(label, style: const TextStyle(fontSize: 14.5)),
+      onTap: () => Navigator.of(context).pop(value),
     );
   }
 }

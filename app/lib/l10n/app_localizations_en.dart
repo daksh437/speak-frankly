@@ -413,4 +413,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scoreKeepPracticing => 'Keep practicing 🔁';
+
+  @override
+  String get cancelLabel => 'Cancel';
+
+  @override
+  String get reportLabel => 'Report';
+
+  @override
+  String get reportTitle => 'Report this reply';
+
+  @override
+  String get reportSubtitle => 'Tell us what\'s wrong and we\'ll review it.';
+
+  @override
+  String get reasonOffensive => 'Offensive or inappropriate';
+
+  @override
+  String get reasonWrong => 'Incorrect or misleading';
+
+  @override
+  String get reasonUnsafe => 'Unsafe or harmful';
+
+  @override
+  String get reasonOther => 'Something else';
+
+  @override
+  String get reportThanks => 'Thanks — we\'ll review this reply.';
+
+  @override
+  String get reportFailed => 'Couldn\'t send the report. Please try again.';
+
+  @override
+  String get translationUnavailable => 'Translation not available right now.';
 }

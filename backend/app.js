@@ -8,6 +8,7 @@
  *   GET  /access            learner's plan + remaining messages
  *   POST /tutor/chat        AI conversation turn (metered)
  *   POST /tutor/feedback    end-of-session report (metered)
+ *   POST /report            report offensive AI output (Play GenAI policy)
  *
  * Runs with zero external services: no GEMINI_API_KEY → MOCK tutor; no Firebase
  * → degraded (allow-through) mode. Wire keys via .env when ready.
@@ -76,6 +77,7 @@ app.use('/custom', customRoutes);
 app.use('/progress', progressRoutes);
 app.use('/games', gamesRoutes);
 app.use('/vocab', vocabRoutes);
+app.use('/report', require('./routes/report'));
 app.use('/premium', require('./routes/premium'));
 app.use('/translate', require('./routes/translate'));
 app.use('/admin', require('./routes/admin'));

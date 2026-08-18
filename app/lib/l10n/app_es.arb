@@ -142,5 +142,17 @@
   "youSaid": "Dijiste",
   "scoreExcellent": "¡Excelente! 🌟",
   "scoreGood": "¡Bien, sigue así! 👍",
-  "scoreKeepPracticing": "Sigue practicando 🔁"
+  "scoreKeepPracticing": "Sigue practicando 🔁",
+
+  "cancelLabel": "Cancelar",
+  "reportLabel": "Reportar",
+  "reportTitle": "Reportar esta respuesta",
+  "reportSubtitle": "Dinos qué está mal y lo revisaremos.",
+  "reasonOffensive": "Ofensiva o inapropiada",
+  "reasonWrong": "Incorrecta o engañosa",
+  "reasonUnsafe": "Insegura o dañina",
+  "reasonOther": "Otra cosa",
+  "reportThanks": "Gracias, revisaremos esta respuesta.",
+  "reportFailed": "No se pudo enviar el reporte. Inténtalo de nuevo.",
+  "translationUnavailable": "La traducción no está disponible ahora."
 }

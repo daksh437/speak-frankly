@@ -148,5 +148,17 @@
   "youSaid": "You said",
   "scoreExcellent": "Excellent! 🌟",
   "scoreGood": "Good, keep going 👍",
-  "scoreKeepPracticing": "Keep practicing 🔁"
+  "scoreKeepPracticing": "Keep practicing 🔁",
+
+  "cancelLabel": "Cancel",
+  "reportLabel": "Report",
+  "reportTitle": "Report this reply",
+  "reportSubtitle": "Tell us what's wrong and we'll review it.",
+  "reasonOffensive": "Offensive or inappropriate",
+  "reasonWrong": "Incorrect or misleading",
+  "reasonUnsafe": "Unsafe or harmful",
+  "reasonOther": "Something else",
+  "reportThanks": "Thanks — we'll review this reply.",
+  "reportFailed": "Couldn't send the report. Please try again.",
+  "translationUnavailable": "Translation not available right now."
 }

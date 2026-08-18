@@ -883,6 +883,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep practicing 🔁'**
   String get scoreKeepPracticing;
+
+  /// No description provided for @cancelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancelLabel;
+
+  /// No description provided for @reportLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get reportLabel;
+
+  /// No description provided for @reportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report this reply'**
+  String get reportTitle;
+
+  /// No description provided for @reportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us what\'s wrong and we\'ll review it.'**
+  String get reportSubtitle;
+
+  /// No description provided for @reasonOffensive.
+  ///
+  /// In en, this message translates to:
+  /// **'Offensive or inappropriate'**
+  String get reasonOffensive;
+
+  /// No description provided for @reasonWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect or misleading'**
+  String get reasonWrong;
+
+  /// No description provided for @reasonUnsafe.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsafe or harmful'**
+  String get reasonUnsafe;
+
+  /// No description provided for @reasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Something else'**
+  String get reasonOther;
+
+  /// No description provided for @reportThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks — we\'ll review this reply.'**
+  String get reportThanks;
+
+  /// No description provided for @reportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the report. Please try again.'**
+  String get reportFailed;
+
+  /// No description provided for @translationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation not available right now.'**
+  String get translationUnavailable;
 }
 
 class _AppLocalizationsDelegate

@@ -4,6 +4,13 @@
  * Usage: node tests/tutor.smoke.test.js
  */
 process.env.DEV_SKIP_LIMITS = 'true';
+// Hermetic: without these blanked, dotenv hands the test the REAL service
+// account and Gemini key — so every `npm test` used to write junk user docs
+// (test-user-1, deploy-smoke-test-…) into production Firestore and spend AI
+// quota on a canned chat turn.
+process.env.FIREBASE_SERVICE_ACCOUNT_JSON = '';
+process.env.GOOGLE_APPLICATION_CREDENTIALS = '';
+process.env.GEMINI_API_KEY = '';
 const axios = require('axios');
 const { app } = require('../app');
 

@@ -412,4 +412,37 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get scoreKeepPracticing => 'प्रैक्टिस जारी रखें 🔁';
+
+  @override
+  String get cancelLabel => 'रद्द करें';
+
+  @override
+  String get reportLabel => 'रिपोर्ट';
+
+  @override
+  String get reportTitle => 'इस जवाब की रिपोर्ट करें';
+
+  @override
+  String get reportSubtitle => 'बताएँ क्या ग़लत है — हम इसकी जाँच करेंगे।';
+
+  @override
+  String get reasonOffensive => 'आपत्तिजनक या अनुचित';
+
+  @override
+  String get reasonWrong => 'ग़लत या भ्रामक';
+
+  @override
+  String get reasonUnsafe => 'असुरक्षित या हानिकारक';
+
+  @override
+  String get reasonOther => 'कुछ और';
+
+  @override
+  String get reportThanks => 'धन्यवाद — हम इस जवाब की जाँच करेंगे।';
+
+  @override
+  String get reportFailed => 'रिपोर्ट नहीं भेजी जा सकी। कृपया फिर कोशिश करें।';
+
+  @override
+  String get translationUnavailable => 'अनुवाद अभी उपलब्ध नहीं है।';
 }
