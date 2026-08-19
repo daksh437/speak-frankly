@@ -50,7 +50,8 @@ On a **physical phone**, replace with your PC's LAN IP, e.g. `http://192.168.1.2
 
 ## What's next (not built yet)
 
-- Pronunciation *scoring* (speech-to-text exists; grading what was said does not).
+- Real pronunciation scoring. `pronunciationScore` compares the speech-recogniser's transcript against the target **word by word**, so it measures whether you were understood — not how you sounded. Phonemes, stress and intonation are ungraded, and a learner with a heavy accent that the recogniser still parses scores 100.
+- Any real imagery. Scenarios and the picture-match game are carried entirely by emoji; `assets/` holds only the logo and icon.
 - iOS build (Android only today — the iOS AdMob unit is still a placeholder).
 - Real AdMob banner + interstitial units (see `app/lib/services/ad_service.dart` — these are still Google TEST units, so they earn nothing).
 
