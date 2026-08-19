@@ -59,6 +59,15 @@ if (!IS_PROD) {
 }
 
 app.get('/', (_req, res) => res.json({ success: true, message: 'Speak Frankly Backend API' }));
+
+// WHICH BUILD IS THIS? Render sets RENDER_GIT_COMMIT on every deploy. Without
+// it there is no way to tell a deployed change from an undeployed one from
+// outside — this service once ran commits behind main for days because /health
+// looked identical either way. `startedAt` separates "my push went live" from
+// "the free instance just woke up from a spin-down".
+const COMMIT = (process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 7) || 'unknown';
+const STARTED_AT = new Date().toISOString();
+
 /**
  * Liveness + operational truth. `ai` shows whether the model chain is actually
  * serving (fallbacks/failed > 0 means learners are getting canned replies), and
@@ -69,6 +78,8 @@ app.get('/health', (_req, res) =>
   res.json({
     status: 'ok',
     success: true,
+    commit: COMMIT,
+    startedAt: STARTED_AT,
     ai: getAiStats(),
     auth: getAuthStats(),
   }));

@@ -33,6 +33,9 @@ function check(name, cond) {
   try {
     const health = await axios.get(`${base}/health`);
     check('GET /health → ok', health.data.success === true);
+    // Deploys are only verifiable from outside if /health says which build it is.
+    check('GET /health → reports the build', typeof health.data.commit === 'string' && health.data.commit.length > 0);
+    check('GET /health → reports when it started', !Number.isNaN(Date.parse(health.data.startedAt || '')));
 
     const scenarios = await axios.get(`${base}/scenarios`);
     check('GET /scenarios → non-empty array', Array.isArray(scenarios.data.data) && scenarios.data.data.length > 0);
