@@ -42,7 +42,15 @@ const iso = (v) => {
   return d ? d.toISOString() : null;
 };
 
-/** Collection size via the aggregate API, with a bounded fallback. */
+/**
+ * Collection size via the aggregate API, with a bounded fallback.
+ *
+ * Returns null when the real count is unknown — including when the fallback
+ * scan hits its own cap. Returning the cap would show "1000" as though it were
+ * the true total; null renders as a dash, which is the honest answer.
+ */
+const COUNT_SCAN_CAP = 1000;
+
 async function countOf(db, name, filter) {
   try {
     let q = db.collection(name);
@@ -53,8 +61,8 @@ async function countOf(db, name, filter) {
     try {
       let q = db.collection(name);
       if (filter) q = q.where(filter[0], filter[1], filter[2]);
-      const snap = await q.limit(1000).get();
-      return snap.size;
+      const snap = await q.limit(COUNT_SCAN_CAP).get();
+      return snap.size >= COUNT_SCAN_CAP ? null : snap.size;
     } catch (_e) {
       return null;
     }
@@ -181,7 +189,14 @@ router.get('/stats', async (req, res) => {
       const usedToday = u.dailyAiDate === today ? Number(u.dailyAiUsed) || 0 : 0;
       if (usedToday > 0) s.activeToday++;
       s.messagesToday += usedToday;
-      if (plan === 'free' && usedToday >= DAILY_MESSAGES_FREE) s.atLimitToday++;
+      // A learner who watched a rewarded ad has a HIGHER cap today, so compare
+      // against their effective limit — measuring everyone against the base
+      // free limit counted ad-watchers as blocked while they still had messages
+      // left, inflating the "hit daily limit" (i.e. upgrade prompt) number.
+      const bonusToday = (u.bonusDate === today && typeof u.bonusMessages === 'number')
+        ? Math.max(0, u.bonusMessages)
+        : 0;
+      if (plan === 'free' && usedToday >= DAILY_MESSAGES_FREE + bonusToday) s.atLimitToday++;
 
       // lastActive is written by the app's progress sync as YYYY-MM-DD.
       const last = toDate(u.lastSeenAt) || toDate(u.lastActive) || toDate(u.dailyAiDate);
