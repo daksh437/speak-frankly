@@ -414,6 +414,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get scoreKeepPracticing => 'प्रैक्टिस जारी रखें 🔁';
 
   @override
+  String get wordByWord => 'शब्द दर शब्द';
+
+  @override
   String get cancelLabel => 'रद्द करें';
 
   @override

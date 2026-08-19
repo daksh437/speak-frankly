@@ -884,6 +884,12 @@ abstract class AppLocalizations {
   /// **'Keep practicing 🔁'**
   String get scoreKeepPracticing;
 
+  /// No description provided for @wordByWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Word by word'**
+  String get wordByWord;
+
   /// No description provided for @cancelLabel.
   ///
   /// In en, this message translates to:

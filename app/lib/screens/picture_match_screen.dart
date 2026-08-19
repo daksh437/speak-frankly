@@ -117,14 +117,31 @@ class _PictureMatchScreenState extends State<PictureMatchScreen> {
         const SizedBox(height: 12),
         Text('Which sentence matches?', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13.5)),
         const SizedBox(height: 12),
+        // The "picture": an emoji scene dressed as an illustration — a soft
+        // radial wash, a tinted ring and a lifted shadow so it reads as an
+        // intentional image, not a bare glyph. Still fully offline, no assets.
         Container(
-          width: 160,
-          height: 160,
+          width: 176,
+          height: 176,
           decoration: BoxDecoration(
-            color: scheme.primaryContainer.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(28),
+            gradient: RadialGradient(
+              colors: [
+                scheme.primaryContainer.withValues(alpha: 0.85),
+                scheme.primaryContainer.withValues(alpha: 0.35),
+              ],
+              radius: 0.9,
+            ),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: scheme.primary.withValues(alpha: 0.18), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: scheme.primary.withValues(alpha: 0.18),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-          child: Center(child: Text(item.$1, style: const TextStyle(fontSize: 90))),
+          child: Center(child: Text(item.$1, style: const TextStyle(fontSize: 96))),
         ),
         const SizedBox(height: 20),
         Expanded(

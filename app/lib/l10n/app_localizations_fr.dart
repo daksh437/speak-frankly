@@ -421,6 +421,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get scoreKeepPracticing => 'Continuez à pratiquer 🔁';
 
   @override
+  String get wordByWord => 'Mot à mot';
+
+  @override
   String get cancelLabel => 'Annuler';
 
   @override

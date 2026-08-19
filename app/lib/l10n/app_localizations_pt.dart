@@ -415,6 +415,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get scoreKeepPracticing => 'Continue praticando 🔁';
 
   @override
+  String get wordByWord => 'Palavra por palavra';
+
+  @override
   String get cancelLabel => 'Cancelar';
 
   @override

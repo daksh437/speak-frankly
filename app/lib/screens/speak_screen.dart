@@ -23,6 +23,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
   int _index = 0;
   String _recognized = '';
   int? _score;
+  PronunciationResult? _result;
   bool _scored = false;
 
   String get _phrase => _phrases![_index];
@@ -44,6 +45,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
       _index = 0;
       _recognized = '';
       _score = null;
+      _result = null;
       _scored = false;
     });
   }
@@ -54,6 +56,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
     setState(() {
       _recognized = '';
       _score = null;
+      _result = null;
       _scored = false;
     });
     final ok = await SpeechService.instance.startListening(
@@ -72,11 +75,19 @@ class _SpeakScreenState extends State<SpeakScreen> {
 
   void _evaluate(String said) {
     _scored = true;
-    final score = pronunciationScore(_phrase, said);
+    final result = assessPronunciation(
+      _phrase,
+      said,
+      confidence: SpeechService.instance.lastConfidence,
+    );
+    final score = result.score;
     final xp = score >= 85 ? 10 : (score >= 60 ? 6 : 2);
     GamificationService.instance.recordSpeaking(xpGain: xp);
     AnalyticsService.log('speaking_attempt', {'score': score});
-    setState(() => _score = score);
+    setState(() {
+      _score = score;
+      _result = result;
+    });
   }
 
   void _next() {
@@ -85,6 +96,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
       _index = (_index + 1) % _phrases!.length;
       _recognized = '';
       _score = null;
+      _result = null;
       _scored = false;
     });
   }
@@ -148,7 +160,7 @@ class _SpeakScreenState extends State<SpeakScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              if (_recognized.isNotEmpty || _score != null) _ResultCard(recognized: _recognized, score: _score),
+              if (_recognized.isNotEmpty || _score != null) _ResultCard(recognized: _recognized, score: _score, result: _result),
               const Spacer(),
               // Mic button
               AnimatedBuilder(
@@ -255,7 +267,8 @@ class _WavePainter extends CustomPainter {
 class _ResultCard extends StatelessWidget {
   final String recognized;
   final int? score;
-  const _ResultCard({required this.recognized, required this.score});
+  final PronunciationResult? result;
+  const _ResultCard({required this.recognized, required this.score, this.result});
 
   @override
   Widget build(BuildContext context) {
@@ -294,10 +307,51 @@ class _ResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(recognized.isEmpty ? '…' : '"$recognized"', style: const TextStyle(fontSize: 15)),
+          if (result != null && result!.words.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(l.wordByWord, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final w in result!.words) _WordChip(w)],
+            ),
+          ],
           if (label.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700)),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One target word, tinted by how well it was pronounced: green = clear,
+/// amber = close (heard, but slightly off), red = missed.
+class _WordChip extends StatelessWidget {
+  final WordScore word;
+  const _WordChip(this.word);
+
+  @override
+  Widget build(BuildContext context) {
+    final (Color c, IconData? icon) = switch (word.verdict) {
+      WordVerdict.good => (AppColors.success, Icons.check_rounded),
+      WordVerdict.close => (const Color(0xFFF59E0B), null),
+      WordVerdict.missed => (const Color(0xFFEF4444), Icons.close_rounded),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: c.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[Icon(icon, size: 13, color: c), const SizedBox(width: 3)],
+          Text(word.word, style: TextStyle(color: c, fontWeight: FontWeight.w600, fontSize: 13.5)),
         ],
       ),
     );
