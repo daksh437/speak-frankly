@@ -3,23 +3,24 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-/// Rewarded ads: free learners can watch a short ad for bonus daily messages.
-/// Only rewarded ads are used (opt-in) — no banners/interstitials.
+/// Ads for free learners: an opt-in rewarded ad (watch → bonus daily messages),
+/// a banner on Home/Words, and an interstitial at session end.
 ///
-/// Android uses the real "Bonus messages" rewarded unit. (iOS is not shipped;
-/// its id stays a Google TEST unit as a harmless placeholder.)
+/// All three Android units are the REAL Speak Frankly ones; the AdMob app id
+/// that owns them (`ca-app-pub-6637437102244163~5954084111`) lives in
+/// AndroidManifest.xml. iOS is not shipped, so its rewarded id stays a Google
+/// TEST unit as a harmless placeholder.
 class AdService {
   static final AdService instance = AdService._();
   AdService._();
 
-  // Real AdMob rewarded unit (Speak Frankly · Android). App ID is in AndroidManifest.xml.
-  static const String _androidTestUnit = 'ca-app-pub-6637437102244163/2959275179';
-  static const String _iosTestUnit = 'ca-app-pub-3940256099942544/1712485313';
+  // Real AdMob units — Speak Frankly · Android.
+  static const String _androidRewardedUnit = 'ca-app-pub-6637437102244163/2959275179';
+  static const String _bannerUnit = 'ca-app-pub-6637437102244163/3664739762';
+  static const String _interstitialUnit = 'ca-app-pub-6637437102244163/7731872086';
 
-  // Banner + interstitial — TEST units for now. REPLACE with real AdMob units
-  // (create a Banner + an Interstitial ad unit for Speak Frankly, then swap).
-  static const String _bannerTestUnit = 'ca-app-pub-3940256099942544/6300978111';
-  static const String _interstitialTestUnit = 'ca-app-pub-3940256099942544/1033173712';
+  // iOS placeholder (Google's test unit) — the iOS build isn't shipped.
+  static const String _iosRewardedUnit = 'ca-app-pub-3940256099942544/1712485313';
 
   // Don't show interstitials more often than this (protects UX + retention).
   static const int _minInterstitialGapMs = 180 * 1000; // 3 minutes
@@ -30,9 +31,9 @@ class AdService {
   InterstitialAd? _interstitial;
   int _lastInterstitialMs = 0;
 
-  String get _unitId => Platform.isIOS ? _iosTestUnit : _androidTestUnit;
+  String get _unitId => Platform.isIOS ? _iosRewardedUnit : _androidRewardedUnit;
   bool get sdkReady => _sdkReady;
-  String get bannerUnitId => _bannerTestUnit;
+  String get bannerUnitId => _bannerUnit;
 
   /// Initialize the Mobile Ads SDK (call once at startup, non-blocking).
   Future<void> init() async {
@@ -49,7 +50,7 @@ class AdService {
   void _loadInterstitial() {
     if (!_sdkReady || _interstitial != null) return;
     InterstitialAd.load(
-      adUnitId: _interstitialTestUnit,
+      adUnitId: _interstitialUnit,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) => _interstitial = ad,
