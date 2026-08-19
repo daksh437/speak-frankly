@@ -381,6 +381,9 @@ function wrapAiHandler(handler, buildFallback) {
       .catch((error) => {
         if (res.headersSent) return;
         console.error('[AI Controller Error]', req.path, error?.message || error);
+        // The learner is getting canned text, not a real tutor reply — give the
+        // reserved message back so a bad AI day doesn't eat their daily quota.
+        if (req._aiReserved) releaseAiUsage(req.uid).catch(() => {});
         const fallback = typeof buildFallback === 'function' ? buildFallback(req) : { message: 'Service busy, try again.' };
         return res.json({ success: true, data: fallback, fallback: true, meta: { errorCode: String(error?.code || 'AI_FALLBACK') } });
       });
@@ -413,11 +416,123 @@ async function recordAiUsage(uid) {
   }
 }
 
+/**
+ * Atomically claim ONE message from today's allowance, re-checking the limit
+ * inside the transaction.
+ *
+ * Why this exists: requireAiAccess reads the counter, and the increment used to
+ * happen (fire-and-forget) only after the reply came back. Between those two
+ * points nothing was reserved, so N requests fired at once all saw the same
+ * "used" value and every one of them passed — a free learner could burst well
+ * past their daily cap and run up the AI bill. Reserving up front closes that
+ * window; releaseAiUsage refunds the slot if the AI call ends up failing.
+ *
+ * Never blocks on infrastructure trouble: if Firestore is unreachable we let
+ * the learner through rather than breaking a conversation mid-session.
+ */
+async function reserveAiUsage(uid) {
+  if (DEV_SKIP_LIMITS || !uid) return { ok: true, skipped: true };
+  const db = getDb();
+  if (!db) return { ok: true, skipped: true };
+  const ref = db.collection(USERS).doc(uid);
+  const today = todayDateStr();
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { ok: true, skipped: true };
+      const data = snap.data();
+      const plan = resolvePlan(data);
+      if (plan === 'premium') return { ok: true, skipped: true }; // unmetered
+
+      const rollover = (data.dailyAiDate || '') !== today;
+      const used = rollover ? 0 : (typeof data.dailyAiUsed === 'number' ? Math.max(0, Math.floor(data.dailyAiUsed)) : 0);
+
+      let limit;
+      if (plan === 'trial') {
+        limit = TRIAL_DAILY_CAP;
+      } else if (REQUIRE_PREMIUM) {
+        return { ok: false, error: 'PREMIUM_REQUIRED', dailyLimit: 0 };
+      } else {
+        const bonus = (data.bonusDate === today && typeof data.bonusMessages === 'number')
+          ? Math.max(0, data.bonusMessages)
+          : 0;
+        limit = DAILY_MESSAGES_FREE + bonus;
+      }
+
+      if (used >= limit) return { ok: false, error: 'DAILY_LIMIT_REACHED', dailyLimit: limit, dailyUsed: used };
+
+      tx.update(ref, {
+        dailyAiUsed: used + 1,
+        dailyAiDate: today,
+        totalAiUsed: (typeof data.totalAiUsed === 'number' ? data.totalAiUsed : 0) + 1,
+      });
+      return { ok: true, reserved: true, dailyUsed: used + 1, dailyLimit: limit };
+    });
+  } catch (e) {
+    console.warn('[aiAccess] reserveAiUsage error:', e.message);
+    return { ok: true, skipped: true, degraded: true };
+  }
+}
+
+/** Hand a reserved message back after the AI call failed (learner got nothing). */
+async function releaseAiUsage(uid) {
+  if (DEV_SKIP_LIMITS || !uid) return;
+  const db = getDb();
+  if (!db) return;
+  const ref = db.collection(USERS).doc(uid);
+  const today = todayDateStr();
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const data = snap.data();
+      // A rollover since the reserve means today's counter is already 0 — a
+      // refund would push it negative, so there is nothing to give back.
+      if ((data.dailyAiDate || '') !== today) return;
+      const used = typeof data.dailyAiUsed === 'number' ? data.dailyAiUsed : 0;
+      const total = typeof data.totalAiUsed === 'number' ? data.totalAiUsed : 0;
+      tx.update(ref, {
+        dailyAiUsed: Math.max(0, used - 1),
+        totalAiUsed: Math.max(0, total - 1),
+      });
+    });
+  } catch (e) {
+    console.warn('[aiAccess] releaseAiUsage error:', e.message);
+  }
+}
+
+/**
+ * Express middleware for endpoints that spend one of the learner's daily
+ * messages (i.e. /tutor/chat). Mount AFTER requireAiAccess. The end-of-session
+ * feedback report deliberately does NOT use this — it stays free, as before.
+ */
+async function requireMessageSlot(req, res, next) {
+  const result = await reserveAiUsage(req.uid);
+  if (!result.ok) {
+    const code = result.error || 'DAILY_LIMIT_REACHED';
+    return res.status(403).json({
+      success: false,
+      error: code,
+      code,
+      message: code === 'PREMIUM_REQUIRED'
+        ? 'Premium required. Subscribe to use the AI tutor.'
+        : 'Daily free limit reached. Upgrade to Premium for unlimited practice.',
+      dailyLimit: result.dailyLimit,
+      resetAtUtc: getNextMidnightUtc(),
+    });
+  }
+  req._aiReserved = result.reserved === true; // only a real reservation is refundable
+  next();
+}
+
 module.exports = {
   requireAiAccess,
   requireAuxAccess,
+  requireMessageSlot,
   wrapAiHandler,
   recordAiUsage,
+  reserveAiUsage,
+  releaseAiUsage,
   recordAuxUsage,
   getAiAccess,
   getAuxAccess,

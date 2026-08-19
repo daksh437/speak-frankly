@@ -22,6 +22,19 @@ class ApiService {
   final _client = http.Client();
   static const _timeout = Duration(seconds: 30);
 
+  /// How many recent turns travel with a chat request. The tutor only needs
+  /// recent context, and a turn is billed as one message however long the
+  /// transcript is — so re-sending the whole session every turn makes the token
+  /// cost climb with every reply. The server clamps this too; this just avoids
+  /// uploading history it will throw away.
+  static const _maxChatHistory = 16;
+
+  /// The end-of-session report reads the whole session, so it keeps more.
+  static const _maxFeedbackHistory = 40;
+
+  List<ChatMessage> _recent(List<ChatMessage> messages, int keep) =>
+      messages.length <= keep ? messages : messages.sublist(messages.length - keep);
+
   /// Headers for an authenticated call. The uid comes from the signed-in
   /// Firebase user when there is one — never from the local prefs id, which is
   /// a placeholder generated before sign-in and would create junk user docs
@@ -116,7 +129,7 @@ class ApiService {
             'context': context,
             'level': UserSession.instance.level,
             'nativeLanguage': UserSession.instance.nativeLanguage,
-            'messages': messages.map((m) => m.toApi()).toList(),
+            'messages': _recent(messages, _maxChatHistory).map((m) => m.toApi()).toList(),
           }),
         )
         .timeout(_timeout);
@@ -141,7 +154,7 @@ class ApiService {
           body: jsonEncode({
             'scenarioId': scenarioId,
             'level': UserSession.instance.level,
-            'messages': messages.map((m) => m.toApi()).toList(),
+            'messages': _recent(messages, _maxFeedbackHistory).map((m) => m.toApi()).toList(),
           }),
         )
         .timeout(_timeout);

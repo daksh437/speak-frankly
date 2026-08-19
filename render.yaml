@@ -30,6 +30,24 @@ services:
         value: "3"
       - key: TRIAL_DAILY_CAP
         value: "50"
+      # Daily budget for the "aux" AI helpers (translate, speaking phrases,
+      # picture match, vocab extraction, custom scenario) — separate from chat
+      # messages so they never eat a learner's 8, and never run unbounded.
+      - key: DAILY_AUX_FREE
+        value: "30"
+      - key: DAILY_AUX_TRIAL
+        value: "80"
+      # Rewarded ads: bonus messages per ad, and how many ads/day count.
+      - key: REWARD_MESSAGES
+        value: "5"
+      - key: MAX_AD_REWARDS_PER_DAY
+        value: "3"
+      # Reject any request that doesn't carry a verified Firebase ID token.
+      # Keep this FALSE until /health shows auth.legacyHeader ≈ 0 (older app
+      # builds only send x-user-uid and would break mid-session) — then flip it
+      # to "true" here, because until it is on, ANY caller can claim ANY uid.
+      - key: REQUIRE_AUTH_TOKEN
+        value: "false"
       # Enables Google Play purchase verification. Requires Play Console →
       # Setup → API access: link this GCP project + grant the service account
       # financial/orders permission. Until that's done, purchases fall back to a

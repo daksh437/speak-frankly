@@ -9,8 +9,24 @@
  * so the whole app is usable before AI is wired.
  */
 const { runGeminiChat, hasKey } = require('../utils/geminiClient');
-const { recordAiUsage } = require('../middleware/aiAccess');
 const { getScenario } = require('../services/scenarioData');
+
+// A conversation turn is metered as ONE message, but the client sends the
+// history for context — so an unbounded transcript would be one cheap-looking
+// message costing an enormous number of tokens (and the cost grows every turn
+// of a long session). The app already trims, but the server must not trust it.
+const MAX_CHAT_TURNS = 16;      // turns of context sent to the model
+const MAX_TURN_CHARS = 2000;    // per message
+const MAX_FEEDBACK_TURNS = 40;  // learner turns summarised in the end-of-session report
+const MAX_FEEDBACK_CHARS = 6000;
+
+/** Keep the most recent turns, each clipped to a sane length. */
+function trimHistory(raw, maxTurns) {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((m) => m && typeof m.text === 'string' && m.text.trim())
+    .slice(-maxTurns)
+    .map((m) => ({ role: m.role === 'model' || m.role === 'assistant' ? 'model' : 'user', text: m.text.slice(0, MAX_TURN_CHARS) }));
+}
 
 function extractJson(text) {
   if (!text || typeof text !== 'string') return null;
@@ -81,19 +97,20 @@ async function chat(req, res) {
   const scenario = body.scenarioId ? getScenario(body.scenarioId) : null;
   const level = body.level;
   const nativeLanguage = body.nativeLanguage;
-  const messages = Array.isArray(body.messages) ? body.messages : [];
+  const messages = trimHistory(body.messages, MAX_CHAT_TURNS);
 
   // Custom (context-generated) scenarios send their setup as `context` since the
   // server can't look them up by id.
-  const customContext = typeof body.context === 'string' ? body.context.trim() : '';
+  const customContext = typeof body.context === 'string' ? body.context.trim().slice(0, MAX_TURN_CHARS) : '';
   const effectiveScenario = scenario
     || (customContext ? { setup: customContext, goals: [], title: 'Chat', keywords: [], starter: '' } : null);
 
   const lastUser = [...messages].reverse().find((m) => (m.role || 'user') === 'user');
 
+  // Usage is already claimed by requireMessageSlot before we get here (MOCK mode
+  // included, so limit behaviour can be tested end-to-end); a failure below is
+  // refunded by wrapAiHandler.
   if (!hasKey()) {
-    // MOCK mode: still record usage so limit behavior can be tested end-to-end.
-    if (req.uid) recordAiUsage(req.uid).catch(() => {});
     return mockReply(effectiveScenario, lastUser && lastUser.text);
   }
 
@@ -115,8 +132,6 @@ async function chat(req, res) {
       }
     : { reply: String(raw || '').trim().slice(0, 500), corrections: [], suggestions: [], translation: null };
 
-  // Only record usage after a confirmed successful reply.
-  if (req.uid) recordAiUsage(req.uid).catch(() => {});
   return result;
 }
 
@@ -128,8 +143,12 @@ async function chat(req, res) {
 async function feedback(req, res) {
   const body = req.body || {};
   const scenario = body.scenarioId ? getScenario(body.scenarioId) : null;
-  const messages = Array.isArray(body.messages) ? body.messages : [];
-  const learnerTurns = messages.filter((m) => (m.role || 'user') === 'user').map((m) => m.text).join('\n');
+  const messages = trimHistory(body.messages, MAX_FEEDBACK_TURNS);
+  const learnerTurns = messages
+    .filter((m) => m.role === 'user')
+    .map((m) => m.text)
+    .join('\n')
+    .slice(-MAX_FEEDBACK_CHARS);
 
   if (!hasKey() || !learnerTurns.trim()) {
     return {
@@ -421,4 +440,7 @@ async function translate(req) {
   return { translation: '' };
 }
 
-module.exports = { chat, feedback, speakingPhrases, customScenario, pictureMatch, extractVocab, translate };
+module.exports = {
+  chat, feedback, speakingPhrases, customScenario, pictureMatch, extractVocab, translate,
+  trimHistory, MAX_CHAT_TURNS, // exported for tests
+};

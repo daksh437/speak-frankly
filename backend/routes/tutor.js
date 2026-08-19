@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireAiAccess, wrapAiHandler } = require('../middleware/aiAccess');
+const { requireAiAccess, requireMessageSlot, wrapAiHandler } = require('../middleware/aiAccess');
 const { buildAiFallback } = require('../utils/aiFallback');
 const { chat, feedback } = require('../controllers/tutorController');
 
@@ -11,7 +11,10 @@ router.use((req, res, next) => {
   requireAiAccess(req, res, next);
 });
 
-router.post('/chat', wrapAiHandler(chat, (req) => buildAiFallback('/tutor/chat', req.body)));
+// /chat additionally CLAIMS one of today's messages before the AI runs, in a
+// transaction — see requireMessageSlot. /feedback stays free: the end-of-session
+// report shouldn't cost a learner one of their daily messages.
+router.post('/chat', requireMessageSlot, wrapAiHandler(chat, (req) => buildAiFallback('/tutor/chat', req.body)));
 router.post('/feedback', wrapAiHandler(feedback, (req) => buildAiFallback('/tutor/feedback', req.body)));
 
 module.exports = router;

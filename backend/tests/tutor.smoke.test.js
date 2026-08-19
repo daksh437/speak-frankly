@@ -56,6 +56,26 @@ function check(name, cond) {
 
     const access = await axios.get(`${base}/access`, { headers: H, validateStatus: () => true });
     check('GET /access → responds', access.status === 200);
+
+    // The public endpoints take no account, so the per-learner AI budget can't
+    // protect them — the rate limiter has to. /scenarios is served from memory,
+    // so this stays fast and hits no third party.
+    let limited = 0;
+    for (let i = 0; i < 65; i++) {
+      const r = await axios.get(`${base}/scenarios`, { validateStatus: () => true });
+      if (r.status === 429) limited++;
+    }
+    check('GET /scenarios → rate limited past the window cap', limited > 0);
+
+    // A conversation turn is billed as one message however long the transcript
+    // is, so the server must clamp the history the client sends.
+    const { trimHistory, MAX_CHAT_TURNS } = require('../controllers/tutorController');
+    const long = Array.from({ length: 200 }, (_, i) => ({ role: i % 2 ? 'model' : 'user', text: `turn ${i}` }));
+    const trimmed = trimHistory(long, MAX_CHAT_TURNS);
+    check('trimHistory → keeps only the most recent turns', trimmed.length === MAX_CHAT_TURNS);
+    check('trimHistory → keeps the NEWEST turns', trimmed[trimmed.length - 1].text === 'turn 199');
+    check('trimHistory → clips an oversized message', trimHistory([{ role: 'user', text: 'x'.repeat(50000) }], 5)[0].text.length <= 2000);
+    check('trimHistory → drops empty/malformed turns', trimHistory([{ role: 'user', text: '  ' }, null, { role: 'user', text: 'ok' }], 5).length === 1);
   } catch (e) {
     console.error('  ❌ threw:', e.message);
     failures++;

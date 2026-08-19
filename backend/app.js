@@ -30,11 +30,17 @@ const { hasKey, MODEL, MODELS, getAiStats } = require('./utils/geminiClient');
 const { getInitStatus } = require('./utils/firestoreAdmin');
 const { getAuthStats, REQUIRE_AUTH_TOKEN } = require('./middleware/auth');
 const { DEV_SKIP_LIMITS, DAILY_MESSAGES_FREE, REQUIRE_PREMIUM } = require('./middleware/aiAccess');
+const { rateLimit } = require('./middleware/rateLimit');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const IS_PROD = NODE_ENV === 'production';
+
+// Render terminates TLS in front of us, so the client's real address is only in
+// X-Forwarded-For — without this req.ip is the proxy for every caller, which
+// would make the rate limiter treat all traffic as one client.
+app.set('trust proxy', 1);
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
@@ -69,8 +75,11 @@ app.get('/health', (_req, res) =>
 
 app.use('/', require('./routes/legal')); // GET /privacy, /terms (public HTML)
 
-app.use('/scenarios', scenarioRoutes);
-app.use('/dictionary', dictionaryRoutes);
+// The public endpoints take no account, so per-learner budgets don't apply —
+// cap them per client instead. /dictionary is the tighter of the two: it
+// proxies a free third-party API we don't want to get throttled out of.
+app.use('/scenarios', rateLimit({ windowMs: 60_000, max: 60, name: 'scenarios' }), scenarioRoutes);
+app.use('/dictionary', rateLimit({ windowMs: 60_000, max: 30, name: 'dictionary' }), dictionaryRoutes);
 app.use('/access', accessRoutes);
 app.use('/speaking', speakingRoutes);
 app.use('/custom', customRoutes);

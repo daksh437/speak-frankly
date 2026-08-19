@@ -10,7 +10,6 @@
     "test": "node tests/tutor.smoke.test.js && node tests/auth.test.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "axios": "^1.15.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
