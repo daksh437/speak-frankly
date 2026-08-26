@@ -6,9 +6,10 @@
  *   GET  /scenarios/:id     one scenario (public)
  *   GET  /dictionary/:word  dictionary card (+ optional ?target= translation)
  *   GET  /access            learner's plan + remaining messages
- *   POST /tutor/chat        AI conversation turn (metered)
- *   POST /tutor/feedback    end-of-session report (metered)
+ *   POST /tutor/chat        AI conversation turn (metered: daily messages)
+ *   POST /tutor/feedback    end-of-session report (metered: daily aux budget)
  *   POST /report            report offensive AI output (Play GenAI policy)
+ *   DELETE /account         erase your own account + data (Play deletion policy)
  *
  * Runs with zero external services: no GEMINI_API_KEY → MOCK tutor; no Firebase
  * → degraded (allow-through) mode. Wire keys via .env when ready.
@@ -92,6 +93,7 @@ app.use('/', require('./routes/legal')); // GET /privacy, /terms (public HTML)
 app.use('/scenarios', rateLimit({ windowMs: 60_000, max: 60, name: 'scenarios' }), scenarioRoutes);
 app.use('/dictionary', rateLimit({ windowMs: 60_000, max: 30, name: 'dictionary' }), dictionaryRoutes);
 app.use('/access', accessRoutes);
+app.use('/account', require('./routes/account')); // DELETE /account (in-app deletion)
 app.use('/speaking', speakingRoutes);
 app.use('/custom', customRoutes);
 app.use('/progress', progressRoutes);

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/app_config.dart';
 import '../l10n/app_localizations.dart';
 import '../services/achievements.dart';
+import '../services/account_service.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
@@ -91,6 +92,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (confirm == true) await AuthService.signOut();
     // AuthGate reacts to sign-out and shows the login screen.
+  }
+
+  /// Delete this account and all its data, from inside the app.
+  ///
+  /// Play requires an in-app deletion path for any app that lets people create
+  /// an account — an email address on a web page is not enough. This is that
+  /// path: the server erases the data, then we wipe the device and sign out.
+  ///
+  /// Irreversible, so it asks twice: once with the full list of what goes, and
+  /// again for the actual "yes, delete it".
+  Future<void> _deleteAccount() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('This permanently deletes:'),
+            SizedBox(height: 8),
+            Text('•  Your account and email\n'
+                '•  Your streak, XP and completed scenarios\n'
+                '•  Your saved words and level'),
+            SizedBox(height: 12),
+            Text('This cannot be undone.', style: TextStyle(fontWeight: FontWeight.w700)),
+            SizedBox(height: 12),
+            Text(
+              'If you pay for Premium, cancel it separately in Play Store → Subscriptions — '
+              'Google bills that, not us.',
+              style: TextStyle(fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep my account')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete everything'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    // Block the UI while the server works — tapping twice must not fire two
+    // deletes, and a silent 30s wait would look like nothing happened.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(children: [
+          CircularProgressIndicator(),
+          SizedBox(width: 20),
+          Expanded(child: Text('Deleting your account…')),
+        ]),
+      ),
+    );
+
+    final ok = await ApiService.instance.deleteAccount();
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // close the progress dialog
+
+    if (!ok) {
+      // Say nothing was deleted, because nothing was. Offering the email path
+      // beats a bare "try again" when the server is the thing that's broken.
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Couldn't delete your account. Nothing was removed — "
+            'please try again, or email instaflow38@gmail.com.'),
+        duration: Duration(seconds: 6),
+      ));
+      return;
+    }
+
+    // Server side is gone; clear the device and sign out. AuthGate then routes
+    // to the login screen on its own.
+    await AccountService.wipeAfterDeletion();
+    await FirebaseAuth.instance.signOut();
   }
 
   Future<void> _changeLevel() async {
@@ -196,6 +276,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _InfoRow(icon: Icons.description_outlined, label: 'Terms of Service', value: '', onTap: () => _open(AppConfig.termsUrl), trailingArrow: true),
               _InfoRow(icon: Icons.info_outline_rounded, label: loc.aboutLabel, value: 'Speak Frankly', onTap: () => _showAbout(context)),
               _InfoRow(icon: Icons.logout_rounded, label: 'Sign out', value: '', onTap: _signOut),
+              // Play requires an in-app account-deletion path, not just the
+              // web page at AppConfig.deleteAccountUrl.
+              _InfoRow(icon: Icons.delete_forever_outlined, label: 'Delete account', value: '', onTap: _deleteAccount, danger: true),
             ],
           ),
           const SizedBox(height: 24),
@@ -575,11 +658,14 @@ class _InfoRow extends StatelessWidget {
   final String value;
   final VoidCallback? onTap;
   final bool trailingArrow;
-  const _InfoRow({required this.icon, required this.label, required this.value, this.onTap, this.trailingArrow = false});
+  /// Destructive action — tints the row so it never reads as a neutral setting.
+  final bool danger;
+  const _InfoRow({required this.icon, required this.label, required this.value, this.onTap, this.trailingArrow = false, this.danger = false});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final tint = danger ? scheme.error : scheme.primary;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -587,9 +673,9 @@ class _InfoRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: scheme.primary),
+            Icon(icon, size: 20, color: tint),
             const SizedBox(width: 14),
-            Text(label, style: const TextStyle(fontSize: 14.5)),
+            Text(label, style: TextStyle(fontSize: 14.5, color: danger ? scheme.error : null)),
             const Spacer(),
             Flexible(
               child: Text(value,

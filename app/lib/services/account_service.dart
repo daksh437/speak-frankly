@@ -56,4 +56,25 @@ class AccountService {
     await VocabularyService.instance.reset();
     await UserSession.instance.resetProfile();
   }
+
+  /// After the server confirms the account is deleted: wipe every local trace.
+  ///
+  /// Sign-out only clears the per-account data, because the account still
+  /// exists and will sync back. Deletion has nothing to come back to, so this
+  /// clears prefs wholesale — cached offline packs, streaks, saved words, the
+  /// daily-phrase cache, rate-prompt state, all of it.
+  ///
+  /// The ONE key that survives is the device id. It is what the backend uses to
+  /// grant a single free trial per device; dropping it here would quietly turn
+  /// "delete my account" into "restart my free trial", forever.
+  static Future<void> wipeAfterDeletion() async {
+    final deviceId = UserSession.instance.deviceId;
+    final p = await SharedPreferences.getInstance();
+    await p.clear();
+    if (deviceId.isNotEmpty) await p.setString('sf_device_id', deviceId);
+    await GamificationService.instance.reset();
+    await VocabularyService.instance.reset();
+    await UserSession.instance.resetProfile();
+    await UserSession.instance.load(); // regenerate the placeholder uid
+  }
 }

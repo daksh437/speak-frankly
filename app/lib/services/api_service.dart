@@ -214,6 +214,21 @@ class ApiService {
         .timeout(_timeout);
   }
 
+  /// Permanently erase this account and everything stored against it.
+  ///
+  /// The server takes the uid from the VERIFIED ID token, never from a header,
+  /// so this can only ever delete the caller's own account. Returns false if
+  /// the server refused (the caller then points the learner at the email
+  /// fallback rather than pretending the data is gone).
+  Future<bool> deleteAccount() async {
+    try {
+      final res = await _client.delete(_u('/account'), headers: await _authHeaders()).timeout(_timeout);
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// The learner's plan + remaining daily messages (server is authoritative).
   Future<Map<String, dynamic>> fetchAccess() async {
     final res = await _client.get(_u('/access'), headers: await _authHeaders()).timeout(_timeout);
