@@ -322,7 +322,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planBestValue => 'Meilleure offre · économise ~58%';
 
   @override
-  String get planMonthlyNote => 'Seulement ₹10 le premier mois';
+  String get planMonthlyNote => 'Annulez à tout moment';
 
   @override
   String get planPopular => 'POPULAIRE';
@@ -331,7 +331,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get continueAnnual => 'Continuer · Annuel';
 
   @override
-  String get continueMonthly => 'Continuer · ₹10 le premier mois';
+  String get continueMonthly => 'Continuer · Mensuel';
 
   @override
   String get billingNote =>
