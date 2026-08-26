@@ -15,9 +15,16 @@ const axios = require('axios');
 const apiKey = process.env.GEMINI_API_KEY;
 const MODEL = (process.env.GEMINI_MODEL && process.env.GEMINI_MODEL.trim()) || 'gemini-3-flash-preview';
 
-// Ordered chain: the configured model first, then progressively older/cheaper
-// ones. Override wholesale with GEMINI_MODELS=a,b,c.
-const DEFAULT_FALLBACKS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+// Ordered chain: the configured model first, then progressively cheaper ones.
+// Override wholesale with GEMINI_MODELS=a,b,c.
+//
+// Every entry must be a model that is actually still served. gemini-2.0-flash
+// sat here until it was noticed that Google shut it down on 1 June 2026 — the
+// last link in the chain was a guaranteed 404, so a quota day on the first two
+// models fell through to nothing and every learner got canned text. Check this
+// list against https://ai.google.dev/gemini-api/docs/pricing when a model is
+// retired; /health surfaces `fallbacks` and `failed` when it starts happening.
+const DEFAULT_FALLBACKS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 const MODELS = [
   ...new Set(
     [

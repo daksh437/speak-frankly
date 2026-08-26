@@ -48,9 +48,24 @@ services:
       # to "true" here, because until it is on, ANY caller can claim ANY uid.
       - key: REQUIRE_AUTH_TOKEN
         value: "false"
+      # Fair-use ceiling on the "unlimited" premium plan, in messages/day.
+      # 0 = genuinely unlimited (today's behaviour). Nothing else in the code
+      # bounds a premium account, so one subscription authorises unbounded AI
+      # spend. 500 is the suggested value — a heavy learner does 30–50/day, so
+      # no real subscriber ever reaches it. Premium is still reported as
+      # unlimited to the app; this only bites in the server-side claim.
+      - key: PREMIUM_DAILY_CAP
+        value: "0"
       # Enables Google Play purchase verification. Requires Play Console →
       # Setup → API access: link this GCP project + grant the service account
-      # financial/orders permission. Until that's done, purchases fall back to a
-      # short grace window (see premiumController).
+      # financial/orders permission.
       - key: PLAY_PACKAGE_NAME
         value: com.speakfrankly
+      # Reject a purchase when the Play API can't be reached at all, instead of
+      # granting the 3-day grace window. Grace is now limited to accounts that
+      # have had a verified purchase before (see premiumController), so leaving
+      # this false no longer hands strangers free premium — but turning it on
+      # once Play API access is confirmed working removes the grace path
+      # entirely, at the cost of blocking real buyers during a Google outage.
+      - key: PLAY_VERIFY_STRICT
+        value: "false"

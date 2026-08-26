@@ -32,6 +32,20 @@ const TRIAL_DAILY_CAP = parseInt(process.env.TRIAL_DAILY_CAP || '50', 10);
 // up to MAX_AD_REWARDS_PER_DAY times/day (server-authoritative — client can't fake).
 const REWARD_MESSAGES = parseInt(process.env.REWARD_MESSAGES || '5', 10);
 const MAX_AD_REWARDS_PER_DAY = parseInt(process.env.MAX_AD_REWARDS_PER_DAY || '3', 10);
+// FAIR-USE CEILING FOR PREMIUM. Premium is sold as unlimited and the code means
+// it literally: a premium uid is never counted and never blocked, so one ₹199
+// subscription authorises unbounded spend. At the measured ~₹0.06 per message,
+// a single account left running flat out against the /tutor rate limit costs
+// more in a day than it pays in a year — and that account may be stolen rather
+// than abusive.
+//
+// 0 = off, i.e. genuinely unlimited (the behaviour shipped today, so this
+// changes nothing until you choose a number). 500/day is the suggested value:
+// a heavy real learner does 30–50 messages a day, so nobody legitimate is ever
+// near it, and it turns the worst case from ~₹2,560/day into ~₹30/day. Enforced
+// in reserveAiUsage only — /access still reports premium as unlimited, so the
+// app's UI is unchanged.
+const PREMIUM_DAILY_CAP = parseInt(process.env.PREMIUM_DAILY_CAP || '0', 10);
 // Default = freemium (trial → free daily limit). Set REQUIRE_PREMIUM=true to
 // instead hard-gate free users (post-trial) behind a paywall.
 const REQUIRE_PREMIUM = process.env.REQUIRE_PREMIUM === 'true' || process.env.REQUIRE_PREMIUM === '1';
@@ -265,8 +279,54 @@ async function getAuxAccess(uid, deviceId) {
   };
 }
 
-/** Count one aux AI call (free + trial; premium is unmetered). */
-async function recordAuxUsage(uid) {
+/**
+ * Atomically claim ONE aux call from today's budget, re-checking the limit
+ * inside the transaction — the aux twin of reserveAiUsage.
+ *
+ * This used to be `recordAuxUsage`, called AFTER the reply came back, with the
+ * limit checked separately beforehand. Nothing was reserved in between, so N
+ * concurrent /translate (or /speaking/phrases, …) requests all read the same
+ * "used" value and every one of them passed — the same burst hole that was
+ * closed for chat messages. Claiming up front closes it; releaseAuxUsage hands
+ * the slot back when the learner ends up getting canned text instead of AI.
+ *
+ * Never blocks on infrastructure trouble: an unreachable Firestore lets the
+ * call through rather than breaking a feature mid-session.
+ */
+async function reserveAuxUsage(uid) {
+  if (DEV_SKIP_LIMITS || !uid) return { ok: true, skipped: true };
+  const db = getDb();
+  if (!db) return { ok: true, skipped: true };
+  const ref = db.collection(USERS).doc(uid);
+  const today = todayDateStr();
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { ok: true, skipped: true };
+      const data = snap.data();
+      const plan = resolvePlan(data);
+      if (plan === 'premium') return { ok: true, skipped: true }; // unmetered
+      if (plan === 'free' && REQUIRE_PREMIUM) return { ok: false, error: 'PREMIUM_REQUIRED', auxLimit: 0 };
+
+      const limit = plan === 'trial' ? DAILY_AUX_TRIAL : DAILY_AUX_FREE;
+      const rollover = (data.dailyAuxDate || '') !== today;
+      const used = rollover ? 0 : (typeof data.dailyAuxUsed === 'number' ? Math.max(0, Math.floor(data.dailyAuxUsed)) : 0);
+      if (used >= limit) return { ok: false, error: 'DAILY_LIMIT_REACHED', auxLimit: limit, auxUsed: used };
+
+      tx.update(ref, { dailyAuxUsed: used + 1, dailyAuxDate: today });
+      return { ok: true, reserved: true, auxUsed: used + 1, auxLimit: limit };
+    });
+  } catch (e) {
+    console.warn('[aiAccess] reserveAuxUsage error:', e.message);
+    return { ok: true, skipped: true, degraded: true };
+  }
+}
+
+/**
+ * Hand a reserved aux call back — the learner got a fallback/mock, not AI, so
+ * it shouldn't cost them anything.
+ */
+async function releaseAuxUsage(uid) {
   if (DEV_SKIP_LIMITS || !uid) return;
   const db = getDb();
   if (!db) return;
@@ -277,17 +337,38 @@ async function recordAuxUsage(uid) {
       const snap = await tx.get(ref);
       if (!snap.exists) return;
       const data = snap.data();
-      if (resolvePlan(data) === 'premium') return;
-      const rollover = (data.dailyAuxDate || '') !== today;
-      const used = rollover ? 0 : (typeof data.dailyAuxUsed === 'number' ? data.dailyAuxUsed : 0);
-      tx.update(ref, { dailyAuxUsed: used + 1, dailyAuxDate: today });
+      // A rollover since the reserve means today's counter is already 0 — a
+      // refund would push it negative, so there is nothing to give back.
+      if ((data.dailyAuxDate || '') !== today) return;
+      const used = typeof data.dailyAuxUsed === 'number' ? data.dailyAuxUsed : 0;
+      tx.update(ref, { dailyAuxUsed: Math.max(0, used - 1) });
     });
   } catch (e) {
-    console.warn('[aiAccess] recordAuxUsage error:', e.message);
+    console.warn('[aiAccess] releaseAuxUsage error:', e.message);
   }
 }
 
-/** Express middleware for the aux AI helpers. Sets req.uid + req.auxAccess. */
+/**
+ * Refund a reserved aux call when the handler produced canned text. Routes call
+ * this instead of hand-rolling the `req._auxReserved` check.
+ */
+function refundAuxIfFallback(req, data) {
+  if (req._auxReserved && data && (data.fallback === true || data.mock === true)) {
+    releaseAuxUsage(req.uid).catch(() => {});
+    req._auxReserved = false;
+  }
+  return data;
+}
+
+/**
+ * Express middleware for the aux AI helpers. Sets req.uid + req.auxAccess, and
+ * CLAIMS one aux call before the handler runs (see reserveAuxUsage).
+ *
+ * Two steps on purpose: getAuxAccess provisions the user doc for a first-time
+ * learner (and gives the 403 body its real numbers), then reserveAuxUsage makes
+ * the authoritative claim inside a transaction. Handlers that end up returning
+ * canned text refund the slot via refundAuxIfFallback.
+ */
 async function requireAuxAccess(req, res, next) {
   await authenticate(req);
   const uid = req.uid;
@@ -304,16 +385,24 @@ async function requireAuxAccess(req, res, next) {
   const deviceId = (req.headers['x-device-id'] || '').toString().trim();
   const access = await getAuxAccess(uid, deviceId);
   req.auxAccess = access;
-  if (!access.allowed) {
-    return res.status(403).json({
-      success: false,
-      error: access.error || 'DAILY_LIMIT_REACHED',
-      code: access.error || 'DAILY_LIMIT_REACHED',
-      message: 'Daily limit reached for this feature. Upgrade to Premium for unlimited practice.',
-      dailyLimit: access.auxLimit,
-      resetAtUtc: access.resetAtUtc,
-    });
-  }
+
+  const deny = (code, dailyLimit) => res.status(403).json({
+    success: false,
+    error: code,
+    code,
+    message: code === 'PREMIUM_REQUIRED'
+      ? 'Premium required. Subscribe to use this feature.'
+      : 'Daily limit reached for this feature. Upgrade to Premium for unlimited practice.',
+    dailyLimit,
+    resetAtUtc: getNextMidnightUtc(),
+  });
+
+  if (!access.allowed) return deny(access.error || 'DAILY_LIMIT_REACHED', access.auxLimit);
+
+  const claim = await reserveAuxUsage(uid);
+  if (!claim.ok) return deny(claim.error || 'DAILY_LIMIT_REACHED', claim.auxLimit);
+
+  req._auxReserved = claim.reserved === true; // only a real reservation is refundable
   next();
 }
 
@@ -374,7 +463,9 @@ function wrapAiHandler(handler, buildFallback) {
     return Promise.resolve(handler(req, res, next))
       .then((value) => {
         if (!res.headersSent && value !== undefined) {
-          return res.json({ success: true, data: value });
+          // A handler that returned canned text (mock/fallback) never reached
+          // the model, so it shouldn't cost the learner a reserved aux call.
+          return res.json({ success: true, data: refundAuxIfFallback(req, value) });
         }
         return value;
       })
@@ -384,36 +475,11 @@ function wrapAiHandler(handler, buildFallback) {
         // The learner is getting canned text, not a real tutor reply — give the
         // reserved message back so a bad AI day doesn't eat their daily quota.
         if (req._aiReserved) releaseAiUsage(req.uid).catch(() => {});
+        if (req._auxReserved) releaseAuxUsage(req.uid).catch(() => {});
         const fallback = typeof buildFallback === 'function' ? buildFallback(req) : { message: 'Service busy, try again.' };
         return res.json({ success: true, data: fallback, fallback: true, meta: { errorCode: String(error?.code || 'AI_FALLBACK') } });
       });
   };
-}
-
-/** After a confirmed successful tutor message: increment daily counter (free only). */
-async function recordAiUsage(uid) {
-  if (DEV_SKIP_LIMITS || !uid) return;
-  const db = getDb();
-  if (!db) return;
-  const ref = db.collection(USERS).doc(uid);
-  const today = todayDateStr();
-  try {
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists) return;
-      const data = snap.data();
-      if (resolvePlan(data) === 'premium') return; // premium: no metering (free + trial both count)
-      const rollover = (data.dailyAiDate || '') !== today;
-      const used = rollover ? 0 : (typeof data.dailyAiUsed === 'number' ? data.dailyAiUsed : 0);
-      tx.update(ref, {
-        dailyAiUsed: used + 1,
-        dailyAiDate: today,
-        totalAiUsed: (typeof data.totalAiUsed === 'number' ? data.totalAiUsed : 0) + 1,
-      });
-    });
-  } catch (e) {
-    console.warn('[aiAccess] recordAiUsage error:', e.message);
-  }
 }
 
 /**
@@ -442,10 +508,21 @@ async function reserveAiUsage(uid) {
       if (!snap.exists) return { ok: true, skipped: true };
       const data = snap.data();
       const plan = resolvePlan(data);
-      if (plan === 'premium') return { ok: true, skipped: true }; // unmetered
 
       const rollover = (data.dailyAiDate || '') !== today;
       const used = rollover ? 0 : (typeof data.dailyAiUsed === 'number' ? Math.max(0, Math.floor(data.dailyAiUsed)) : 0);
+
+      if (plan === 'premium') {
+        if (PREMIUM_DAILY_CAP <= 0) return { ok: true, skipped: true }; // truly unmetered
+        if (used >= PREMIUM_DAILY_CAP) {
+          return { ok: false, error: 'FAIR_USE_LIMIT', dailyLimit: PREMIUM_DAILY_CAP, dailyUsed: used };
+        }
+        // Count premium too, so the ceiling has something to measure. Kept out
+        // of totalAiUsed so the admin panel's "messages" figure keeps meaning
+        // the same thing it always has.
+        tx.update(ref, { dailyAiUsed: used + 1, dailyAiDate: today });
+        return { ok: true, reserved: true, dailyUsed: used + 1, dailyLimit: PREMIUM_DAILY_CAP };
+      }
 
       let limit;
       if (plan === 'trial') {
@@ -490,11 +567,15 @@ async function releaseAiUsage(uid) {
       // refund would push it negative, so there is nothing to give back.
       if ((data.dailyAiDate || '') !== today) return;
       const used = typeof data.dailyAiUsed === 'number' ? data.dailyAiUsed : 0;
-      const total = typeof data.totalAiUsed === 'number' ? data.totalAiUsed : 0;
-      tx.update(ref, {
-        dailyAiUsed: Math.max(0, used - 1),
-        totalAiUsed: Math.max(0, total - 1),
-      });
+      const patch = { dailyAiUsed: Math.max(0, used - 1) };
+      // A premium reservation under the fair-use ceiling only touches the daily
+      // counter, so refunding totalAiUsed here would walk the all-time figure
+      // downwards for messages it never counted.
+      if (resolvePlan(data) !== 'premium') {
+        const total = typeof data.totalAiUsed === 'number' ? data.totalAiUsed : 0;
+        patch.totalAiUsed = Math.max(0, total - 1);
+      }
+      tx.update(ref, patch);
     });
   } catch (e) {
     console.warn('[aiAccess] releaseAiUsage error:', e.message);
@@ -510,13 +591,17 @@ async function requireMessageSlot(req, res, next) {
   const result = await reserveAiUsage(req.uid);
   if (!result.ok) {
     const code = result.error || 'DAILY_LIMIT_REACHED';
+    const messages = {
+      PREMIUM_REQUIRED: 'Premium required. Subscribe to use the AI tutor.',
+      // Never tell a paying subscriber to "upgrade to Premium".
+      FAIR_USE_LIMIT: "You've hit today's fair-use limit for Premium — that's a lot of practice! It resets at midnight UTC.",
+      DAILY_LIMIT_REACHED: 'Daily free limit reached. Upgrade to Premium for unlimited practice.',
+    };
     return res.status(403).json({
       success: false,
       error: code,
       code,
-      message: code === 'PREMIUM_REQUIRED'
-        ? 'Premium required. Subscribe to use the AI tutor.'
-        : 'Daily free limit reached. Upgrade to Premium for unlimited practice.',
+      message: messages[code] || messages.DAILY_LIMIT_REACHED,
       dailyLimit: result.dailyLimit,
       resetAtUtc: getNextMidnightUtc(),
     });
@@ -530,16 +615,18 @@ module.exports = {
   requireAuxAccess,
   requireMessageSlot,
   wrapAiHandler,
-  recordAiUsage,
   reserveAiUsage,
   releaseAiUsage,
-  recordAuxUsage,
+  reserveAuxUsage,
+  releaseAuxUsage,
+  refundAuxIfFallback,
   getAiAccess,
   getAuxAccess,
   grantAdReward,
   resolvePlan,
   DAILY_MESSAGES_FREE,
   DAILY_AUX_FREE,
+  PREMIUM_DAILY_CAP,
   DAILY_AUX_TRIAL,
   TRIAL_DAYS,
   REQUIRE_PREMIUM,

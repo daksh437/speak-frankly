@@ -156,6 +156,9 @@ async function feedback(req, res) {
       grammar_notes: [],
       encouragement: 'Good session! A little practice every day adds up fast. 🌟',
       mock: !hasKey(),
+      // Key present but nothing to summarise → no AI call happened, so the
+      // reserved aux call is refunded rather than charged.
+      fallback: hasKey(),
     };
   }
 
@@ -217,8 +220,9 @@ function extractJsonArray(text) {
 
 /**
  * POST /speaking/phrases -> { phrases: string[] }
- * Level/goal-aware phrases for listen-and-imitate practice. Not metered (the
- * client caches one set per day). Always returns usable phrases (fallback).
+ * Level/goal-aware phrases for listen-and-imitate practice. Metered against the
+ * daily AUX budget (the client caches one set per day, so a real learner spends
+ * one). Always returns usable phrases; a fallback set refunds the aux call.
  */
 async function speakingPhrases(req) {
   const body = req.body || {};
@@ -254,8 +258,8 @@ Variety seed: ${seed}`;
 /**
  * POST /custom/scenario -> { scenario } — turn any topic the learner types into
  * a ready-to-chat scenario (title, emoji, opening line, goals, key words, and an
- * internal `setup` the chat endpoint uses as context). Not metered; the chat
- * that follows is metered normally.
+ * internal `setup` the chat endpoint uses as context). Metered against the daily
+ * AUX budget; the chat that follows is metered as chat messages.
  */
 function _fallbackCustomScenario(topic, level) {
   return {
@@ -277,7 +281,7 @@ async function customScenario(req) {
   const topic = (body.topic || '').toString().trim().slice(0, 200);
   const level = (body.level || 'A2').toString();
   if (!topic) return { error: 'topic_required' };
-  if (!hasKey()) return { scenario: _fallbackCustomScenario(topic, level) };
+  if (!hasKey()) return { scenario: _fallbackCustomScenario(topic, level), mock: true };
 
   const prompt = `Create a short English conversation practice scenario about the topic: "${topic}".
 Learner level: ${level} (CEFR).
@@ -313,7 +317,7 @@ Return ONLY JSON with these keys:
   } catch (e) {
     console.warn('[customScenario] error:', e.message);
   }
-  return { scenario: _fallbackCustomScenario(topic, level) };
+  return { scenario: _fallbackCustomScenario(topic, level), fallback: true };
 }
 
 const FALLBACK_PICTURE_MATCH = [
@@ -331,8 +335,9 @@ const FALLBACK_PICTURE_MATCH = [
 
 /**
  * POST /games/picture-match -> { items } — a fresh, level-aware set of
- * "see the scene (emoji), pick the matching sentence" items. Not metered
- * (client caches one set per day). Always returns usable items (fallback).
+ * "see the scene (emoji), pick the matching sentence" items. Metered against the
+ * daily AUX budget (client caches one set per day). Always returns usable items;
+ * a fallback set refunds the aux call.
  */
 async function pictureMatch(req) {
   const body = req.body || {};
@@ -387,15 +392,16 @@ function _simpleExtract(text) {
 
 /**
  * POST /vocab/extract -> { words: [{word, meaning}] } — pull useful vocabulary
- * out of pasted text (Content import, BRD §9). Not metered. Falls back to a
- * simple keyword extraction if AI is unavailable.
+ * out of pasted text (Content import, BRD §9). Metered against the daily AUX
+ * budget. Falls back to a simple keyword extraction if AI is unavailable (which
+ * refunds the aux call).
  */
 async function extractVocab(req) {
   const body = req.body || {};
   const text = (body.text || '').toString().slice(0, 3000);
   const level = (body.level || 'A2').toString();
-  if (!text.trim()) return { words: [] };
-  if (!hasKey()) return { words: _simpleExtract(text) };
+  if (!text.trim()) return { words: [], fallback: true };
+  if (!hasKey()) return { words: _simpleExtract(text), mock: true };
 
   const prompt = `From this text, choose 5-10 useful English vocabulary words or short phrases for a learner (level ${level} CEFR). For each, give the word and a short, simple meaning (max 10 words).
 Text:
@@ -414,7 +420,7 @@ Return ONLY a JSON array: [{"word":"...","meaning":"..."}]`;
   } catch (e) {
     console.warn('[extractVocab] error:', e.message);
   }
-  return { words: _simpleExtract(text) };
+  return { words: _simpleExtract(text), fallback: true };
 }
 
 /**
@@ -426,7 +432,7 @@ async function translate(req) {
   const text = (body.text || '').toString().slice(0, 1000);
   let target = (body.target || '').toString().trim();
   if (!target || target.toLowerCase() === 'other') target = 'Hindi';
-  if (!text.trim()) return { translation: '' };
+  if (!text.trim()) return { translation: '', fallback: true };
   if (!hasKey()) return { translation: '', mock: true };
 
   const prompt = `Translate the following English text into ${target}. Return ONLY the translation — no quotes, no English, no notes.\n\nText: ${text}`;
@@ -437,7 +443,7 @@ async function translate(req) {
   } catch (e) {
     console.warn('[translate] error:', e.message);
   }
-  return { translation: '' };
+  return { translation: '', fallback: true };
 }
 
 module.exports = {
