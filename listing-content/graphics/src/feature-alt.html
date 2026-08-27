@@ -1,0 +1,57 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  /* Alternate feature graphic — 1024x500.
+   *
+   * Same brand values as the primary (gradient and mark sampled from the app's
+   * own launcher icon); a deliberately different composition so the two can be
+   * A/B tested: centred and type-led, rather than left-aligned with the mark
+   * pushed to the right.
+   *
+   * No app UI here on purpose. A feature graphic is judged small, and a phone
+   * screenshot shrunk into 500px of height turns its text into grey mush —
+   * which reads as clutter, not as product. The screenshots carry the UI. */
+  html, body { margin: 0; padding: 0; }
+  * { box-sizing: border-box; }
+
+  .fg { width: 1024px; height: 500px; position: relative; overflow: hidden;
+        background: linear-gradient(150deg, #7A67FF 0%, #6B59EB 52%, #5B4BD6 100%);
+        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; text-align: center; }
+
+  .orb  { position: absolute; border-radius: 50%; background: #fff; opacity: .055; }
+  .orb1 { width: 420px; height: 420px; left: -150px;  top: -170px; }
+  .orb2 { width: 340px; height: 340px; right: -120px; bottom: -160px; }
+
+  /* Same circular treatment the app uses for its avatar in the home header. */
+  .avatar { width: 92px; height: 92px; border-radius: 50%; background: rgba(255,255,255,.17);
+            display: grid; place-items: center; margin-bottom: 20px;
+            box-shadow: 0 12px 34px rgba(28,18,80,.30); }
+  .avatar img { width: 62px; height: 62px; display: block; }
+
+  h1 { margin: 0; color: #fff; font-size: 54px; line-height: 1.08;
+       font-weight: 800; letter-spacing: -1.2px; }
+  h1 span { color: #FFD98A; }
+
+  .sub { margin: 16px 0 0; color: #E7E2FF; font-size: 21px; font-weight: 400; }
+
+  .pills { display: flex; gap: 10px; margin-top: 26px; }
+  .pill { color: #fff; font-size: 15px; font-weight: 600; padding: 9px 18px;
+          border-radius: 999px; background: rgba(255,255,255,.16); white-space: nowrap; }
+</style></head>
+<body>
+  <div class="fg">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+
+    <span class="avatar"><img src="white_head.png" alt=""></span>
+    <h1>Speak English with <span>confidence</span></h1>
+    <p class="sub">Real conversations with an AI tutor that never makes you feel small.</p>
+    <div class="pills">
+      <span class="pill">AI conversations</span>
+      <span class="pill">Shadowing practice</span>
+      <span class="pill">Story mode</span>
+      <span class="pill">Tap any word</span>
+    </div>
+  </div>
+</body></html>

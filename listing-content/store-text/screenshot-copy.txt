@@ -1,0 +1,80 @@
+SCREENSHOT HEADLINE COPY — Speak Frankly
+========================================
+
+Eight phone screenshots, in listing order. Headline is the large line; support
+is the smaller line beneath it. Every claim maps to a feature that exists in
+build 1.5.3 (versionCode 23) and was verified on a real device.
+
+Rules applied:
+  - No "Download now" / "Install now" (Play discourages install CTAs in shots)
+  - No ratings, review counts, awards, user numbers or superlatives
+  - No Google Play badges
+  - Headlines <= 42 characters so they stay readable at thumbnail size
+
+
+01  01-core-value.png
+    HEADLINE  Speak English with confidence
+    SUPPORT   Practise by talking, not memorising
+    SHOWS     Home / Practice screen
+    WHY       The one-line promise plus the real home screen, so the first
+              impression is the actual product.
+
+02  02-ai-conversation.png
+    HEADLINE  Practise real conversations
+    SUPPORT   An AI tutor that replies to what you meant
+    SHOWS     A live scenario chat with a correction card
+    WHY       The core loop. The correction card is the product's personality:
+              it fixes you gently instead of marking you wrong.
+
+03  03-speaking-practice.png
+    HEADLINE  Practise speaking out loud
+    SUPPORT   See which words came through clearly
+    SHOWS     Shadowing Practice with a pronunciation score
+    WHY       The strongest differentiator. Wording says "came through clearly",
+              never "perfect your accent" - the score measures intelligibility.
+
+04  04-story-mode.png
+    HEADLINE  Learn through real-life situations
+    SUPPORT   Guided role-plays. Works offline
+    SHOWS     Story mode mid-story with reply choices
+    WHY       "Works offline" is quoted from the app's own home card, so it is
+              a verified claim.
+
+05  05-vocabulary.png
+    HEADLINE  Build your everyday vocabulary
+    SUPPORT   Tap any word. Save it. Review it later
+    SHOWS     Word of the Day and/or the dictionary sheet over a chat
+    WHY       Shows the tap-to-define loop that feeds Saved Words.
+
+06  06-picture-match.png
+    HEADLINE  Learn while having fun
+    SUPPORT   Quick games that fit in a coffee break
+    SHOWS     Picture match mid-round
+    WHY       Lowers the perceived effort of starting.
+
+07  07-progress.png
+    HEADLINE  See your progress
+    SUPPORT   Streak, XP and your fluency map
+    SHOWS     Profile with the fluency map and badges
+    WHY       Retention proof. Requires real (non-zero) usage data.
+
+08  08-daily-practice.png
+    HEADLINE  Make English practice a daily habit
+    SUPPORT   Ten minutes a day is enough
+    SHOWS     Home with Word of the Day and today's practice
+    WHY       Closes on the behaviour we want, not on a discount.
+
+
+FEATURE / BENEFIT BULLETS (reusable for the description or a website)
+  - Talk through real situations: ordering food, job interviews, shopping
+  - Type any topic and the tutor builds a conversation around it
+  - Replies matched to your level, with at most two gentle corrections a turn
+  - Ready-to-tap replies so beginners are never stuck on an empty text box
+  - Shadowing practice with a word-by-word breakdown of what was understood
+  - Story mode role-plays that branch on your choice, and work offline
+  - Tap any word for meaning, audio and a translation in your language
+  - Saved Words plus spaced-repetition review
+  - Picture match and word games
+  - Fluency map, streaks, XP and badges
+  - Placement test to find your level
+  - Interface in English, Hindi, Spanish, French and Portuguese
