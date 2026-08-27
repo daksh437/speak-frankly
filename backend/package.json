@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node app.js",
-    "test": "node tests/tutor.smoke.test.js && node tests/auth.test.js"
+    "test": "node tests/tutor.smoke.test.js && node tests/tutorParse.test.js && node tests/auth.test.js"
   },
   "dependencies": {
     "axios": "^1.15.0",

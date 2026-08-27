@@ -10,6 +10,7 @@
  */
 const { runGeminiChat, hasKey } = require('../utils/geminiClient');
 const { getScenario } = require('../services/scenarioData');
+const { buildAiFallback } = require('../utils/aiFallback');
 
 // A conversation turn is metered as ONE message, but the client sends the
 // history for context — so an unbounded transcript would be one cheap-looking
@@ -41,6 +42,69 @@ function extractJson(text) {
     }
     return null;
   }
+}
+
+/**
+ * Does this text look like the model's JSON envelope rather than a sentence?
+ * Truncated output (the model hitting its token budget mid-object) is not
+ * parseable, and dumping it into the chat bubble showed learners raw braces and
+ * quotes — worse than any fallback line.
+ */
+function looksLikeJson(text) {
+  const t = String(text || '').replace(/```(?:json)?/g, '').trim();
+  return t.startsWith('{') || t.startsWith('[') || /"(?:reply|corrections|suggestions)"\s*:/.test(t);
+}
+
+/**
+ * Pull the "reply" string out of unparseable output. "reply" comes first in the
+ * schema, so when the response is cut short it is usually the one field that
+ * arrived complete. Only a properly closed string is accepted — half a sentence
+ * is not worth showing.
+ */
+function salvageReply(text) {
+  const m = String(text || '').match(/"reply"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  if (!m) return '';
+  try {
+    const value = JSON.parse(`"${m[1]}"`);
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    return looksLikeJson(trimmed) ? '' : trimmed;
+  } catch (_) {
+    return '';
+  }
+}
+
+/**
+ * Turn whatever the model returned into the chat payload the app renders.
+ * Order: parsed JSON → salvaged reply → plain prose → friendly fallback.
+ * The learner must NEVER see JSON source in a message bubble.
+ */
+function buildChatResult(raw) {
+  const parsed = extractJson(raw);
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const reply = String(parsed.reply || '').trim();
+    if (reply) {
+      return {
+        reply,
+        corrections: Array.isArray(parsed.corrections) ? parsed.corrections.slice(0, 2) : [],
+        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
+        translation: null,
+      };
+    }
+  }
+
+  // Unparseable (almost always truncated). Keep the conversation going with the
+  // reply if it survived; corrections/suggestions are the parts that get cut.
+  const salvaged = salvageReply(raw);
+  if (salvaged) {
+    return { reply: salvaged.slice(0, 500), corrections: [], suggestions: [], translation: null };
+  }
+
+  // Prose (the model ignored the schema) is fine to show as-is; anything that
+  // still looks like machine output is not.
+  const text = String(raw || '').trim();
+  if (!text || looksLikeJson(text)) return buildAiFallback('/tutor/chat');
+  return { reply: text.slice(0, 500), corrections: [], suggestions: [], translation: null };
 }
 
 function buildSystemPrompt(scenario, level, nativeLanguage) {
@@ -119,20 +183,12 @@ async function chat(req, res) {
     ? messages
     : [{ role: 'user', text: 'Hello!' }];
 
-  const raw = await runGeminiChat(chatMessages, { systemPrompt, temperature: 0.8, maxTokens: 700 });
-  const parsed = extractJson(raw);
+  // 700 was too tight: a reply plus 2 corrections and 3 suggestions regularly ran
+  // past it, and the response came back truncated mid-JSON. Unused budget is free
+  // (billing is on tokens actually produced), truncated answers are not.
+  const raw = await runGeminiChat(chatMessages, { systemPrompt, temperature: 0.8, maxTokens: 1500 });
 
-  // If the model didn't return JSON, treat the whole text as the reply.
-  const result = parsed && typeof parsed === 'object'
-    ? {
-        reply: String(parsed.reply || '').trim() || 'Okay!',
-        corrections: Array.isArray(parsed.corrections) ? parsed.corrections.slice(0, 2) : [],
-        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
-        translation: null,
-      }
-    : { reply: String(raw || '').trim().slice(0, 500), corrections: [], suggestions: [], translation: null };
-
-  return result;
+  return buildChatResult(raw);
 }
 
 /**
@@ -442,5 +498,5 @@ async function translate(req) {
 
 module.exports = {
   chat, feedback, speakingPhrases, customScenario, pictureMatch, extractVocab, translate,
-  trimHistory, MAX_CHAT_TURNS, // exported for tests
+  trimHistory, MAX_CHAT_TURNS, buildChatResult, salvageReply, looksLikeJson, // exported for tests
 };
