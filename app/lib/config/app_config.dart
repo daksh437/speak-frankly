@@ -16,4 +16,9 @@ class AppConfig {
 
   static const String privacyUrl = '$baseUrl/privacy';
   static const String termsUrl = '$baseUrl/terms';
+
+  /// Public account-deletion page. Play requires this URL to be reachable from
+  /// OUTSIDE the app (it goes in the Play Console data-safety form) as well as
+  /// the in-app path in Profile → Delete account.
+  static const String deleteAccountUrl = '$baseUrl/delete-account';
 }

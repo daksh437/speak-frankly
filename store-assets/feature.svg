@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6C5CE7"/>
+      <stop offset="1" stop-color="#4B3BC0"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6C5CE7"/>
+      <stop offset="1" stop-color="#8A78FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <!-- soft decorative circles -->
+  <circle cx="930" cy="120" r="130" fill="#ffffff" opacity="0.06"/>
+  <circle cx="880" cy="430" r="90" fill="#ffffff" opacity="0.06"/>
+
+  <!-- icon mark (speech bubble) on the left -->
+  <g transform="translate(70,140) scale(0.62)">
+    <rect x="0" y="0" width="280" height="182" rx="48" fill="#ffffff"/>
+    <path d="M60 166 L60 230 L120 170 Z" fill="#ffffff"/>
+    <rect x="89" y="64" width="26" height="54" rx="13" fill="url(#bar)"/>
+    <rect x="127" y="43" width="26" height="96" rx="13" fill="url(#bar)"/>
+    <rect x="165" y="55" width="26" height="72" rx="13" fill="url(#bar)"/>
+  </g>
+
+  <!-- text -->
+  <text x="330" y="235" font-family="Segoe UI, Arial, sans-serif" font-size="80" font-weight="800" fill="#ffffff">Speak Frankly</text>
+  <text x="334" y="292" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="400" fill="#ffffff" opacity="0.9">Learn English by talking &#8212; no fear.</text>
+  <text x="334" y="352" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="600" fill="#C9BEFF">AI tutor  &#183;  Speaking practice  &#183;  Daily challenges</text>
+</svg>

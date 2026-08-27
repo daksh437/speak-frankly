@@ -7,8 +7,14 @@ import '../services/premium_service.dart';
 import '../theme/app_theme.dart';
 
 /// Premium upgrade screen. Learners start with a free in-app trial; this screen
-/// is the paid upgrade — monthly (₹199/mo, ₹10 first-month intro) or annual
-/// (₹999/yr, best value). The actual prices come from the Play Console products.
+/// is the paid upgrade — monthly or annual (best value).
+///
+/// Every price shown comes from Play, localised to the buyer's own country and
+/// currency. Nothing here hardcodes an amount: the tiles used to fall back to
+/// '₹999'/'₹199' while the products loaded, which quoted Indian rupees to a
+/// learner anywhere in the world and then failed at checkout. If Play returns
+/// no plans at all — still loading, or the subscription is not available in
+/// this country — the screen says so instead of inventing a price.
 ///
 /// When [blocking] is true the screen acts as a hard paywall: no back button,
 /// a sign-out escape hatch, and on success [onSubscribed] is invoked (instead of
@@ -22,6 +28,11 @@ class PremiumScreen extends StatefulWidget {
 }
 
 class _PremiumScreenState extends State<PremiumScreen> {
+  /// Shown in a plan tile until Play hands us the real, localised price. A
+  /// neutral dash, never a currency — we don't know the buyer's until Play
+  /// tells us, and guessing quotes them a price they will not be charged.
+  static const String _pricePlaceholder = '—';
+
   // Which plan the learner has selected. Defaults to annual (best value) when
   // it's offered, otherwise monthly.
   String _selected = PremiumService.annualId;
@@ -105,7 +116,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                           context,
                           id: PremiumService.annualId,
                           title: loc.planAnnual,
-                          price: svc.annual?.price ?? '₹999',
+                          price: svc.annual?.price ?? _pricePlaceholder,
                           per: loc.perYear,
                           note: loc.planBestValue,
                           highlight: true,
@@ -115,7 +126,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         context,
                         id: PremiumService.monthlyId,
                         title: loc.planMonthly,
-                        price: svc.monthly?.price ?? '₹199',
+                        price: svc.monthly?.price ?? _pricePlaceholder,
                         per: loc.perMonth,
                         note: loc.planMonthlyNote,
                       ),
@@ -130,7 +141,11 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         width: double.infinity,
                         height: 54,
                         child: FilledButton(
-                          onPressed: svc.purchasePending ? null : _subscribe,
+                          // Nothing purchasable → no live button. Play returns
+                          // no products while they load and in any country the
+                          // subscription isn't sold in; offering Continue there
+                          // just walks the learner into a failed checkout.
+                          onPressed: (svc.purchasePending || !svc.hasAnyPlan) ? null : _subscribe,
                           child: svc.purchasePending
                               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
                               : Text(_selected == PremiumService.annualId ? loc.continueAnnual : loc.continueMonthly,
@@ -138,7 +153,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(loc.billingNote,
+                      Text(svc.hasAnyPlan ? loc.billingNote : loc.subsUnavailable,
                           textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11.5)),
                     ],
                   ),

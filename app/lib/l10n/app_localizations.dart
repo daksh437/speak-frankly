@@ -701,7 +701,7 @@ abstract class AppLocalizations {
   /// No description provided for @planMonthlyNote.
   ///
   /// In en, this message translates to:
-  /// **'Just ₹10 for your first month'**
+  /// **'Cancel anytime'**
   String get planMonthlyNote;
 
   /// No description provided for @planPopular.
@@ -719,7 +719,7 @@ abstract class AppLocalizations {
   /// No description provided for @continueMonthly.
   ///
   /// In en, this message translates to:
-  /// **'Continue · ₹10 first month'**
+  /// **'Continue · Monthly'**
   String get continueMonthly;
 
   /// No description provided for @billingNote.

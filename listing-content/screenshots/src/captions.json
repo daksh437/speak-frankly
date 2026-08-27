@@ -1,0 +1,63 @@
+{
+  "_comment": [
+    "The eight Play screenshots, in listing order.",
+    "`source` is the untouched device capture in screenshots/raw/.",
+    "Every headline describes something the build actually does — see",
+    "store-text/screenshot-copy.txt for why each one is in the set.",
+    "cropTop/cropBottom are in SOURCE pixels on the 1080x2340 capture: they",
+    "strip the phone's status bar (clock, notification icons, battery) and the",
+    "bottom strip that can carry an ad banner, so all eight share one identical",
+    "viewport and no shot advertises someone else's app."
+  ],
+  "crop": { "top": 110, "bottom": 1900 },
+  "shots": [
+    {
+      "out": "01-core-value.png",
+      "source": "01-home.png",
+      "headline": "Speak English with confidence",
+      "support": "Practise by talking, not memorising"
+    },
+    {
+      "out": "02-ai-conversation.png",
+      "source": "02-ai-conversation.png",
+      "headline": "Practise real conversations",
+      "support": "An AI tutor that replies to what you meant"
+    },
+    {
+      "out": "03-speaking-practice.png",
+      "source": "03-speaking-practice.png",
+      "headline": "Practise speaking out loud",
+      "support": "Listen, repeat, and hear yourself improve"
+    },
+    {
+      "out": "04-story-mode.png",
+      "source": "04-story-mode.png",
+      "headline": "Learn through real-life situations",
+      "support": "Guided role-plays. Works offline"
+    },
+    {
+      "out": "05-vocabulary.png",
+      "source": "05b-dictionary.png",
+      "headline": "Build your everyday vocabulary",
+      "support": "Tap any word for its meaning and sound"
+    },
+    {
+      "out": "06-picture-match.png",
+      "source": "06-picture-match.png",
+      "headline": "Learn while having fun",
+      "support": "Quick games that fit in a coffee break"
+    },
+    {
+      "out": "07-progress.png",
+      "source": "07-progress.png",
+      "headline": "See your progress",
+      "support": "Streak, XP and your fluency map"
+    },
+    {
+      "out": "08-daily-practice.png",
+      "source": "05-vocabulary.png",
+      "headline": "Make English practice a daily habit",
+      "support": "Saved words come back before you forget"
+    }
+  ]
+}

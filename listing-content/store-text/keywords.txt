@@ -1,0 +1,47 @@
+SUGGESTED KEYWORDS — Speak Frankly
+==================================
+
+IMPORTANT: Google Play has NO keywords field. Unlike the App Store, Play indexes
+your title, short description and full description. So these terms are not
+pasted anywhere — they are the vocabulary the copy should already contain
+naturally. Every term below appears in the current description in a real
+sentence. Do not add a keyword list to the listing itself: Google Play's
+metadata policy treats keyword stuffing as a violation and it can get the
+listing rejected or demoted.
+
+PRIMARY (highest intent — these describe what the app IS)
+  english speaking practice
+  ai english tutor
+  english conversation practice
+  learn english by talking
+  spoken english
+
+SECONDARY (feature-level — real features only)
+  english speaking app
+  pronunciation practice
+  shadowing practice
+  english vocabulary
+  english for beginners
+  english conversation ai
+  role play english
+  daily english practice
+
+LONG TAIL (problem-led — how people actually search)
+  how to speak english fluently
+  english practice without a partner
+  practise english speaking alone
+  english speaking for job interview
+  english for beginners hindi
+
+INTENTIONALLY NOT USED
+  "best english app", "no.1 english app", "#1"     — unsupported superlatives
+  "fluent in 30 days", "guaranteed fluency"        — outcome claims we cannot back
+  "free english course", "unlimited free"          — misleading; the free tier is capped
+  "IELTS", "TOEFL", "exam preparation"             — the app has no exam content
+  "native speaker teacher", "certified teacher"    — there are no human teachers
+  "accent training", "accent reduction"            — scoring measures intelligibility,
+                                                     not accent (see README)
+
+PLAY CONSOLE TAGS (choose from Google's fixed list, not free text)
+  Category: Education
+  Suggested tags: Language Learning, Education, Self-Improvement

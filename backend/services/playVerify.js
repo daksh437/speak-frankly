@@ -16,8 +16,13 @@
  *   2. Grant that service account the "View financial data / Manage orders"
  *      permission (enough for read-only purchase verification).
  *   3. Set env: PLAY_PACKAGE_NAME=com.speakfrankly  (the app's real package id)
- *      Optional: PLAY_SUBSCRIPTION_ID (default premium_monthly),
- *                PLAY_VERIFY_STRICT=true to reject on transient API errors too.
+ *      Optional: PLAY_VERIFY_STRICT=true to reject on transient API errors too.
+ *
+ * There is no subscription-id setting: the subscriptionsv2 endpoint identifies
+ * the purchase from the token alone, so one code path verifies BOTH the monthly
+ * and the annual plan. (A PLAY_SUBSCRIPTION_ID constant used to sit here
+ * defaulting to premium_monthly, which was never read by anything and implied
+ * the annual plan went unverified.)
  *
  * If PLAY_PACKAGE_NAME is unset, verification is DISABLED and the caller falls
  * back to trusting the client (so you can deploy before finishing Play setup).
@@ -26,7 +31,6 @@ const axios = require('axios');
 const { GoogleAuth } = require('google-auth-library');
 
 const PACKAGE_NAME = (process.env.PLAY_PACKAGE_NAME || '').trim();
-const SUBSCRIPTION_ID = (process.env.PLAY_SUBSCRIPTION_ID || 'premium_monthly').trim();
 const STRICT = process.env.PLAY_VERIFY_STRICT === 'true' || process.env.PLAY_VERIFY_STRICT === '1';
 const SCOPE = 'https://www.googleapis.com/auth/androidpublisher';
 
@@ -118,4 +122,4 @@ async function verifySubscription(purchaseToken) {
   }
 }
 
-module.exports = { verifySubscription, isConfigured, STRICT, SUBSCRIPTION_ID, PACKAGE_NAME };
+module.exports = { verifySubscription, isConfigured, STRICT, PACKAGE_NAME };

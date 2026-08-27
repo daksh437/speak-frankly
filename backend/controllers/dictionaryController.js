@@ -11,7 +11,7 @@
  */
 const { lookup } = require('../services/dictionaryService');
 const { runGemini, hasKey } = require('../utils/geminiClient');
-const { getAuxAccess, recordAuxUsage } = require('../middleware/aiAccess');
+const { reserveAuxUsage, releaseAuxUsage } = require('../middleware/aiAccess');
 
 const T_CACHE = new Map(); // `${word}|${target}` -> { text, ts }
 const T_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -63,14 +63,14 @@ async function define(req, res) {
     const key = `${card.word.toLowerCase()}|${target.toLowerCase()}`;
     translation = cachedTranslation(key);
     if (translation === null && req.uid) {
-      // Only a real (uncached) Gemini call costs budget.
-      const access = await getAuxAccess(req.uid, (req.headers['x-device-id'] || '').toString().trim());
-      if (access.allowed) {
+      // Only a real (uncached) Gemini call costs budget — and the slot is CLAIMED
+      // before the call, not counted after it, so a burst of lookups can't all
+      // pass the same stale check. If nothing comes back, hand it straight back.
+      const claim = await reserveAuxUsage(req.uid);
+      if (claim.ok) {
         translation = await translateMeaning(card.word, primary, target);
-        if (translation) {
-          cacheTranslation(key, translation);
-          recordAuxUsage(req.uid).catch(() => {});
-        }
+        if (translation) cacheTranslation(key, translation);
+        else if (claim.reserved) releaseAuxUsage(req.uid).catch(() => {});
       }
     }
   }

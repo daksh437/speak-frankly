@@ -6,8 +6,20 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'api_service.dart';
 
 /// Google Play subscriptions for Premium. Two plans (create both in Play Console):
-///  - [monthlyId] `premium_monthly` — ₹199/month, with a ₹10 first-month intro offer.
-///  - [annualId]  `premium_annual`  — ₹999/year (best value; ~58% off monthly).
+///  - [monthlyId] `premium_monthly` — billed monthly.
+///  - [annualId]  `premium_annual`  — billed yearly (best value; ~58% off monthly).
+///
+/// Prices are NOT defined here. Play returns the price for the buyer's own
+/// country and currency in [ProductDetails.price], already formatted — so the
+/// UI must render that string and never a hardcoded one. A learner in Brazil
+/// sees R$, one in India sees ₹.
+///
+/// A product only comes back for countries the subscription is actually
+/// available and priced in (Play Console → the subscription → availability).
+/// Anywhere it isn't, [queryProductDetails] returns it as not-found, so
+/// [_products] stays empty and [hasAnyPlan] is false — that is the signal the
+/// paywall uses to say "not available here" instead of offering a dead button.
+///
 /// On a confirmed purchase we grant premium on the backend, which VERIFIES the
 /// purchase token with the Play Developer API (server-authoritative).
 class PremiumService extends ChangeNotifier {
@@ -32,6 +44,16 @@ class PremiumService extends ChangeNotifier {
 
   /// Whether the annual plan is offered (only if the Play product exists).
   bool get hasAnnual => _products.containsKey(annualId);
+
+  /// Whether Play returned ANY purchasable plan for this buyer.
+  ///
+  /// False means either the products are still loading, or the subscription
+  /// isn't available in this country — in both cases there is no real price to
+  /// show and nothing to buy, so the paywall must not present one.
+  bool get hasAnyPlan => _products.isNotEmpty;
+
+  /// Is [productId] actually purchasable right now?
+  bool canBuy(String productId) => _products.containsKey(productId);
 
   Future<void> init() async {
     try {

@@ -48,9 +48,63 @@ services:
       # to "true" here, because until it is on, ANY caller can claim ANY uid.
       - key: REQUIRE_AUTH_TOKEN
         value: "false"
+      # Fair-use ceiling on the "unlimited" premium plan, in messages/day.
+      # 0 = genuinely unlimited (today's behaviour). Nothing else in the code
+      # bounds a premium account, so one subscription authorises unbounded AI
+      # spend. 500 is the suggested value — a heavy learner does 30–50/day, so
+      # no real subscriber ever reaches it. Premium is still reported as
+      # unlimited to the app; this only bites in the server-side claim.
+      - key: PREMIUM_DAILY_CAP
+        value: "0"
       # Enables Google Play purchase verification. Requires Play Console →
       # Setup → API access: link this GCP project + grant the service account
-      # financial/orders permission. Until that's done, purchases fall back to a
-      # short grace window (see premiumController).
+      # financial/orders permission.
       - key: PLAY_PACKAGE_NAME
         value: com.speakfrankly
+      # ---- Web checkout (Razorpay) --------------------------------------
+      # Sells Premium on OUR OWN site at /checkout, where Play's 15% does not
+      # apply — Razorpay's ~2.36% does. The Android app must never link here
+      # (Play's anti-steering rule); Play Billing stays the only in-app path.
+      # Leave all of these unset and /checkout simply says it isn't available.
+      #
+      # Razorpay Dashboard → Settings → API Keys.
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      # Settings → Webhooks: point at https://<host>/checkout/webhook and
+      # subscribe to subscription.charged / .cancelled / .halted / .completed.
+      # WITHOUT this secret no purchase can ever be granted — the webhook is the
+      # only thing that grants premium, and an unsigned one is refused.
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      # Subscriptions → Plans: create a monthly and an annual plan, paste the
+      # plan_id of each. A plan with no id set is not offered on the page.
+      - key: RAZORPAY_PLAN_MONTHLY
+        sync: false
+      - key: RAZORPAY_PLAN_ANNUAL
+        sync: false
+      # Display labels only (e.g. "₹199"). The amount actually charged is
+      # whatever the Razorpay plan says; blank shows a dash rather than a guess.
+      - key: RAZORPAY_PRICE_MONTHLY
+        sync: false
+      - key: RAZORPAY_PRICE_ANNUAL
+        sync: false
+      # Firebase WEB app config, for Google sign-in on the checkout page. This
+      # is a separate app registration from the Android one — Firebase console →
+      # Project settings → Your apps → Web. Safe to expose (they are public
+      # client keys); the ID token they produce is verified server-side.
+      - key: FIREBASE_WEB_API_KEY
+        sync: false
+      - key: FIREBASE_WEB_AUTH_DOMAIN
+        sync: false
+      - key: FIREBASE_WEB_APP_ID
+        sync: false
+      # Reject a purchase when the Play API can't be reached at all, instead of
+      # granting the 3-day grace window. Grace is now limited to accounts that
+      # have had a verified purchase before (see premiumController), so leaving
+      # this false no longer hands strangers free premium — but turning it on
+      # once Play API access is confirmed working removes the grace path
+      # entirely, at the cost of blocking real buyers during a Google outage.
+      - key: PLAY_VERIFY_STRICT
+        value: "false"
