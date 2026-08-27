@@ -955,6 +955,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Translation not available right now.'**
   String get translationUnavailable;
+
+  /// No description provided for @trialPaywallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{Start your 1-day trial} other{Start your {days}-day trial}}'**
+  String trialPaywallTitle(int days);
+
+  /// No description provided for @trialPaywallSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything unlocked from day one.'**
+  String get trialPaywallSubtitle;
+
+  /// No description provided for @trialPaywallFor.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{for 1 day} other{for {days} days}}'**
+  String trialPaywallFor(int days);
+
+  /// No description provided for @trialPaywallThen.
+  ///
+  /// In en, this message translates to:
+  /// **'Then {renewal}'**
+  String trialPaywallThen(String renewal);
+
+  /// No description provided for @trialPaywallCta.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{START 1-DAY TRIAL} other{START {days}-DAY TRIAL}}'**
+  String trialPaywallCta(int days);
+
+  /// No description provided for @trialPaywallSubscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'SUBSCRIBE'**
+  String get trialPaywallSubscribe;
+
+  /// No description provided for @trialPaywallDisclosure.
+  ///
+  /// In en, this message translates to:
+  /// **'You pay {intro} now, then {renewal}. Cancel anytime in Google Play.'**
+  String trialPaywallDisclosure(String intro, String renewal);
+
+  /// No description provided for @trialPaywallRenewNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Renews at {renewal} until you cancel. Cancel anytime in Google Play.'**
+  String trialPaywallRenewNote(String renewal);
+
+  /// No description provided for @restorePurchase.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore purchase'**
+  String get restorePurchase;
 }
 
 class _AppLocalizationsDelegate

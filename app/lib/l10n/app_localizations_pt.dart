@@ -449,4 +449,61 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get translationUnavailable => 'A tradução não está disponível agora.';
+
+  @override
+  String trialPaywallTitle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Comece seu teste de $days dias',
+      one: 'Comece seu teste de 1 dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trialPaywallSubtitle => 'Tudo liberado desde o primeiro dia.';
+
+  @override
+  String trialPaywallFor(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'por $days dias',
+      one: 'por 1 dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trialPaywallThen(String renewal) {
+    return 'Depois $renewal';
+  }
+
+  @override
+  String trialPaywallCta(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'COMEÇAR TESTE DE $days DIAS',
+      one: 'COMEÇAR TESTE DE 1 DIA',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trialPaywallSubscribe => 'ASSINAR';
+
+  @override
+  String trialPaywallDisclosure(String intro, String renewal) {
+    return 'Você paga $intro agora e depois $renewal. Cancele quando quiser no Google Play.';
+  }
+
+  @override
+  String trialPaywallRenewNote(String renewal) {
+    return 'Renova por $renewal até você cancelar. Cancele quando quiser no Google Play.';
+  }
+
+  @override
+  String get restorePurchase => 'Restaurar compra';
 }

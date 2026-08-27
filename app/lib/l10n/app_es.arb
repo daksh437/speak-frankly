@@ -155,5 +155,15 @@
   "reasonOther": "Otra cosa",
   "reportThanks": "Gracias, revisaremos esta respuesta.",
   "reportFailed": "No se pudo enviar el reporte. Inténtalo de nuevo.",
-  "translationUnavailable": "La traducción no está disponible ahora."
+  "translationUnavailable": "La traducción no está disponible ahora.",
+
+  "trialPaywallTitle": "{days, plural, =1{Empieza tu prueba de 1 día} other{Empieza tu prueba de {days} días}}",
+  "trialPaywallSubtitle": "Todo desbloqueado desde el primer día.",
+  "trialPaywallFor": "{days, plural, =1{por 1 día} other{por {days} días}}",
+  "trialPaywallThen": "Después {renewal}",
+  "trialPaywallCta": "{days, plural, =1{EMPEZAR PRUEBA DE 1 DÍA} other{EMPEZAR PRUEBA DE {days} DÍAS}}",
+  "trialPaywallSubscribe": "SUSCRIBIRSE",
+  "trialPaywallDisclosure": "Pagas {intro} ahora y después {renewal}. Cancela cuando quieras en Google Play.",
+  "trialPaywallRenewNote": "Se renueva por {renewal} hasta que canceles. Cancela cuando quieras en Google Play.",
+  "restorePurchase": "Restaurar compra"
 }

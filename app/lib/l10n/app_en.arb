@@ -161,5 +161,21 @@
   "reasonOther": "Something else",
   "reportThanks": "Thanks — we'll review this reply.",
   "reportFailed": "Couldn't send the report. Please try again.",
-  "translationUnavailable": "Translation not available right now."
+  "translationUnavailable": "Translation not available right now.",
+
+  "trialPaywallTitle": "{days, plural, =1{Start your 1-day trial} other{Start your {days}-day trial}}",
+  "@trialPaywallTitle": {"placeholders":{"days":{"type":"int"}}},
+  "trialPaywallSubtitle": "Everything unlocked from day one.",
+  "trialPaywallFor": "{days, plural, =1{for 1 day} other{for {days} days}}",
+  "@trialPaywallFor": {"placeholders":{"days":{"type":"int"}}},
+  "trialPaywallThen": "Then {renewal}",
+  "@trialPaywallThen": {"placeholders":{"renewal":{"type":"String"}}},
+  "trialPaywallCta": "{days, plural, =1{START 1-DAY TRIAL} other{START {days}-DAY TRIAL}}",
+  "@trialPaywallCta": {"placeholders":{"days":{"type":"int"}}},
+  "trialPaywallSubscribe": "SUBSCRIBE",
+  "trialPaywallDisclosure": "You pay {intro} now, then {renewal}. Cancel anytime in Google Play.",
+  "@trialPaywallDisclosure": {"placeholders":{"intro":{"type":"String"},"renewal":{"type":"String"}}},
+  "trialPaywallRenewNote": "Renews at {renewal} until you cancel. Cancel anytime in Google Play.",
+  "@trialPaywallRenewNote": {"placeholders":{"renewal":{"type":"String"}}},
+  "restorePurchase": "Restore purchase"
 }

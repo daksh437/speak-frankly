@@ -26,8 +26,17 @@ services:
         sync: false
       - key: DAILY_MESSAGES_FREE
         value: "8"
+      # HARD PAYWALL. Nobody gets AI without a paid subscription: TRIAL_DAYS=0
+      # means a new account never resolves to the "trial" plan, and
+      # REQUIRE_PREMIUM then refuses every AI call from a free one. The trial
+      # learners DO get is the paid one in Play (₹5 for 3 days, then ₹199/month),
+      # which arrives here as real premium via purchase verification.
+      #
+      # To go back to freemium: TRIAL_DAYS=3 and REQUIRE_PREMIUM=false.
       - key: TRIAL_DAYS
-        value: "3"
+        value: "0"
+      - key: REQUIRE_PREMIUM
+        value: "true"
       - key: TRIAL_DAILY_CAP
         value: "50"
       # Daily budget for the "aux" AI helpers (translate, speaking phrases,

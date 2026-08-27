@@ -100,6 +100,54 @@ The annual plan is the thin one: a committed daily learner is close to its break
 
 Pricing basis: [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing) (`gemini-3-flash-preview`, $0.50/1M in, $3.00/1M out), [Play service fees](https://support.google.com/googleplay/android-developer/answer/112622), ₹95.9/USD. Re-run the numbers when any of those move.
 
+## The hard paywall
+
+Sign in → onboarding → paywall → app. Nothing else gets through: `PaywallGate`
+(`app/lib/screens/auth_gate.dart`) asks `/access` what this account is entitled
+to and only reveals `MainShell` for a premium answer. The server enforces the
+same rule independently — `REQUIRE_PREMIUM=true` with `TRIAL_DAYS=0` makes every
+AI call from a free account fail with `PREMIUM_REQUIRED` — so a patched client
+that skips the screen still gets nothing.
+
+**The trial is a Play offer, not app logic.** In Play Console → the
+`premium_monthly` subscription → the monthly base plan → **Add offer**:
+
+| Setting | Value |
+|---|---|
+| Eligibility | New subscribers only (single use) |
+| Phase 1 | 3 days, ₹5, one billing cycle |
+| Phase 2 | the base plan — ₹199/month, until cancelled |
+
+Play charges the ₹5, waits out the phase, then auto-debits ₹199 unless the
+learner cancelled. Renewals, cancellations, refunds, dunning and the
+legally-required renewal reminders are all Google's. The app only asks for the
+right offer and reacts to the answer.
+
+Two things this shape buys: the flow is Play-policy-clean (no third-party
+billing inside the app), and the price and trial length become Console edits
+rather than app releases.
+
+If Play won't accept a 3-day *paid* phase on your base plan, the alternatives are
+a 1-week ₹5 phase, or a free 3-day trial followed by ₹199. The app renders
+whatever phases Play returns, so either works with no code change.
+
+**Why the paywall reads pricing phases.** With an offer attached, Play returns
+*two* `ProductDetails` for the same product id — one for the base plan, one for
+the offer — and the offer's token, not the product id, decides whether the buyer
+is charged ₹5 or ₹199. `PremiumService` therefore keeps a list, never a map
+keyed by product id, and picks the cheapest opening phase.
+`app/test/premium_offers_test.dart` locks that down.
+
+An intro offer only comes back while the account is still **eligible** for it. A
+learner who already used their trial sees the plain ₹199 price and a Subscribe
+button — the screen never promises a trial Play will not honour.
+
+Two deliberate softenings in the gate, both about not accusing a paying learner
+of not paying: the paywall waits for Play's `restorePurchases()` as well as the
+server's answer (so a renewal we haven't recorded yet doesn't flash a sales page
+at a subscriber), and if `/access` cannot be reached at all the app opens
+normally — the server refuses the actual work anyway.
+
 ## Web checkout (Razorpay) — the second storefront
 
 Play's Payments policy governs purchases made **inside** the Android app; it does not govern our own website. So `GET /checkout` sells the same Premium through Razorpay, where the only fee is ~2.36% instead of Play's 15%:

@@ -155,5 +155,15 @@
   "reasonOther": "कुछ और",
   "reportThanks": "धन्यवाद — हम इस जवाब की जाँच करेंगे।",
   "reportFailed": "रिपोर्ट नहीं भेजी जा सकी। कृपया फिर कोशिश करें।",
-  "translationUnavailable": "अनुवाद अभी उपलब्ध नहीं है।"
+  "translationUnavailable": "अनुवाद अभी उपलब्ध नहीं है।",
+
+  "trialPaywallTitle": "{days, plural, =1{1 दिन का ट्रायल शुरू करें} other{{days} दिन का ट्रायल शुरू करें}}",
+  "trialPaywallSubtitle": "पहले दिन से ही सब कुछ अनलॉक।",
+  "trialPaywallFor": "{days, plural, =1{1 दिन के लिए} other{{days} दिन के लिए}}",
+  "trialPaywallThen": "फिर {renewal}",
+  "trialPaywallCta": "{days, plural, =1{1 दिन का ट्रायल शुरू करें} other{{days} दिन का ट्रायल शुरू करें}}",
+  "trialPaywallSubscribe": "सब्सक्राइब करें",
+  "trialPaywallDisclosure": "अभी {intro} लगेंगे, उसके बाद {renewal}। Google Play में कभी भी रद्द करें।",
+  "trialPaywallRenewNote": "रद्द करने तक {renewal} पर अपने आप रिन्यू होगा। Google Play में कभी भी रद्द करें।",
+  "restorePurchase": "खरीद बहाल करें"
 }

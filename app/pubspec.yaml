@@ -62,6 +62,10 @@ dependencies:
 
   # Premium subscription via Google Play Billing.
   in_app_purchase: ^3.2.0
+  # Direct, so the paywall can read a subscription offer's pricing PHASES
+  # ('₹5 for 3 days, then ₹199/month') — the base plugin only surfaces the
+  # first phase. Buying still goes through in_app_purchase.
+  in_app_purchase_android: ^0.4.0
 
   # Show the real app version (from the build) instead of a hardcoded string.
   package_info_plus: ^8.0.0

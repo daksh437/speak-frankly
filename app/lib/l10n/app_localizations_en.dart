@@ -449,4 +449,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get translationUnavailable => 'Translation not available right now.';
+
+  @override
+  String trialPaywallTitle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Start your $days-day trial',
+      one: 'Start your 1-day trial',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trialPaywallSubtitle => 'Everything unlocked from day one.';
+
+  @override
+  String trialPaywallFor(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'for $days days',
+      one: 'for 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trialPaywallThen(String renewal) {
+    return 'Then $renewal';
+  }
+
+  @override
+  String trialPaywallCta(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'START $days-DAY TRIAL',
+      one: 'START 1-DAY TRIAL',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trialPaywallSubscribe => 'SUBSCRIBE';
+
+  @override
+  String trialPaywallDisclosure(String intro, String renewal) {
+    return 'You pay $intro now, then $renewal. Cancel anytime in Google Play.';
+  }
+
+  @override
+  String trialPaywallRenewNote(String renewal) {
+    return 'Renews at $renewal until you cancel. Cancel anytime in Google Play.';
+  }
+
+  @override
+  String get restorePurchase => 'Restore purchase';
 }

@@ -5,7 +5,7 @@ import '../services/locale_controller.dart';
 import '../services/sync_service.dart';
 import '../services/user_session.dart';
 import '../widgets/app_logo.dart';
-import 'main_shell.dart';
+import 'auth_gate.dart';
 
 /// A friendly, step-by-step onboarding (BRD §6.1 / §7): one decision per screen,
 /// big tap targets, minimal text, a welcome hero, and a progress bar.
@@ -73,9 +73,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
     SyncService.push(); // save this account's profile to the cloud
     if (!mounted) return;
-    // Onboarding done → straight into the app on the free trial (no paywall).
+    // Onboarding done → the paywall. PaywallGate asks the server what this
+    // account is entitled to and only then reveals the app, so a learner who
+    // already subscribed on another device walks straight in.
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell()),
+      MaterialPageRoute(builder: (_) => const PaywallGate()),
     );
   }
 

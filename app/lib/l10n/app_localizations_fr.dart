@@ -457,4 +457,61 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get translationUnavailable =>
       'La traduction n\'est pas disponible pour le moment.';
+
+  @override
+  String trialPaywallTitle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Commencez votre essai de $days jours',
+      one: 'Commencez votre essai d\'un jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trialPaywallSubtitle => 'Tout est débloqué dès le premier jour.';
+
+  @override
+  String trialPaywallFor(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'pendant $days jours',
+      one: 'pendant 1 jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trialPaywallThen(String renewal) {
+    return 'Puis $renewal';
+  }
+
+  @override
+  String trialPaywallCta(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'COMMENCER L\'ESSAI DE $days JOURS',
+      one: 'COMMENCER L\'ESSAI D\'UN JOUR',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trialPaywallSubscribe => 'S\'ABONNER';
+
+  @override
+  String trialPaywallDisclosure(String intro, String renewal) {
+    return 'Vous payez $intro maintenant, puis $renewal. Annulez à tout moment dans Google Play.';
+  }
+
+  @override
+  String trialPaywallRenewNote(String renewal) {
+    return 'Renouvelé à $renewal jusqu\'à l\'annulation. Annulez à tout moment dans Google Play.';
+  }
+
+  @override
+  String get restorePurchase => 'Restaurer l\'achat';
 }

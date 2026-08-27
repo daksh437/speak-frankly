@@ -16,6 +16,12 @@ class PlanStatus extends ChangeNotifier {
   DateTime? trialEndsAt;
   bool loaded = false;
 
+  /// Whether a refresh has finished at least once, successfully or not.
+  /// The paywall gate waits for this: showing a paywall to a paying learner
+  /// because the first /access call had not returned yet is worse than a
+  /// half-second loader.
+  bool attempted = false;
+
   bool get isPremium => planType == 'premium';
   bool get isTrial => planType == 'trial';
   bool get hasPremiumAccess => isPremium || isTrial;
@@ -31,6 +37,9 @@ class PlanStatus extends ChangeNotifier {
       notifyListeners();
     } catch (_) {
       // Network hiccup — keep whatever we had; never lock a user out on error.
+    } finally {
+      attempted = true;
+      notifyListeners();
     }
   }
 }

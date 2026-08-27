@@ -51,7 +51,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     // Guard: if the selected plan isn't available, use whatever is.
     var plan = _selected;
     if (plan == PremiumService.annualId && !svc.hasAnnual) plan = PremiumService.monthlyId;
-    final ok = await svc.buy(plan);
+    final ok = await svc.buyProduct(plan);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context)!.subsUnavailable)),
@@ -116,7 +116,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                           context,
                           id: PremiumService.annualId,
                           title: loc.planAnnual,
-                          price: svc.annual?.price ?? _pricePlaceholder,
+                          price: svc.bestOffer(PremiumService.annualId)?.renewal.price ?? _pricePlaceholder,
                           per: loc.perYear,
                           note: loc.planBestValue,
                           highlight: true,
@@ -126,9 +126,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         context,
                         id: PremiumService.monthlyId,
                         title: loc.planMonthly,
-                        price: svc.monthly?.price ?? _pricePlaceholder,
+                        price: svc.bestOffer(PremiumService.monthlyId)?.renewal.price ?? _pricePlaceholder,
                         per: loc.perMonth,
-                        note: loc.planMonthlyNote,
+                        note: _introNote(context, PremiumService.monthlyId) ?? loc.planMonthlyNote,
                       ),
                     ],
                   ),
@@ -164,6 +164,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
         ),
       ),
     );
+  }
+
+  /// The tile quotes the RENEWAL price. When Play is still offering this
+  /// account an intro phase, replace the generic "Cancel anytime" note with
+  /// what they actually pay first — the hard paywall shows the same number,
+  /// and two screens quoting different prices is how refunds start.
+  String? _introNote(BuildContext context, String productId) {
+    final offer = PremiumService.instance.bestOffer(productId);
+    if (offer == null || !offer.hasIntro) return null;
+    return AppLocalizations.of(context)!.trialPaywallThen(offer.opening.price);
   }
 
   Widget _planTile(
