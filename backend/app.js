@@ -10,6 +10,8 @@
  *   POST /tutor/feedback    end-of-session report (metered: daily aux budget)
  *   POST /report            report offensive AI output (Play GenAI policy)
  *   DELETE /account         erase your own account + data (Play deletion policy)
+ *   GET  /checkout          web storefront for Premium (Razorpay, NOT in-app)
+ *   POST /checkout/webhook  Razorpay payment confirmation (signature-verified)
  *
  * Runs with zero external services: no GEMINI_API_KEY → MOCK tutor; no Firebase
  * → degraded (allow-through) mode. Wire keys via .env when ready.
@@ -43,7 +45,16 @@ const IS_PROD = NODE_ENV === 'production';
 // would make the rate limiter treat all traffic as one client.
 app.set('trust proxy', 1);
 
-app.use(express.json({ limit: '2mb' }));
+// Razorpay signs the RAW bytes of a webhook body, so the exact bytes have to
+// survive JSON parsing to be hashed. Re-serialising the parsed object reorders
+// keys and drops whitespace, producing a different hash that would reject every
+// genuine webhook. Kept to that one path so no other route pays the memory.
+app.use(express.json({
+  limit: '2mb',
+  verify: (req, _res, buf) => {
+    if (req.originalUrl && req.originalUrl.startsWith('/checkout/webhook')) req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 const corsOrigins = (process.env.CORS_ORIGINS || '')
@@ -94,6 +105,9 @@ app.use('/scenarios', rateLimit({ windowMs: 60_000, max: 60, name: 'scenarios' }
 app.use('/dictionary', rateLimit({ windowMs: 60_000, max: 30, name: 'dictionary' }), dictionaryRoutes);
 app.use('/access', accessRoutes);
 app.use('/account', require('./routes/account')); // DELETE /account (in-app deletion)
+// Web-only storefront (Razorpay). NOT reachable from the Android app — Play
+// Billing stays the only in-app purchase path, per Play's payments policy.
+app.use('/checkout', require('./routes/checkout'));
 app.use('/speaking', speakingRoutes);
 app.use('/custom', customRoutes);
 app.use('/progress', progressRoutes);
