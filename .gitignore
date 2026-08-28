@@ -25,3 +25,6 @@ app/.flutter-plugins-dependencies
 # ---- OS ----
 .DS_Store
 Thumbs.db
+
+# Video build scratch (regenerate with scripts/build-video.mjs)
+listing-content/video/.work/
