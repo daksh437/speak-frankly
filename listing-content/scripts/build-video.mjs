@@ -68,7 +68,7 @@ const SCENES = [
   { id: 'home', src: 'c1-home.mp4', start: 1.0, dur: 6.0,
     headline: 'Learn English by talking', support: 'Not by memorising grammar rules',
     vo: 'Speak Frankly lets you practise by talking, not by memorising rules.' },
-  { id: 'chat', src: 'c2-chat.mp4', start: 17.0, dur: 13.0,
+  { id: 'chat', src: 'c2-chat.mp4', start: 0.4, dur: 10.0, hold: 3.0,
     headline: 'Corrections that don\u2019t sting', support: 'It answers what you meant, then shows the fix',
     vo: 'Say it your own way. The tutor replies to what you meant, then shows you one fix. Kindly.' },
   { id: 'story', src: 'c3-story.mp4', start: 1.5, dur: 9.0,
@@ -161,14 +161,17 @@ for (const s of SCENES) {
       '-y', '-loop', '1', '-i', bg, '-i', clip,
       '-filter_complex',
       `[1:v]fps=${FPS},trim=start=${s.start}:duration=${s.dur},setpts=PTS-STARTPTS,` +
-      `crop=${SRC_W}:${CROP_H}:0:${CROP_TOP},scale=${SCREEN_W}:${SCREEN_H}[v];` +
+      `crop=${SRC_W}:${CROP_H}:0:${CROP_TOP},scale=${SCREEN_W}:${SCREEN_H}` +
+      // Freeze on the last frame rather than cutting away the moment the
+      // scene is about. Real footage, simply held.
+      (s.hold ? `,tpad=stop_mode=clone:stop_duration=${s.hold}` : '') + `[v];` +
       `[0:v][v]overlay=${SCREEN_X}:${SCREEN_Y}:shortest=1,format=yuv420p[o]`,
-      '-map', '[o]', '-t', String(s.dur),
+      '-map', '[o]', '-t', String(s.dur + (s.hold || 0)),
       '-r', String(FPS), '-c:v', 'libx264', '-crf', '20', seg,
     ], { stdio: 'pipe' });
   }
   segments.push(seg);
-  console.log(`  ✅ ${s.id.padEnd(10)} ${s.dur}s`);
+  console.log(`  ✅ ${s.id.padEnd(10)} ${s.dur + (s.hold || 0)}s`);
 }
 
 // ---- cross-fade the scenes together -------------------------------------
@@ -182,7 +185,7 @@ let filter = '';
 let prev = '[0:v]';
 let offset = 0;
 for (let i = 1; i < segments.length; i++) {
-  offset += SCENES[i - 1].dur - XFADE;
+  offset += (SCENES[i - 1].dur + (SCENES[i - 1].hold || 0)) - XFADE;
   const label = i === segments.length - 1 ? '[vout]' : `[x${i}]`;
   filter += `${prev}[${i}:v]xfade=transition=fade:duration=${XFADE}:offset=${offset.toFixed(3)}${label};`;
   prev = label;
@@ -200,10 +203,10 @@ execFileSync(FFMPEG, [
 let t = 0;
 const map = SCENES.map((s, i) => {
   const start = i === 0 ? 0 : t;
-  t = start + s.dur - XFADE;
-  return { id: s.id, start: +start.toFixed(3), dur: s.dur, vo: s.vo };
+  t = start + s.dur + (s.hold || 0) - XFADE;
+  return { id: s.id, start: +start.toFixed(3), dur: s.dur + (s.hold || 0), vo: s.vo };
 });
-const total = SCENES.reduce((a, s) => a + s.dur, 0) - (SCENES.length - 1) * XFADE;
+const total = SCENES.reduce((a, s) => a + s.dur + (s.hold || 0), 0) - (SCENES.length - 1) * XFADE;
 writeFileSync(resolve(OUT, 'scenes.json'),
   JSON.stringify({ total: +total.toFixed(3), xfade: XFADE, scenes: map }, null, 2));
 

@@ -38,25 +38,25 @@ There is no file upload for the promo video. Put this on YouTube (public or
 unlisted, **ads turned off**, not age-restricted), then paste the watch URL into
 the Play Console listing.
 
-## KNOWN FLAW — re-record before publishing
+## A real bug this recording exposed
 
-The chat scene shows a failed exchange above the good one:
+The first take of the chat scene caught the app showing its own timeout message
+— "Hmm, I didn't catch that. Could you say it again?" — instead of a reply. That
+was not a fluke worth editing around:
 
-> Hmm, I didn't catch that. Could you say it again?
+- `/health` reported the AI call had **succeeded** on the server
+  (`calls: 1, ok: 1, failed: 0`).
+- Warming the backend by hand measured a **21.4 second** cold start on the first
+  request, then 0.25s once awake.
+- The app gives up at **30 seconds** (`_timeout` in `api_service.dart`).
 
-That is the app's own client-side timeout message. It appeared because the
-Render free-tier backend was cold and took longer than the app's 30-second HTTP
-timeout to answer. The retry immediately below it worked and produced the
-correction the scene is about — but a promo video should not show the app
-failing.
+So on Render's free tier, a real learner opening the app after the backend has
+slept can send their first message, wait, and be told the tutor did not catch it
+— while the server answers fine a moment later. `ApiService.warmup()` fires on
+launch and helps, but not if the learner starts talking quickly.
 
-To fix: force-stop the app (chat history is not persisted, so it reopens clean),
-open Job Interview against a WARM backend, type a sentence containing an error,
-and record about 20 seconds from the moment you send. Save over
-`raw/c2-chat.mp4` and rerun both build steps.
-
-That timeout deserves attention on its own: a real user opening the app after
-the backend has slept hits exactly the same failure on their first message.
+The scene here was re-recorded against a warm backend. The underlying timeout is
+still worth fixing.
 
 ## Editing the cut
 
