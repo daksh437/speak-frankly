@@ -1,0 +1,48 @@
+{
+  "total": 43.6,
+  "xfade": 0.4,
+  "scenes": [
+    {
+      "id": "intro",
+      "start": 0,
+      "dur": 3.5,
+      "vo": "You know English. You still freeze."
+    },
+    {
+      "id": "home",
+      "start": 3.1,
+      "dur": 6,
+      "vo": "Speak Frankly lets you practise by talking, not by memorising rules."
+    },
+    {
+      "id": "chat",
+      "start": 8.7,
+      "dur": 13,
+      "vo": "Say it your own way. The tutor replies to what you meant, then shows you one fix. Kindly."
+    },
+    {
+      "id": "story",
+      "start": 21.3,
+      "dur": 9,
+      "vo": "Play out real situations. Pick your reply. It even works offline."
+    },
+    {
+      "id": "game",
+      "start": 29.9,
+      "dur": 6,
+      "vo": "And quick games for the minutes in between."
+    },
+    {
+      "id": "progress",
+      "start": 35.5,
+      "dur": 5,
+      "vo": "Your streak, your XP, your fluency map."
+    },
+    {
+      "id": "outro",
+      "start": 40.1,
+      "dur": 3.5,
+      "vo": "Speak Frankly. Say something today."
+    }
+  ]
+}

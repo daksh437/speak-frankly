@@ -28,3 +28,6 @@ Thumbs.db
 
 # Video build scratch (regenerate with scripts/build-video.mjs)
 listing-content/video/.work/
+
+# Promo audio scratch (regenerate with scripts/build_promo_audio.py)
+listing-content/video/.audio/
