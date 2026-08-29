@@ -29,7 +29,7 @@ services:
       # HARD PAYWALL. Nobody gets AI without a paid subscription: TRIAL_DAYS=0
       # means a new account never resolves to the "trial" plan, and
       # REQUIRE_PREMIUM then refuses every AI call from a free one. The trial
-      # learners DO get is the paid one in Play (₹5 for 3 days, then ₹199/month),
+      # learners DO get is the paid one in Play (₹4 for 3 days, then ₹200/month),
       # which arrives here as real premium via purchase verification.
       #
       # To go back to freemium: TRIAL_DAYS=3 and REQUIRE_PREMIUM=false.

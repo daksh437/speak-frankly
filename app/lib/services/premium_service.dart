@@ -9,8 +9,8 @@ import 'api_service.dart';
 /// One pricing phase of an offer, already formatted by Play for the buyer's
 /// own country and currency.
 ///
-/// A plain base plan has exactly one phase (₹199 / month, forever). A base plan
-/// with an introductory offer has two: the opening phase (₹5 for 3 days, one
+/// A plain base plan has exactly one phase (₹200 / month, forever). A base plan
+/// with an introductory offer has two: the opening phase (₹4 for 3 days, one
 /// cycle) followed by the open-ended renewal phase.
 class PlanPhase {
   const PlanPhase({
@@ -83,10 +83,10 @@ class PlanOffer {
 ///  - [annualId]  `premium_annual`  — billed yearly (best value).
 ///
 /// THE PAID TRIAL LIVES IN PLAY, NOT HERE.
-/// "₹5 for 3 days, then ₹199/month" is a Play *offer* on the monthly base plan
+/// "₹4 for 3 days, then ₹200/month" is a Play *offer* on the monthly base plan
 /// (Play Console → the subscription → base plan → Add offer → a single
-/// introductory phase, 3 days, ₹5, new-subscriber eligibility). Play charges
-/// the ₹5, waits 3 days, then auto-debits ₹199 unless the learner cancelled —
+/// introductory phase, 3 days, ₹4, new-subscriber eligibility). Play charges
+/// the ₹4, waits 3 days, then auto-debits ₹200 unless the learner cancelled —
 /// so the whole renew/cancel/refund flow is Google's, and this app only has to
 /// ask for the right offer and react to the result.
 ///
@@ -253,7 +253,7 @@ class PremiumService extends ChangeNotifier {
   ///
   /// The offer's own [ProductDetails] must be the one handed to Play: it
   /// carries the offerToken, and that token — not the product id — is what
-  /// decides whether the learner is charged ₹5 or ₹199.
+  /// decides whether the learner is charged ₹4 or ₹200.
   Future<bool> buy(PlanOffer offer) async {
     purchasePending = true;
     justActivated = false;

@@ -87,16 +87,16 @@ Measured, not estimated — the token counts come from the real prompts and the 
 | A free user maxing out a day (23 msg + 30 aux) | ~₹3.38 |
 | A trial user maxing out a day (50 msg + 80 aux) | ~₹8.34 |
 
-Two plans, no intro offer: monthly and annual. (A ₹10 first-month offer was removed — it went underwater at ~4 messages/day, and invited a pay-₹10, use-a-month-unlimited, cancel loop.)
+Two plans, monthly and annual, plus a short paid intro offer (₹4 for the first 3 days, India only). An earlier ₹10 FIRST-MONTH offer was removed because it went underwater at ~4 messages/day and invited a pay-₹10, use-a-month-unlimited, cancel loop. Three days is a far smaller exposure than a month, but it is not zero: a paid intro user resolves to `premium`, so `PREMIUM_DAILY_CAP` (0 = unlimited today) is the only thing bounding them. Set it before running paid acquisition.
 
-At Google Play India's 15% subscription fee you keep **₹169.15/month** on the ₹199 plan and **₹849.15/year** (₹70.76/month) on the ₹999 plan. So a subscriber turns unprofitable at roughly:
+At Google Play India's 15% subscription fee you keep **₹170.00/month** on the ₹200 plan and **₹850.00/year** (₹70.83/month) on the ₹1,000 plan. So a subscriber turns unprofitable at roughly:
 
-- **monthly plan** — ~95 messages/day
+- **monthly plan** — ~94 messages/day
 - **annual plan** — ~39 messages/day
 
 The annual plan is the thin one: a committed daily learner is close to its break-even on AI cost alone, before Firestore, Render or support.
 
-**Prices live in Play Console, not in this repo.** The app renders `ProductDetails.price`, which Play localises to the buyer's country and currency; the ₹199/₹999 figures above are the Indian prices and are only used for this analysis. A subscription is purchasable exactly where you have made it available and priced it — anywhere else Play returns no product and the paywall says so rather than offering a dead button.
+**Prices live in Play Console, not in this repo.** The app renders `ProductDetails.price`, which Play localises to the buyer's country and currency; the ₹200/₹1,000 figures above are the Indian prices and are only used for this analysis. A subscription is purchasable exactly where you have made it available and priced it — anywhere else Play returns no product and the paywall says so rather than offering a dead button.
 
 Pricing basis: [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing) (`gemini-3-flash-preview`, $0.50/1M in, $3.00/1M out), [Play service fees](https://support.google.com/googleplay/android-developer/answer/112622), ₹95.9/USD. Re-run the numbers when any of those move.
 
@@ -115,10 +115,20 @@ that skips the screen still gets nothing.
 | Setting | Value |
 |---|---|
 | Eligibility | New subscribers only (single use) |
-| Phase 1 | 3 days, ₹5, one billing cycle |
-| Phase 2 | the base plan — ₹199/month, until cancelled |
+| Phase 1 | 3 days, ₹4, one billing cycle |
+| Phase 2 | the base plan — ₹200/month, until cancelled |
 
-Play charges the ₹5, waits out the phase, then auto-debits ₹199 unless the
+**Set the offer's availability to India only.** ₹4 is below Play's minimum
+offer price in roughly three dozen countries once it is converted — A$0.09
+against an A$0.10 floor, ฿1.00 against ฿2.00, and so on — and it is *above* the
+allowed ceiling in Georgia and Singapore, where Play caps an intro at a fraction
+of the base price. Pricing it per country would mean 38 manual edits and a
+different discount in every market. India is the primary market and the only one
+where ₹4 is a sensible number, so the offer lives there; everywhere else Play
+simply returns no intro and the paywall shows the normal price with a Subscribe
+button. That path is covered by `app/test/premium_offers_test.dart`.
+
+Play charges the ₹4, waits out the phase, then auto-debits ₹200 unless the
 learner cancelled. Renewals, cancellations, refunds, dunning and the
 legally-required renewal reminders are all Google's. The app only asks for the
 right offer and reacts to the answer.
@@ -128,18 +138,18 @@ billing inside the app), and the price and trial length become Console edits
 rather than app releases.
 
 If Play won't accept a 3-day *paid* phase on your base plan, the alternatives are
-a 1-week ₹5 phase, or a free 3-day trial followed by ₹199. The app renders
+a 1-week ₹4 phase, or a free 3-day trial followed by ₹200. The app renders
 whatever phases Play returns, so either works with no code change.
 
 **Why the paywall reads pricing phases.** With an offer attached, Play returns
 *two* `ProductDetails` for the same product id — one for the base plan, one for
 the offer — and the offer's token, not the product id, decides whether the buyer
-is charged ₹5 or ₹199. `PremiumService` therefore keeps a list, never a map
+is charged ₹4 or ₹200. `PremiumService` therefore keeps a list, never a map
 keyed by product id, and picks the cheapest opening phase.
 `app/test/premium_offers_test.dart` locks that down.
 
 An intro offer only comes back while the account is still **eligible** for it. A
-learner who already used their trial sees the plain ₹199 price and a Subscribe
+learner who already used their trial sees the plain ₹200 price and a Subscribe
 button — the screen never promises a trial Play will not honour.
 
 Two deliberate softenings in the gate, both about not accusing a paying learner
@@ -152,12 +162,12 @@ normally — the server refuses the actual work anyway.
 
 Play's Payments policy governs purchases made **inside** the Android app; it does not govern our own website. So `GET /checkout` sells the same Premium through Razorpay, where the only fee is ~2.36% instead of Play's 15%:
 
-| ₹199/month | you keep |
+| ₹200/month | you keep |
 |---|---|
-| In-app (Play Billing) | ₹169.15 |
-| **Web (Razorpay)** | **₹194.30** |
+| In-app (Play Billing) | ₹170.00 |
+| **Web (Razorpay)** | **₹195.28** |
 
-**+₹25.15 per subscriber — about 15% more.**
+**+₹25.28 per subscriber — about 15% more.**
 
 Two rules this design does not bend:
 
@@ -172,7 +182,7 @@ Setup (all outside this repo — until it's done, `/checkout` just says it isn't
 2. **Razorpay** → Settings → API Keys → `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`.
 3. **Razorpay** → Settings → Webhooks → `https://<host>/checkout/webhook`, subscribe to `subscription.charged`, `.cancelled`, `.halted`, `.completed` → `RAZORPAY_WEBHOOK_SECRET`. **Without this secret nothing can ever be granted.**
 4. **Firebase** → Project settings → Your apps → **Web** (a separate registration from the Android app) → `FIREBASE_WEB_API_KEY`, `FIREBASE_WEB_AUTH_DOMAIN`, `FIREBASE_WEB_APP_ID`. Add the backend's domain under Authentication → Settings → Authorized domains, or the Google popup is refused.
-5. Optional display labels: `RAZORPAY_PRICE_MONTHLY` / `RAZORPAY_PRICE_ANNUAL` (e.g. `₹199`). Blank shows a dash — the page never guesses an amount.
+5. Optional display labels: `RAZORPAY_PRICE_MONTHLY` / `RAZORPAY_PRICE_ANNUAL` (e.g. `₹200`). Blank shows a dash — the page never guesses an amount.
 
 Recurring charges ride UPI AutoPay / e-NACH / card mandates, which fail more often than Play's billing does. Watch `subscription.halted` in the logs; unlike Play, nobody else is retrying those for you.
 
