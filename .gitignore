@@ -31,3 +31,6 @@ listing-content/video/.work/
 
 # Promo audio scratch (regenerate with scripts/build_promo_audio.py)
 listing-content/video/.audio/
+
+# Video tooling deps (npm i in listing-content/)
+listing-content/node_modules/

@@ -7,6 +7,13 @@
  * and the bottom strip, then placed in the same device frame the screenshots
  * use, so the whole listing reads as one piece.
  *
+ * Captions ANIMATE in (fade + rise, headline leading the support line). Those
+ * frames are rendered through one long-lived Puppeteer browser: launching
+ * headless Chrome per frame costs about a second, while screenshotting a page
+ * that is already open costs about 70ms — roughly fifteen times faster, which
+ * is what makes per-frame animation practical at all. Only the animation itself
+ * is rendered; ffmpeg holds the final caption frame for the rest of the scene.
+ *
  * Run this first, then `python scripts/build_promo_audio.py` for voice + music.
  *
  * Usage: node scripts/build-video.mjs
@@ -15,6 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const RAW = resolve(ROOT, 'video/raw');
@@ -26,6 +34,10 @@ const W = 1080, H = 1920, FPS = 30;
 /** Cross-fade between scenes. Long enough to read as deliberate, short enough
  *  not to eat the moment each scene exists to show. */
 const XFADE = 0.4;
+
+/** Caption animation length. Past about a second a title stops feeling like
+ *  motion design and starts feeling like a slow page load. */
+const CAP_ANIM = 0.75;
 
 // Same crop window as the screenshots: drop the status bar, and the bottom band
 // that can carry an ad banner.
@@ -85,7 +97,10 @@ const SCENES = [
     vo: 'Speak Frankly. Say something today.' },
 ];
 
-function cardHtml({ headline, support, card }) {
+const sceneLen = (s) => s.dur + (s.hold || 0);
+
+/** Background: gradient, orbs, and the device shell — no text. */
+function backgroundHtml({ card }) {
   const mark = card ? '<div class="mark"><img src="head.png" alt=""></div>' : '';
   const phone = card ? '' : '<div class="phone"></div>';
   return `<!doctype html>
@@ -98,9 +113,6 @@ function cardHtml({ headline, support, card }) {
   .orb{position:absolute;border-radius:50%;background:#fff;opacity:.06}
   .orb1{width:520px;height:520px;right:-190px;top:-210px}
   .orb2{width:360px;height:360px;left:-160px;bottom:-120px;opacity:.05}
-  .copy{position:absolute;left:72px;right:72px;top:${card ? 1180 : 104}px;text-align:center}
-  h1{margin:0;color:#fff;font-size:${card ? 84 : 62}px;line-height:1.08;font-weight:800;letter-spacing:-1.6px}
-  p{margin:24px 0 0;color:#E4DEFF;font-size:${card ? 38 : 30}px;line-height:1.35}
   .mark{position:absolute;left:50%;transform:translateX(-50%);top:620px;
     width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.17);
     display:grid;place-items:center}
@@ -113,37 +125,109 @@ function cardHtml({ headline, support, card }) {
 <body><div class="card">
   <div class="orb orb1"></div><div class="orb orb2"></div>
   ${mark}${phone}
-  <div class="copy"><h1>${headline}</h1><p>${support}</p></div>
 </div></body></html>`;
+}
+
+/** Caption layer only, on a transparent page, frozen at animation progress p. */
+function captionHtml({ headline, support, card }) {
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0;background:transparent}
+  *{box-sizing:border-box}
+  .copy{position:absolute;left:72px;right:72px;top:${card ? 1180 : 104}px;text-align:center;
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif}
+  h1{margin:0;color:#fff;font-size:${card ? 84 : 62}px;line-height:1.08;font-weight:800;letter-spacing:-1.6px;
+    text-shadow:0 2px 18px rgba(30,18,90,.28)}
+  p{margin:24px 0 0;color:#E4DEFF;font-size:${card ? 38 : 30}px;line-height:1.35;
+    text-shadow:0 2px 14px rgba(30,18,90,.24)}
+</style></head>
+<body><div class="copy">
+  <h1 id="h">${headline}</h1>
+  <p id="s">${support}</p>
+</div></body></html>`;
+}
+
+/**
+ * Render the caption animation to a PNG sequence.
+ * The support line trails the headline slightly — simultaneous motion reads as
+ * one block sliding, staggered motion reads as composed.
+ */
+async function renderCaption(page, scene, dir) {
+  mkdirSync(dir, { recursive: true });
+  await page.setContent(captionHtml(scene), { waitUntil: 'load' });
+  const frames = Math.round(CAP_ANIM * FPS);
+
+  for (let i = 0; i < frames; i++) {
+    const t = i / (frames - 1);
+    await page.evaluate((t) => {
+      // Ease-out cubic: fast arrival, soft landing.
+      const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+      const at = (delay) => ease((t - delay) / (1 - delay));
+      const h = at(0), s = at(0.22);
+      const H = document.getElementById('h');
+      const S = document.getElementById('s');
+      H.style.opacity = h;
+      H.style.transform = `translateY(${(1 - h) * 46}px)`;
+      S.style.opacity = s;
+      S.style.transform = `translateY(${(1 - s) * 34}px)`;
+    }, t);
+    await page.screenshot({
+      path: resolve(dir, `${String(i + 1).padStart(4, '0')}.png`),
+      omitBackground: true,
+    });
+  }
+  return frames;
 }
 
 rmSync(WORK, { recursive: true, force: true });
 mkdirSync(WORK, { recursive: true });
 execFileSync('cp', [resolve(ROOT, 'graphics/src/white_head.png'), resolve(WORK, 'head.png')]);
 
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true });
+const page = await browser.newPage();
+await page.setViewport({ width: W, height: H });
+
 const segments = [];
 console.log('Rendering scenes\n');
 
 for (const s of SCENES) {
+  const len = sceneLen(s);
+
+  // Background still.
   const bg = resolve(WORK, `${s.id}.png`);
-  const html = resolve(WORK, `${s.id}.html`);
-  writeFileSync(html, cardHtml(s));
-  execFileSync(CHROME, [
-    '--headless', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
-    `--window-size=${W},${H}`,
-    `--screenshot=${bg.replace(/\//g, '\\')}`,
-    `file:///${html.replace(/\\/g, '/')}`,
-  ], { stdio: 'pipe' });
+  await page.setContent(backgroundHtml(s), { waitUntil: 'load' });
+  // The mark is a local file, which setContent cannot resolve — draw it from
+  // the working directory instead.
+  if (s.card) {
+    const dataUri = `data:image/png;base64,${readFileSync(resolve(WORK, 'head.png')).toString('base64')}`;
+    await page.evaluate((u) => { document.querySelector('.mark img').src = u; }, dataUri);
+    await page.evaluate(() => new Promise((r) => {
+      const img = document.querySelector('.mark img');
+      img.complete ? r() : img.addEventListener('load', r);
+    }));
+  }
+  await page.screenshot({ path: bg });
+
+  // Caption animation frames.
+  const capDir = resolve(WORK, `cap-${s.id}`);
+  const capFrames = await renderCaption(page, s, capDir);
+  const capHold = (len - CAP_ANIM).toFixed(3);
 
   const seg = resolve(WORK, `${s.id}.mp4`);
+  const capIn = ['-framerate', String(FPS), '-i', resolve(capDir, '%04d.png')];
+  // Hold the final caption frame for the rest of the scene.
+  const capChain = `tpad=stop_mode=clone:stop_duration=${capHold}[cap]`;
 
   if (s.card) {
-    // A still card would sit dead on screen beside the moving app footage, so
-    // it gets a slow push-in. zoompan is well behaved on a still input.
-    const frames = Math.round(s.dur * FPS);
+    // A still card would sit dead beside the moving app footage, so it gets a
+    // slow push-in. The caption rides on top, unzoomed, so the text stays crisp.
+    const frames = Math.round(len * FPS);
     execFileSync(FFMPEG, [
-      '-y', '-loop', '1', '-i', bg, '-t', String(s.dur),
-      '-vf', `zoompan=z='min(1.0+0.0009*on,1.06)':d=${frames}:s=${W}x${H}:fps=${FPS},format=yuv420p`,
+      '-y', '-loop', '1', '-i', bg, ...capIn,
+      '-filter_complex',
+      `[0:v]zoompan=z='min(1.0+0.0009*on,1.06)':d=${frames}:s=${W}x${H}:fps=${FPS}[base];` +
+      `[1:v]${capChain};[base][cap]overlay=0:0:shortest=1,format=yuv420p[o]`,
+      '-map', '[o]', '-t', String(len),
       '-r', String(FPS), '-c:v', 'libx264', '-crf', '20', seg,
     ], { stdio: 'pipe' });
   } else {
@@ -158,21 +242,24 @@ for (const s of SCENES) {
     // very few keyframes and its duration header lies, so input seeking lands
     // on whatever keyframe it happens to find.
     execFileSync(FFMPEG, [
-      '-y', '-loop', '1', '-i', bg, '-i', clip,
+      '-y', '-loop', '1', '-i', bg, '-i', clip, ...capIn,
       '-filter_complex',
       `[1:v]fps=${FPS},trim=start=${s.start}:duration=${s.dur},setpts=PTS-STARTPTS,` +
       `crop=${SRC_W}:${CROP_H}:0:${CROP_TOP},scale=${SCREEN_W}:${SCREEN_H}` +
       // Freeze on the last frame rather than cutting away the moment the
       // scene is about. Real footage, simply held.
       (s.hold ? `,tpad=stop_mode=clone:stop_duration=${s.hold}` : '') + `[v];` +
-      `[0:v][v]overlay=${SCREEN_X}:${SCREEN_Y}:shortest=1,format=yuv420p[o]`,
-      '-map', '[o]', '-t', String(s.dur + (s.hold || 0)),
+      `[0:v][v]overlay=${SCREEN_X}:${SCREEN_Y}:shortest=1[base];` +
+      `[2:v]${capChain};[base][cap]overlay=0:0:shortest=1,format=yuv420p[o]`,
+      '-map', '[o]', '-t', String(len),
       '-r', String(FPS), '-c:v', 'libx264', '-crf', '20', seg,
     ], { stdio: 'pipe' });
   }
   segments.push(seg);
-  console.log(`  ✅ ${s.id.padEnd(10)} ${s.dur + (s.hold || 0)}s`);
+  console.log(`  ✅ ${s.id.padEnd(10)} ${len}s   (${capFrames} caption frames)`);
 }
+
+await browser.close();
 
 // ---- cross-fade the scenes together -------------------------------------
 // Each xfade consumes XFADE seconds of overlap, so scene i begins at
@@ -185,7 +272,7 @@ let filter = '';
 let prev = '[0:v]';
 let offset = 0;
 for (let i = 1; i < segments.length; i++) {
-  offset += (SCENES[i - 1].dur + (SCENES[i - 1].hold || 0)) - XFADE;
+  offset += sceneLen(SCENES[i - 1]) - XFADE;
   const label = i === segments.length - 1 ? '[vout]' : `[x${i}]`;
   filter += `${prev}[${i}:v]xfade=transition=fade:duration=${XFADE}:offset=${offset.toFixed(3)}${label};`;
   prev = label;
@@ -203,13 +290,13 @@ execFileSync(FFMPEG, [
 let t = 0;
 const map = SCENES.map((s, i) => {
   const start = i === 0 ? 0 : t;
-  t = start + s.dur + (s.hold || 0) - XFADE;
-  return { id: s.id, start: +start.toFixed(3), dur: s.dur + (s.hold || 0), vo: s.vo };
+  t = start + sceneLen(s) - XFADE;
+  return { id: s.id, start: +start.toFixed(3), dur: sceneLen(s), vo: s.vo };
 });
-const total = SCENES.reduce((a, s) => a + s.dur + (s.hold || 0), 0) - (SCENES.length - 1) * XFADE;
+const total = SCENES.reduce((a, s) => a + sceneLen(s), 0) - (SCENES.length - 1) * XFADE;
 writeFileSync(resolve(OUT, 'scenes.json'),
   JSON.stringify({ total: +total.toFixed(3), xfade: XFADE, scenes: map }, null, 2));
 
 const kb = readFileSync(final).length / 1024;
-console.log(`\n🎬 video/speak-frankly-promo-silent.mp4  ${W}x${H}  ${total.toFixed(1)}s  ${(kb / 1024).toFixed(1)} MB`);
+console.log(`\n-> video/speak-frankly-promo-silent.mp4  ${W}x${H}  ${total.toFixed(1)}s  ${(kb / 1024).toFixed(1)} MB`);
 console.log('   video/scenes.json written — next: python scripts/build_promo_audio.py');
