@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import 'analytics_service.dart';
 import 'api_service.dart';
 
 /// Google Play subscriptions for Premium. Two plans (create both in Play Console):
@@ -106,6 +107,23 @@ class PremiumService extends ChangeNotifier {
           await ApiService.instance.activatePremium(purchaseToken: p.verificationData.serverVerificationData);
           justActivated = true;
         } catch (_) {}
+
+        // Firebase's standard `purchase` event, which Google Ads reads natively
+        // for value-based bidding. Without it a paying learner is invisible to
+        // the ad platform and campaigns can only ever optimise for installs.
+        //
+        // Only a genuine `purchased` counts. `restored` is the same
+        // subscription being re-applied on a reinstall or another device —
+        // counting it would inflate revenue with money nobody paid again.
+        if (p.status == PurchaseStatus.purchased) {
+          final product = _products[p.productID];
+          AnalyticsService.log('purchase', {
+            'transaction_id': p.purchaseID ?? '',
+            'value': product?.rawPrice ?? 0,
+            'currency': product?.currencyCode ?? 'INR',
+            'item_id': p.productID,
+          });
+        }
       }
       if (p.pendingCompletePurchase) {
         try {

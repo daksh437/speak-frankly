@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/analytics_service.dart';
 import '../services/locale_controller.dart';
 import '../services/sync_service.dart';
 import '../services/user_session.dart';
@@ -72,6 +73,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       struggle: _struggle ?? '',
     );
     SyncService.push(); // save this account's profile to the cloud
+
+    // Firebase's standard `tutorial_complete`. This is the first real quality
+    // signal a new learner gives: they chose a language, a goal and a level
+    // rather than bouncing off the welcome screen. An install that never
+    // reaches here is not worth bidding for.
+    AnalyticsService.log('tutorial_complete', {
+      'level': _level,
+      'goal': _goal ?? '',
+    });
+
     if (!mounted) return;
     // Onboarding done → straight into the app on the free trial (no paywall).
     Navigator.of(context).pushReplacement(
