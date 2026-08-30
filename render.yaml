@@ -82,6 +82,27 @@ services:
       # plan_id of each. A plan with no id set is not offered on the page.
       - key: RAZORPAY_PLAN_MONTHLY
         sync: false
+      # Four billing plans, created in the Razorpay dashboard (Subscriptions ->
+      # Plans). Test mode and live mode issue DIFFERENT plan ids, so these have
+      # to be swapped when you go live.
+      - key: RAZORPAY_PLAN_QUARTERLY
+        sync: false
+      - key: RAZORPAY_PLAN_HALFYEARLY
+        sync: false
+      # The paid trial: Rs 2 today, first full cycle one day later. Keep the
+      # window short - at ~Rs 0.06 per message, Rs 2 covers about 32 messages,
+      # so a longer trial loses money on anyone who actually uses the app.
+      # Set RAZORPAY_TRIAL_AMOUNT_PAISE=0 to sell with no trial at all.
+      - key: RAZORPAY_TRIAL_DAYS
+        value: "1"
+      - key: RAZORPAY_TRIAL_AMOUNT_PAISE
+        value: "200"
+      # Display labels only (e.g. "Rs 499"). The amount actually charged is
+      # whatever the Razorpay plan says.
+      - key: RAZORPAY_PRICE_QUARTERLY
+        sync: false
+      - key: RAZORPAY_PRICE_HALFYEARLY
+        sync: false
       - key: RAZORPAY_PLAN_ANNUAL
         sync: false
       # Display labels only (e.g. "₹199"). The amount actually charged is
