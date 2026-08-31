@@ -70,7 +70,9 @@ if (!IS_PROD) {
   });
 }
 
-app.get('/', (_req, res) => res.json({ success: true, message: 'Speak Frankly Backend API' }));
+// A person lands here, not just a machine — see routes/landing.js for why this
+// is a page and not a JSON blob.
+app.use('/', require('./routes/landing'));
 
 // WHICH BUILD IS THIS? Render sets RENDER_GIT_COMMIT on every deploy. Without
 // it there is no way to tell a deployed change from an undeployed one from
