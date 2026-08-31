@@ -333,6 +333,28 @@ const FALLBACK_PICTURE_MATCH = [
   { emoji: '🏥', correct: 'She is visiting the doctor.', distractors: ['He is going to school.', 'They are at the market.'] },
 ];
 
+// Emoji do not render the same everywhere. The bicycle is green on Samsung,
+// grey on Apple, and something else again on Windows — so a sentence that names
+// a colour can be right on one phone and wrong on the next. This was not
+// hypothetical: on a real device the green bicycle's "correct" answer was
+// "He is riding a blue bicycle", twice, across a refresh.
+//
+// The prompt below asks the model not to do this. This function assumes it will
+// anyway, and drops the item. A prompt is a request; a filter is a rule.
+const COLOURS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink',
+                 'brown', 'black', 'white', 'grey', 'gray', 'golden'];
+
+/**
+ * Does this sentence claim a colour the picture cannot settle?
+ *
+ * Only attributive use counts — "a blue bicycle" is a claim about the image,
+ * while "eating an orange" is a fruit and perfectly checkable.
+ */
+function mentionsAColour(sentence) {
+  const words = String(sentence || '').toLowerCase().match(/[a-z]+/g) || [];
+  return words.some((w, i) => COLOURS.includes(w) && i < words.length - 1);
+}
+
 /**
  * POST /games/picture-match -> { items } — a fresh, level-aware set of
  * "see the scene (emoji), pick the matching sentence" items. Metered against the
@@ -351,7 +373,12 @@ Each item is a simple everyday scene shown as ONE emoji, plus three short senten
 Rules:
 - One common emoji per scene (people, objects, or activities).
 - Sentences 4-8 words, matched to level ${level}.
-- The correct sentence must clearly match the emoji.
+- The correct sentence must describe ONLY what the emoji itself shows.
+- NEVER state a colour. The same emoji is drawn in different colours on
+  different phones, so "a blue bicycle" is wrong for most learners looking at it.
+- Do not invent details the emoji cannot settle: no names, ages, brands,
+  weather, time of day, or places. Say "He is riding a bicycle", not
+  "Ravi is riding a blue bicycle to school on a sunny morning".
 Return ONLY a JSON array of ${count} objects:
 [{"emoji":"🍕","correct":"They are eating pizza.","distractors":["She is reading a book.","He is driving a car."]}]
 Variety seed: ${seed}`;
@@ -361,7 +388,11 @@ Variety seed: ${seed}`;
     const arr = extractJsonArray(raw);
     if (Array.isArray(arr)) {
       const items = arr
-        .filter((x) => x && typeof x.emoji === 'string' && typeof x.correct === 'string' && Array.isArray(x.distractors) && x.distractors.length >= 2)
+        .filter((x) => x && typeof x.emoji === 'string' && typeof x.correct === 'string'
+          && Array.isArray(x.distractors) && x.distractors.length >= 2
+          // An item whose answer cannot be verified from the picture is worse
+          // than no item: the learner is marked wrong for being right.
+          && !mentionsAColour(x.correct))
         .map((x) => ({
           emoji: String(x.emoji).slice(0, 6),
           correct: String(x.correct).slice(0, 120),
@@ -448,5 +479,5 @@ async function translate(req) {
 
 module.exports = {
   chat, feedback, speakingPhrases, customScenario, pictureMatch, extractVocab, translate,
-  trimHistory, MAX_CHAT_TURNS, // exported for tests
+  trimHistory, MAX_CHAT_TURNS, mentionsAColour, FALLBACK_PICTURE_MATCH, // exported for tests
 };
