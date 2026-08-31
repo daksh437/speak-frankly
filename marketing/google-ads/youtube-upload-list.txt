@@ -1,0 +1,55 @@
+GOOGLE ADS — VIDEO ASSETS TO UPLOAD
+===================================
+
+App campaigns cannot take an MP4 directly. Each video has to be on YouTube
+first (PUBLIC or UNLISTED — private videos cannot be used in ads), then you
+paste the watch URL into the campaign.
+
+Google recommends 10-30 seconds for app campaigns, so the 45s cuts are left out
+below. They exist if you want them later, but they are outside the recommended
+range and tend to lose viewers before the message lands.
+
+The slot holds 20. This is 18, ordered so that if you stop early you still have
+a usable spread.
+
+
+ROUND 1 — all five messages, all three shapes (15 files)
+--------------------------------------------------------
+Aspect ratio matters most: Google serves different placements (YouTube feed,
+in-stream, Discover, Play) and a missing shape simply does not compete there.
+Message variety matters next — five different angles is what lets the algorithm
+find out which one works. Do not upload five versions of one idea.
+
+  concept-01  problem / solution      15s-16x9.mp4  15s-1x1.mp4  15s-9x16.mp4
+  concept-02  AI English tutor        15s-16x9.mp4  15s-1x1.mp4  15s-9x16.mp4
+  concept-03  fear of mistakes        15s-16x9.mp4  15s-1x1.mp4  15s-9x16.mp4
+  concept-04  feature tour            15s-16x9.mp4  15s-1x1.mp4  15s-9x16.mp4
+  concept-05  complete experience     15s-16x9.mp4  15s-1x1.mp4  15s-9x16.mp4
+
+
+ROUND 2 — longer cut of the two strongest angles (3 files)
+-----------------------------------------------------------
+30s gives the correction moment room to actually read. Pick the two concepts
+you believe in most; these two are the suggestion, not a measurement.
+
+  concept-01  30s-9x16.mp4        (portrait carries most app-install volume)
+  concept-03  30s-9x16.mp4
+  concept-04  30s-16x9.mp4
+
+
+NOT for ads
+-----------
+  videos/**/45s-*.mp4
+      Outside Google's recommended 10-30s window.
+
+  listing-content/video/speak-frankly-promo.mp4
+      43.6s, built for the Play STORE LISTING, not for ads. Different job:
+      it assumes someone already clicked through and is deciding.
+
+
+After uploading
+---------------
+Name them on YouTube so you can tell them apart in reporting later, e.g.
+  "Speak Frankly - 01 problem-solution - 15s 9x16"
+
+Then paste each watch URL into the campaign's Videos section.

@@ -34,3 +34,14 @@ listing-content/video/.audio/
 
 # Video tooling deps (npm i in listing-content/)
 listing-content/node_modules/
+
+# Google Ads creatives: the 99 MB of rendered MP4s are build output --
+# build_videos.py plus source-recordings/ reproduces them exactly. The
+# recordings and screenshots themselves ARE tracked: they were captured off a
+# physical device in a particular app state and cannot be regenerated.
+marketing/google-ads/videos/**/*.mp4
+marketing/google-ads/.video-build/
+marketing/google-ads/.vo-build/
+marketing/google-ads/.music/
+marketing/google-ads/.v2-build/
+marketing/google-ads/.ref/
