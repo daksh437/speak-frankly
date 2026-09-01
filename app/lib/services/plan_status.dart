@@ -22,6 +22,13 @@ class PlanStatus extends ChangeNotifier {
   /// half-second loader.
   bool attempted = false;
 
+  /// Whether the SERVER says this account is behind the hard paywall.
+  ///
+  /// Not derived from planType: a grandfathered learner is also 'free', and
+  /// inferring the paywall from the plan would wall them out. The server knows
+  /// when their account was created; the app does not, so it asks.
+  bool paywalled = false;
+
   bool get isPremium => planType == 'premium';
   bool get isTrial => planType == 'trial';
   bool get hasPremiumAccess => isPremium || isTrial;
@@ -31,6 +38,7 @@ class PlanStatus extends ChangeNotifier {
     try {
       final a = await ApiService.instance.fetchAccess();
       planType = (a['planType'] ?? 'free').toString();
+      paywalled = a['paywalled'] == true;
       final iso = a['trialEndsAtUtc'];
       trialEndsAt = iso != null ? DateTime.tryParse(iso.toString()) : null;
       loaded = true;

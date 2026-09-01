@@ -302,11 +302,18 @@ class PremiumService extends ChangeNotifier {
         // subscription being re-applied on a reinstall or another device —
         // counting it would inflate revenue with money nobody paid again.
         if (p.status == PurchaseStatus.purchased) {
-          final product = _products[p.productID];
+          // Report the RENEWAL price, not the intro price. A learner on the
+          // Rs 4 first-3-days offer paid Rs 4 today, but the thing Ads is
+          // bidding to acquire is a Rs 200/month subscriber. Reporting Rs 4
+          // would teach the algorithm that these installs are worth almost
+          // nothing. (This also used to be non-deterministic: offers were
+          // keyed by product id, so whichever Play returned last decided the
+          // number.)
+          final offer = bestOffer(p.productID);
           AnalyticsService.log('purchase', {
             'transaction_id': p.purchaseID ?? '',
-            'value': product?.rawPrice ?? 0,
-            'currency': product?.currencyCode ?? 'INR',
+            'value': offer?.renewal.rawPrice ?? 0,
+            'currency': offer?.details.currencyCode ?? 'INR',
             'item_id': p.productID,
           });
         }

@@ -49,6 +49,41 @@ const PREMIUM_DAILY_CAP = parseInt(process.env.PREMIUM_DAILY_CAP || '0', 10);
 // Default = freemium (trial → free daily limit). Set REQUIRE_PREMIUM=true to
 // instead hard-gate free users (post-trial) behind a paywall.
 const REQUIRE_PREMIUM = process.env.REQUIRE_PREMIUM === 'true' || process.env.REQUIRE_PREMIUM === '1';
+
+// GRANDFATHERING. Turning REQUIRE_PREMIUM on would otherwise wall off everyone
+// already using the app for free — people who installed under a promise of a
+// free tier and would open the app to find it gone. PAYWALL_FROM is the line:
+// accounts created on or after it meet the paywall, accounts created before it
+// keep the free tier they signed up for.
+//
+// Unset means no line, so the paywall applies to everyone. That is right for a
+// fresh install of this server and wrong for a live app with users, which is
+// why render.yaml states it explicitly rather than relying on the default.
+const PAYWALL_FROM = (() => {
+  const raw = (process.env.PAYWALL_FROM || '').trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    console.warn(`[aiAccess] PAYWALL_FROM is not a date: "${raw}" — paywalling everyone`);
+    return null;
+  }
+  return d;
+})();
+
+/**
+ * Does the hard paywall apply to this account?
+ *
+ * An account with no createdAt predates that field, so it is old by definition
+ * and is let through. Erring the other way would wall out exactly the people
+ * this rule exists to protect.
+ */
+function isPaywalled(user) {
+  if (!REQUIRE_PREMIUM) return false;
+  if (!PAYWALL_FROM) return true;
+  const created = toDate(user && (user.createdAt || user.created_at));
+  if (!created) return false;
+  return created >= PAYWALL_FROM;
+}
 const DEV_SKIP_LIMITS = process.env.DEV_SKIP_LIMITS === 'true' || process.env.DEV_SKIP_LIMITS === '1';
 
 if (DEV_SKIP_LIMITS) {
@@ -185,9 +220,10 @@ async function getAiAccess(uid, deviceId) {
   }
 
   // free + optional hard paywall: no AI access at all.
-  if (REQUIRE_PREMIUM) {
+  if (isPaywalled(currentUser)) {
     return {
       allowed: false,
+      paywalled: true,
       planType: 'free',
       dailyUsed: 0,
       dailyLimit: 0,
@@ -261,7 +297,7 @@ async function getAuxAccess(uid, deviceId) {
   if (base.planType === 'premium') {
     return { allowed: true, planType: 'premium', auxUsed: null, auxLimit: null };
   }
-  if (base.planType === 'free' && REQUIRE_PREMIUM) {
+  if (base.planType === 'free' && isPaywalled(base.user)) {
     return { allowed: false, planType: 'free', auxUsed: 0, auxLimit: 0, error: 'PREMIUM_REQUIRED' };
   }
 
@@ -306,7 +342,7 @@ async function reserveAuxUsage(uid) {
       const data = snap.data();
       const plan = resolvePlan(data);
       if (plan === 'premium') return { ok: true, skipped: true }; // unmetered
-      if (plan === 'free' && REQUIRE_PREMIUM) return { ok: false, error: 'PREMIUM_REQUIRED', auxLimit: 0 };
+      if (plan === 'free' && isPaywalled(data)) return { ok: false, error: 'PREMIUM_REQUIRED', auxLimit: 0 };
 
       const limit = plan === 'trial' ? DAILY_AUX_TRIAL : DAILY_AUX_FREE;
       const rollover = (data.dailyAuxDate || '') !== today;
@@ -527,7 +563,7 @@ async function reserveAiUsage(uid) {
       let limit;
       if (plan === 'trial') {
         limit = TRIAL_DAILY_CAP;
-      } else if (REQUIRE_PREMIUM) {
+      } else if (isPaywalled(data)) {
         return { ok: false, error: 'PREMIUM_REQUIRED', dailyLimit: 0 };
       } else {
         const bonus = (data.bonusDate === today && typeof data.bonusMessages === 'number')
@@ -630,5 +666,7 @@ module.exports = {
   DAILY_AUX_TRIAL,
   TRIAL_DAYS,
   REQUIRE_PREMIUM,
+  PAYWALL_FROM,
+  isPaywalled,
   DEV_SKIP_LIMITS,
 };

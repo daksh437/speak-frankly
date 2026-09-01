@@ -63,10 +63,14 @@ class _AuthGateState extends State<AuthGate> {
 
 /// Hard paywall: nobody reaches the app without an entitlement.
 ///
-/// The SERVER decides — `/access` reports the plan, and with REQUIRE_PREMIUM
-/// set it hands a free account nothing. This widget only mirrors that answer,
-/// so a rebuilt or patched client cannot let itself in; the backend would
-/// refuse every AI call anyway.
+/// The SERVER decides — `/access` reports the plan and whether this account is
+/// behind the paywall at all. This widget only mirrors that answer, so a
+/// rebuilt or patched client cannot let itself in; the backend would refuse
+/// every AI call anyway.
+///
+/// The paywall is for NEW accounts. Anyone who was using the app before it
+/// existed keeps their free tier — the server decides who that is from the
+/// account's creation date, and says so in `paywalled`.
 ///
 /// Two deliberate softenings:
 ///  - While the first /access call is in flight we show a loader, not the
@@ -122,6 +126,9 @@ class _PaywallGateState extends State<PaywallGate> {
         if (!plan.attempted || !PremiumService.instance.ready) return const _Loader();
         if (!plan.loaded) return const MainShell(); // couldn't ask; server still enforces
         if (plan.hasPremiumAccess) return const MainShell();
+        // Free, but not paywalled: a learner who was already here before the
+        // paywall existed. They keep the free tier they signed up for.
+        if (!plan.paywalled) return const MainShell();
         return TrialPaywallScreen(
           onSubscribed: () => PlanStatus.instance.refresh(),
         );

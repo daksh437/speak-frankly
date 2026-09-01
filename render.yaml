@@ -37,6 +37,12 @@ services:
         value: "0"
       - key: REQUIRE_PREMIUM
         value: "true"
+      # WHO the paywall applies to. Accounts created on or after this date
+      # meet it; everyone already using the app keeps the free tier they
+      # signed up for. Set this to the moment you flip REQUIRE_PREMIUM on.
+      # LEAVING IT BLANK PAYWALLS EVERY EXISTING USER.
+      - key: PAYWALL_FROM
+        sync: false
       - key: TRIAL_DAILY_CAP
         value: "50"
       # Daily budget for the "aux" AI helpers (translate, speaking phrases,
@@ -64,7 +70,7 @@ services:
       # no real subscriber ever reaches it. Premium is still reported as
       # unlimited to the app; this only bites in the server-side claim.
       - key: PREMIUM_DAILY_CAP
-        value: "0"
+        value: "500"
       # Enables Google Play purchase verification. Requires Play Console →
       # Setup → API access: link this GCP project + grant the service account
       # financial/orders permission.
