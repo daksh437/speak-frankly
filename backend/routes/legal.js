@@ -128,7 +128,8 @@ router.get('/terms', (_req, res) => {
 <h3>Refunds</h3>
 <ul>
   <li>If you are charged in error — a duplicate charge, or a renewal after you asked us to cancel — tell us and we will refund it in full.</li>
-  <li>For a first-time subscription bought on this website, you may request a refund within <b>7 days</b> of the charge by emailing <a href="mailto:${CONTACT}">${CONTACT}</a>.</li>
+  <li>For a first-time subscription bought on this website, you may request a refund within <b>2 days</b> of the charge by emailing <a href="mailto:${CONTACT}">${CONTACT}</a>.</li>
+  <li>The introductory first-day amount is <b>not refundable</b>. It buys immediate access for that day, and that access is delivered as soon as it is paid. Cancel before the first full charge and you will not be billed again.</li>
   <li>We do not refund part-used periods after that window, because the service is delivered as soon as the subscription starts.</li>
   <li>Approved refunds are returned to the original payment method. Razorpay typically takes 5&ndash;7 working days to settle a refund; the timing after that is your bank's.</li>
   <li>Purchases made inside the Android app are refunded under Google Play's refund policy, not this one, because Google is the merchant for those.</li>
