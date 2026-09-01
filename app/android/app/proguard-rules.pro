@@ -24,3 +24,20 @@
 # speech_to_text / flutter_tts talk to platform services through callbacks.
 -keep class com.google.android.tts.** { *; }
 -dontwarn org.chromium.**
+
+# --- Razorpay checkout ------------------------------------------------------
+# The SDK drives its checkout through a WebView that calls back into Java over
+# @JavascriptInterface, and finds the payment callbacks by NAME via reflection.
+# R8 has no way to see either, so without these keeps the release build opens
+# checkout and then silently never returns a result.
+-keepattributes JavascriptInterface
+-keepattributes *Annotation*
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keep class com.razorpay.** { *; }
+-dontwarn com.razorpay.**
+-optimizations !method/inlining/*
+-keepclasseswithmembers class * {
+  public void onPayment*(...);
+}

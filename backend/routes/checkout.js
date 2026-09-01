@@ -226,6 +226,47 @@ router.get('/', (_req, res) => {
   res.set('Content-Type', 'text/html; charset=utf-8').send(checkoutPage());
 });
 
+// ------------------------------------------------------------ plans (in-app)
+
+/**
+ * The price list the Android paywall renders.
+ *
+ * Public and unauthenticated on purpose: it is the same table already printed
+ * on the /checkout page, and the paywall needs it before the learner has done
+ * anything. Nothing here is secret — `keyId` is Razorpay's publishable key,
+ * which is designed to sit in a client.
+ *
+ * THE APP HAS NO PRICES OF ITS OWN. Every number on the paywall comes from
+ * this response, so changing a price is a Render env edit, not an app release
+ * and a Play review.
+ *
+ * `trial` is what a NEW subscriber is offered. Whether this particular buyer
+ * gets it is decided at /checkout/subscription, and the response there says
+ * which one they actually got — the paywall must not promise it before then.
+ */
+router.get('/plans', (_req, res) => {
+  const t = rzp.trialInfo();
+  // A plan with no price label is dropped, not offered blank. The paywall
+  // has one job before the learner taps, and that is to state the amount.
+  const plans = rzp.availablePlans()
+    .filter((key) => !!PRICES[key])
+    .map((key) => {
+      const l = PLAN_LABELS[key] || { name: key, per: '', badge: '' };
+      return { key, name: l.name, per: l.per, badge: l.badge || null, price: PRICES[key] };
+    });
+  return res.json({
+    success: true,
+    data: {
+      configured: rzp.isConfigured() && plans.length > 0,
+      keyId: rzp.KEY_ID || '',
+      plans,
+      // Formatted here for the same reason the plan prices are: the app
+      // must never assemble a currency string of its own.
+      trial: t ? { days: t.days, amount: t.amount, price: `₹${t.amount}` } : null,
+    },
+  });
+});
+
 // ------------------------------------------------------- create subscription
 
 /**
@@ -280,7 +321,9 @@ router.post(
     }
     console.log(`[checkout] subscription ${result.id} created for ${req.uid} (${plan}`
                 + `${withTrial ? ', with trial' : ''})`);
-    return res.json({ success: true, data: { subscriptionId: result.id, plan, trial: withTrial } });
+    return res.json({ success: true, data: {
+      subscriptionId: result.id, plan, trial: withTrial, keyId: rzp.KEY_ID || '',
+    } });
   },
 );
 
@@ -356,7 +399,28 @@ router.post('/webhook', async (req, res) => {
     return res.json({ success: true, data: { ignored: true } });
   }
 
-  if (event === 'subscription.charged') {
+  // The paid trial is authorised, not charged.
+  //
+  // A subscription with a future `start_at` plus a Rs 2 addon takes the addon
+  // money NOW and schedules the first plan cycle for tomorrow. Razorpay calls
+  // that `subscription.authenticated`; `subscription.charged` does not fire
+  // until the first real cycle bills. Handling only `charged` meant a learner
+  // paid Rs 2, got nothing, and sat in front of the paywall for a day — which
+  // is the whole product for anyone who bought the trial.
+  //
+  // So grant to `charge_at`: the exact moment the plan price is due, which is
+  // exactly what the Rs 2 bought.
+  if (event === 'subscription.authenticated' || event === 'subscription.activated') {
+    const untilSec = Number(sub.charge_at) || Number(sub.start_at) || 0;
+    if (untilSec) {
+      const ok = await grantPremium(uid, untilSec * 1000, subId);
+      console.log(`[checkout] ${event}: ${uid} premium ${ok ? 'granted' : 'FAILED'} until `
+                  + `${new Date(untilSec * 1000).toISOString()} (${subId})`);
+    } else {
+      // No trial: Razorpay bills immediately and `charged` follows in seconds.
+      console.log(`[checkout] ${event} for ${uid} (${subId}) — no charge_at, waiting for charged`);
+    }
+  } else if (event === 'subscription.charged') {
     // current_end is the end of the cycle this payment just covered.
     const endSec = Number(sub.current_end) || 0;
     if (endSec) {

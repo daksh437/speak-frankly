@@ -173,9 +173,11 @@
   "trialPaywallCta": "{days, plural, =1{START 1-DAY TRIAL} other{START {days}-DAY TRIAL}}",
   "@trialPaywallCta": {"placeholders":{"days":{"type":"int"}}},
   "trialPaywallSubscribe": "SUBSCRIBE",
-  "trialPaywallDisclosure": "You pay {intro} now, then {renewal}. Cancel anytime in Google Play.",
+  "trialPaywallDisclosure": "You pay {intro} now, then {renewal} automatically. The {intro} is not refundable. Cancel anytime.",
   "@trialPaywallDisclosure": {"placeholders":{"intro":{"type":"String"},"renewal":{"type":"String"}}},
-  "trialPaywallRenewNote": "Renews at {renewal} until you cancel. Cancel anytime in Google Play.",
+  "trialPaywallRenewNote": "Renews at {renewal} until you cancel. Cancel anytime.",
   "@trialPaywallRenewNote": {"placeholders":{"renewal":{"type":"String"}}},
+  "checkoutPending": "Payment received. Premium is activating — this can take a minute. Tap Restore if it does not unlock.",
+  "checkoutFailed": "Payment was not completed. Please try again.",
   "restorePurchase": "Restore purchase"
 }

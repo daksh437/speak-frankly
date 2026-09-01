@@ -504,13 +504,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String trialPaywallDisclosure(String intro, String renewal) {
-    return 'Vous payez $intro maintenant, puis $renewal. Annulez à tout moment dans Google Play.';
+    return 'Vous payez $intro maintenant, puis $renewal automatiquement. Les $intro ne sont pas remboursés. Annulez à tout moment.';
   }
 
   @override
   String trialPaywallRenewNote(String renewal) {
-    return 'Renouvelé à $renewal jusqu\'à l\'annulation. Annulez à tout moment dans Google Play.';
+    return 'Renouvelé à $renewal jusqu\'à l\'annulation. Annulez à tout moment.';
   }
+
+  @override
+  String get checkoutPending =>
+      'Paiement reçu. Premium s\'active — cela peut prendre une minute. Touchez Restaurer s\'il ne se débloque pas.';
+
+  @override
+  String get checkoutFailed =>
+      'Le paiement n\'a pas abouti. Veuillez réessayer.';
 
   @override
   String get restorePurchase => 'Restaurer l\'achat';

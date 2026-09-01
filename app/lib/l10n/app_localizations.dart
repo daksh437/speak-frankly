@@ -995,14 +995,26 @@ abstract class AppLocalizations {
   /// No description provided for @trialPaywallDisclosure.
   ///
   /// In en, this message translates to:
-  /// **'You pay {intro} now, then {renewal}. Cancel anytime in Google Play.'**
+  /// **'You pay {intro} now, then {renewal} automatically. The {intro} is not refundable. Cancel anytime.'**
   String trialPaywallDisclosure(String intro, String renewal);
 
   /// No description provided for @trialPaywallRenewNote.
   ///
   /// In en, this message translates to:
-  /// **'Renews at {renewal} until you cancel. Cancel anytime in Google Play.'**
+  /// **'Renews at {renewal} until you cancel. Cancel anytime.'**
   String trialPaywallRenewNote(String renewal);
+
+  /// No description provided for @checkoutPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment received. Premium is activating — this can take a minute. Tap Restore if it does not unlock.'**
+  String get checkoutPending;
+
+  /// No description provided for @checkoutFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment was not completed. Please try again.'**
+  String get checkoutFailed;
 
   /// No description provided for @restorePurchase.
   ///
