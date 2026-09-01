@@ -1,0 +1,81 @@
+ASSET DIMENSIONS & FORMATS — Speak Frankly
+==========================================
+Verified against the actual files in this folder. Every number below was read
+out of the PNG's own IHDR header, not assumed.
+
+Checked on: build 1.5.3 (versionCode 23)
+Source device for screenshots: Samsung Galaxy A34 5G (SM-A346E), 1080x2340, Android 16
+
+
+GOOGLE PLAY REQUIREMENTS
+------------------------
+App icon
+  512 x 512 px
+  32-bit PNG (alpha channel present)
+  Max 1 MB
+  Play applies its own rounded/adaptive mask — do not pre-round the corners
+
+Feature graphic
+  1024 x 500 px
+  JPEG or 24-bit PNG — NO alpha channel
+  Max 15 MB
+  Gets cropped and overlaid differently across Play surfaces, so keep meaning
+  inside a safe margin
+
+Phone screenshots
+  2 to 8 required (we ship 8, the maximum)
+  JPEG or 24-bit PNG — NO alpha channel
+  Min 320 px on any side; max 3840 px on any side
+  The long side may not exceed 2x the short side
+  Max 8 MB each
+
+
+WHAT THIS FOLDER SHIPS
+----------------------
+icon/icon-512.png
+  512 x 512, 8-bit RGBA (32-bit), 19 KB, fully opaque (min alpha 255)
+  BYTE-IDENTICAL to app/assets/icon_512.png — the app's real launcher icon.
+  Not redesigned, not regenerated, not upscaled. It already met every Play
+  requirement, so per the brief its design was left untouched.
+
+graphics/feature-graphic-1024x500.png
+  1024 x 500, 8-bit RGB (24-bit, no alpha), 253 KB
+  Rendered from graphics/src/feature.html.
+
+graphics/feature-graphic-alternative.png
+  1024 x 500, same format. Alternate concept.
+
+screenshots/01..08-*.png
+  1080 x 1920, 24-bit PNG (9:16 — within Play's 2:1 limit)
+  Composited from real device captures in screenshots/raw/.
+
+
+BRAND VALUES (sampled pixel-for-pixel from app/assets/icon_512.png)
+------------------------------------------------------------------
+  Gradient start (top-left)      #7A67FF
+  Gradient mid                   #6B59EB
+  Gradient end (bottom-right)    #5B4BD6
+  Mark                           #FFFFFF (white speaking-head silhouette)
+
+  From app/lib/theme/app_theme.dart:
+  Seed / primary                 #6C5CE7
+  Light scaffold background      #F7F6FC
+  Dark scaffold background       #121016
+
+  Adaptive icon background (android): #5B4BD6
+
+  NOTE: store-assets/icon.svg contains a DIFFERENT mark (a speech bubble with
+  sound bars). That file is stale and is NOT what the app ships. The real,
+  shipped identity is the speaking head. Anything new must match the head.
+
+
+HOW TO REGENERATE
+-----------------
+  node scripts/render.mjs              # both feature graphics
+  node scripts/render.mjs feature      # just the main one
+  node scripts/capture.mjs             # list device + remaining screenshots
+  node scripts/build-screenshots.mjs   # composite raw captures into finals
+
+render.mjs re-reads each PNG's header after writing it and fails loudly if the
+size is even one pixel off, because Play rejects the upload rather than
+resizing it for you.

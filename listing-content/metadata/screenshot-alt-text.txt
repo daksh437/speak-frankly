@@ -1,0 +1,91 @@
+ALT TEXT — Speak Frankly store assets
+=====================================
+
+Google Play has no alt-text field for screenshots today. These exist so the
+same descriptions can be reused on the website, in press/ASO tools, and in any
+accessibility context — and so anyone editing the listing later can tell at a
+glance what each image is supposed to prove.
+
+Written to describe what is ACTUALLY VISIBLE. If a screenshot is recaptured and
+its content changes, update the matching entry here.
+
+STATUS: written against the delivered files. Two entries describe a screen that
+is thinner than intended — see the notes marked LIMITATION — because those
+states could not be produced without a human voice or more usage history.
+
+
+FEATURE GRAPHIC
+---------------
+graphics/feature-graphic-1024x500.png
+  "Speak Frankly banner on a purple gradient. The app's white speaking-head
+   logo appears beside the app name on the left and large on the right. The
+   headline reads 'Speak English with confidence', with the line 'Practise by
+   talking to an AI tutor that answers what you meant — then fixes it kindly.'
+   Three pills below name the features: AI conversations, Shadowing practice,
+   Story mode."
+
+graphics/feature-graphic-alternative.png
+  "Alternate Speak Frankly banner on the same purple gradient, showing the app
+   name and logo alongside a phone displaying a real conversation from the app."
+
+
+APP ICON
+--------
+icon/icon-512.png
+  "The Speak Frankly app icon: a white silhouette of a head in profile with
+   three short lines at the mouth indicating speech, on a purple gradient
+   background."
+
+
+SCREENSHOTS
+-----------
+01-core-value.png
+  "The Speak Frankly home screen on a phone, under the headline 'Speak English
+   with confidence'. The screen shows a greeting, cards for streak, XP and
+   level, and the day's practice options."
+
+02-ai-conversation.png
+  "A conversation with the AI tutor under the headline 'Practise real
+   conversations'. The tutor's messages and the learner's reply are shown, with
+   a correction card offering a gentler, corrected version of the learner's
+   sentence."
+
+03-speaking-practice.png
+  "The Shadowing Practice screen under the headline 'Practise speaking out
+   loud'. A phrase is shown with a Listen button and a microphone button to
+   record yourself repeating it."
+  LIMITATION: this is the screen BEFORE anyone speaks, so the pronunciation
+  score and its word-by-word breakdown are not visible. That state only appears
+  after real speech into the microphone, which cannot be injected over adb.
+  Recapture with a real voice to make this the strongest shot in the set.
+
+04-story-mode.png
+  "Story mode under the headline 'Learn through real-life situations'. A short
+   scene is shown with several reply options the learner can choose from."
+
+05-vocabulary.png
+  "The dictionary card under the headline 'Build your everyday vocabulary',
+   opened on the word 'recommend'. It shows the phonetic spelling, a button to
+   hear it, a bookmark to save it, the part of speech, a definition and an
+   example sentence."
+  LIMITATION: the translation row reads 'recommend —' with nothing after the
+  dash, because this account's native language is set to English so there is
+  nothing to translate into. Any other native language fills that row.
+
+06-picture-match.png
+  "The Picture match game under the headline 'Learn while having fun'. A scene
+   is shown with several sentences to choose from, one of which describes it."
+
+07-progress.png
+  "The profile screen under the headline 'See your progress'. A one-day streak,
+   66 XP earned and one saved word are shown above a fluency map tracking
+   conversations, speaking, vocabulary and consistency, with one of eight
+   badges earned."
+  LIMITATION: the Speaking row reads 0 with an empty bar, because no speaking
+  practice has been completed on this account. Doing a few shadowing reps fills
+  it and makes the whole card look earned rather than empty.
+
+08-daily-practice.png
+  "The Speak Frankly home screen under the headline 'Make English practice a
+   daily habit', showing the day's Word of the Day and the practice options
+   available today."

@@ -1,0 +1,16 @@
+{
+  "name": "speak-frankly-listing",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Play Store listing assets for Speak Frankly — screenshots, graphics and the promo video, all built from real device captures.",
+  "type": "module",
+  "scripts": {
+    "graphics": "node scripts/render.mjs",
+    "screenshots": "node scripts/build-screenshots.mjs",
+    "video": "node scripts/build-video.mjs",
+    "console-steps": "node scripts/build-console-steps.mjs"
+  },
+  "dependencies": {
+    "puppeteer": "^25.9.0"
+  }
+}

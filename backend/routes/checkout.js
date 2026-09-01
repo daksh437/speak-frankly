@@ -39,17 +39,36 @@ const webReady = () => !!(WEB.apiKey && WEB.authDomain && WEB.appId);
 
 const PLAN_LABELS = {
   monthly: { name: 'Monthly', per: 'per month', badge: '' },
-  annual: { name: 'Annual', per: 'per year', badge: 'Best value' },
+  quarterly: { name: '3 months', per: 'every 3 months', badge: '' },
+  halfyearly: { name: '6 months', per: 'every 6 months', badge: '' },
+  annual: { name: 'Yearly', per: 'per year', badge: 'Best value' },
 };
 
 // Display only. The real amount is whatever the Razorpay plan says; this is a
 // label, so it is left blank rather than guessed when unset.
 const PRICES = {
   monthly: (process.env.RAZORPAY_PRICE_MONTHLY || '').trim(),
+  quarterly: (process.env.RAZORPAY_PRICE_QUARTERLY || '').trim(),
+  halfyearly: (process.env.RAZORPAY_PRICE_HALFYEARLY || '').trim(),
   annual: (process.env.RAZORPAY_PRICE_ANNUAL || '').trim(),
 };
 
 // ------------------------------------------------------------------- page
+
+/** The trial offer, stated before the buyer pays. Empty when none is configured.
+ *
+ * Worded "new subscribers" on purpose: whether THIS buyer gets it is decided
+ * server-side at /checkout/subscription, and someone who has paid before will
+ * be charged the plan price straight away. Promising it unconditionally here
+ * would be a claim the checkout does not honour.
+ */
+function trialLine() {
+  const t = rzp.trialInfo();
+  if (!t) return '';
+  const days = t.days === 1 ? '1 day' : `${t.days} days`;
+  return `<p class="note"><b>New subscribers pay &#8377;${t.amount} for the first ${days}</b>, `
+       + 'then the plan price above.</p>';
+}
 
 function planCardsHtml(plans) {
   return plans
@@ -178,6 +197,7 @@ function checkoutPage() {
         planCardsHtml(plans),
         '  <button type="submit" id="pay" disabled>Sign in to continue</button>',
         '</form>',
+        trialLine(),
         '<p class="note">Billed by Razorpay. Cancel anytime. Renews automatically until cancelled.<br>',
         'Use the same Google account you sign in to the app with.</p>',
       ].join('\n')
@@ -216,6 +236,26 @@ router.get('/', (_req, res) => {
  * Play activation path follows. The uid goes into the subscription's notes,
  * which is how a renewal months from now is still matched to this learner.
  */
+/**
+ * Has this account ever completed a purchase?
+ *
+ * `premiumVerified` is written by grantPremium (web) and by the Play activation
+ * path, so it covers a learner who subscribed through either storefront. On a
+ * Firestore error we answer "yes" — declining a trial costs one discounted day,
+ * handing out a repeat trial costs a free day every time.
+ */
+async function hasEverPaid(uid) {
+  const db = getDb();
+  if (!db || !uid) return true;
+  try {
+    const snap = await db.collection(USERS).doc(uid).get();
+    return !!(snap.exists && snap.data().premiumVerified === true);
+  } catch (e) {
+    console.warn('[checkout] trial eligibility lookup failed:', e.message);
+    return true;
+  }
+}
+
 router.post(
   '/subscription',
   rateLimit({ windowMs: 60_000, max: 10, name: 'checkout' }),
@@ -229,12 +269,18 @@ router.post(
       return res.status(400).json({ success: false, error: 'UNKNOWN_PLAN', message: 'Pick a plan.' });
     }
 
-    const result = await rzp.createSubscription(req.uid, plan);
+    // Play enforces "new customer only" on its own offers; Razorpay does not.
+    // Without this check the same account could take the Rs 2 trial on every
+    // new subscription, forever.
+    const withTrial = rzp.trialEnabled() && !(await hasEverPaid(req.uid));
+
+    const result = await rzp.createSubscription(req.uid, plan, { withTrial });
     if (!result.ok) {
       return res.status(502).json({ success: false, error: result.error, message: 'Could not start checkout. Please try again.' });
     }
-    console.log(`[checkout] subscription ${result.id} created for ${req.uid} (${plan})`);
-    return res.json({ success: true, data: { subscriptionId: result.id, plan } });
+    console.log(`[checkout] subscription ${result.id} created for ${req.uid} (${plan}`
+                + `${withTrial ? ', with trial' : ''})`);
+    return res.json({ success: true, data: { subscriptionId: result.id, plan, trial: withTrial } });
   },
 );
 

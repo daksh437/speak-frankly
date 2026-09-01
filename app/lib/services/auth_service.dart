@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'account_service.dart';
+import 'analytics_service.dart';
 import 'user_session.dart';
 
 /// Google Sign-In → Firebase. The Firebase UID becomes UserSession.uid (sent to
@@ -23,6 +24,15 @@ class AuthService {
     final result = await FirebaseAuth.instance.signInWithCredential(credential);
     final user = result.user;
     if (user != null) await UserSession.instance.setUid(user.uid);
+
+    // Firebase's standard acquisition pair, which Google Ads understands
+    // natively. `isNewUser` is what keeps them honest: firing `sign_up` on
+    // every sign-in would count each returning learner as a fresh acquisition
+    // and quietly inflate the number the ad platform optimises against.
+    if (user != null) {
+      final isNew = result.additionalUserInfo?.isNewUser ?? false;
+      AnalyticsService.log(isNew ? 'sign_up' : 'login', {'method': 'google'});
+    }
     return user;
   }
 
