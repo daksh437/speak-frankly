@@ -205,7 +205,7 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                             child: Text(
                               offer.renewal.price,
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 22,
                                 color: scheme.onSurfaceVariant,
                                 decoration: TextDecoration.lineThrough,
                               ),
@@ -216,7 +216,7 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                           child: Text(
                             (intro ?? offer.renewal).price,
                             style: TextStyle(
-                              fontSize: 52,
+                              fontSize: 76,
                               fontWeight: FontWeight.w900,
                               color: scheme.primary,
                               height: 1.1,
@@ -278,7 +278,8 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
                               : Text(
                                   days != null ? loc.trialPaywallCta(days) : loc.trialPaywallSubscribe,
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                  style: const TextStyle(
+                                      fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 0.3),
                                 ),
                         ),
                       ),
