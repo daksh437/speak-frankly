@@ -6,23 +6,6 @@
     <!-- Daily practice reminder (local scheduled notification). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <!--
-      Razorpay's checkout SDK declares android.permission.NFC, for tapping a
-      card instead of typing it. Play turns that permission into an IMPLIED
-      "android.hardware.nfc" REQUIRED feature, which silently drops every phone
-      without an NFC chip from the store listing - a large share of the budget
-      Android phones this app is for. Declaring the feature here as optional
-      overrides that: NFC card entry works where the hardware exists, and the
-      app still installs where it does not.
-    -->
-    <uses-feature android:name="android.hardware.nfc" android:required="false"/>
-    <!--
-      Same trap, different permission: READ_BASIC_PHONE_STATE (pulled in by the
-      ads SDK to read the network type) makes Play imply a REQUIRED
-      "android.hardware.telephony", which drops Wi-Fi-only tablets. Nothing in
-      an English tutor needs a phone radio, so it is declared optional.
-    -->
-    <uses-feature android:name="android.hardware.telephony" android:required="false"/>
     <application
         android:label="Speak Frankly"
         android:name="${applicationName}"

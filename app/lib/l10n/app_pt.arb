@@ -163,9 +163,7 @@
   "trialPaywallThen": "Depois {renewal}",
   "trialPaywallCta": "{days, plural, =1{COMEÇAR TESTE DE 1 DIA} other{COMEÇAR TESTE DE {days} DIAS}}",
   "trialPaywallSubscribe": "ASSINAR",
-  "trialPaywallDisclosure": "Você paga {intro} agora e depois {renewal} automaticamente. Os {intro} não são reembolsáveis. Cancele quando quiser.",
-  "trialPaywallRenewNote": "Renova por {renewal} até você cancelar. Cancele quando quiser.",
-  "checkoutPending": "Pagamento recebido. O Premium está sendo ativado — pode levar um minuto. Toque em Restaurar se não desbloquear.",
-  "checkoutFailed": "O pagamento não foi concluído. Tente novamente.",
+  "trialPaywallDisclosure": "Você paga {intro} agora e depois {renewal}. Cancele quando quiser no Google Play.",
+  "trialPaywallRenewNote": "Renova por {renewal} até você cancelar. Cancele quando quiser no Google Play.",
   "restorePurchase": "Restaurar compra"
 }

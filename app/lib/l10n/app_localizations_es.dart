@@ -499,20 +499,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String trialPaywallDisclosure(String intro, String renewal) {
-    return 'Pagas $intro ahora y después $renewal automáticamente. Los $intro no son reembolsables. Cancela cuando quieras.';
+    return 'Pagas $intro ahora y después $renewal. Cancela cuando quieras en Google Play.';
   }
 
   @override
   String trialPaywallRenewNote(String renewal) {
-    return 'Se renueva por $renewal hasta que canceles. Cancela cuando quieras.';
+    return 'Se renueva por $renewal hasta que canceles. Cancela cuando quieras en Google Play.';
   }
-
-  @override
-  String get checkoutPending =>
-      'Pago recibido. Premium se está activando: puede tardar un minuto. Toca Restaurar si no se desbloquea.';
-
-  @override
-  String get checkoutFailed => 'El pago no se completó. Inténtalo de nuevo.';
 
   @override
   String get restorePurchase => 'Restaurar compra';

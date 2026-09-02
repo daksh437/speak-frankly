@@ -495,20 +495,13 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String trialPaywallDisclosure(String intro, String renewal) {
-    return 'अभी $intro लगेंगे, फिर अपने आप $renewal। $intro वापस नहीं होगे। कभी भी रद्द करें।';
+    return 'अभी $intro लगेंगे, उसके बाद $renewal। Google Play में कभी भी रद्द करें।';
   }
 
   @override
   String trialPaywallRenewNote(String renewal) {
-    return 'रद्द करने तक $renewal पर अपने आप रिन्यू होगा। कभी भी रद्द करें।';
+    return 'रद्द करने तक $renewal पर अपने आप रिन्यू होगा। Google Play में कभी भी रद्द करें।';
   }
-
-  @override
-  String get checkoutPending =>
-      'भुगतान मिल गया। प्रीमियम चालू हो रहा है — इसमें एक मिनट लग सकता है। न खुले तो Restore दबाएं।';
-
-  @override
-  String get checkoutFailed => 'भुगतान पूरा नहीं हुआ। कृपया फिर से कोशिश करें।';
 
   @override
   String get restorePurchase => 'खरीद बहाल करें';

@@ -236,42 +236,6 @@ class ApiService {
     return (body['data'] as Map<String, dynamic>?) ?? {};
   }
 
-  /// The Razorpay price list the paywall renders. Public — no sign-in needed,
-  /// because the paywall shows prices before the learner does anything.
-  ///
-  /// Throws on a network or server failure. The paywall shows an error rather
-  /// than guessing, because the one thing it must never do is display a price
-  /// the checkout will not honour.
-  Future<Map<String, dynamic>> fetchCheckoutPlans() async {
-    final res = await _client.get(_u('/checkout/plans')).timeout(_timeout);
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    return (body['data'] as Map<String, dynamic>?) ?? {};
-  }
-
-  /// Create a Razorpay subscription for the signed-in learner and return the
-  /// id that Razorpay Checkout is opened with.
-  ///
-  /// The SERVER decides whether this account gets the intro trial — it knows
-  /// who has paid before. `trial` in the reply is what was actually created,
-  /// so the confirmation copy can state the real terms.
-  ///
-  /// Returns null when the server declined (not configured, unknown plan,
-  /// Razorpay unreachable); the caller shows an error and does not open
-  /// checkout.
-  Future<Map<String, dynamic>?> createSubscription(String plan) async {
-    try {
-      final res = await _client
-          .post(_u('/checkout/subscription'),
-              headers: await _authHeaders(), body: jsonEncode({'plan': plan}))
-          .timeout(_timeout);
-      final body = jsonDecode(res.body) as Map<String, dynamic>;
-      if (res.statusCode != 200 || body['success'] != true) return null;
-      return (body['data'] as Map<String, dynamic>?);
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// Grant ad-reward bonus messages after a rewarded ad (server-authoritative).
   /// Returns true if bonus was granted (false if the daily reward cap is hit).
   Future<bool> rewardAd() async {

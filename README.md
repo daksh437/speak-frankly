@@ -27,7 +27,6 @@ english_tutor_ai/
 - **Monetization** — trial (`TRIAL_DAYS`, unlimited-feeling with a daily soft cap) → free (`DAILY_MESSAGES_FREE`/day + rewarded-ad bonus) → premium (unlimited). Enforced server-side; Play purchases verified against the Play Developer API.
 - **Admin panel** — in-app, owner/admin only: live stats, learners, and the AI-content report queue.
 - **Account deletion** — Profile → Delete account erases the account and its data immediately (`DELETE /account`, verified token only), with a public page at `/delete-account`. Play requires both halves.
-- **Web checkout** — `/checkout` sells the same Premium through Razorpay at ~2.36% instead of Play's 15%. Web-only by design; the app never links to it. See [Web checkout](#web-checkout-razorpay--the-second-storefront).
 - **Onboarding** — native language, goal, level, biggest speaking struggle. Localized shell (en/hi/es/fr/pt).
 
 ## Run it locally (2 terminals)
@@ -157,36 +156,6 @@ of not paying: the paywall waits for Play's `restorePurchases()` as well as the
 server's answer (so a renewal we haven't recorded yet doesn't flash a sales page
 at a subscriber), and if `/access` cannot be reached at all the app opens
 normally — the server refuses the actual work anyway.
-
-## Web checkout (Razorpay) — the second storefront
-
-Play's Payments policy governs purchases made **inside** the Android app; it does not govern our own website. So `GET /checkout` sells the same Premium through Razorpay, where the only fee is ~2.36% instead of Play's 15%:
-
-| ₹200/month | you keep |
-|---|---|
-| In-app (Play Billing) | ₹170.00 |
-| **Web (Razorpay)** | **₹195.28** |
-
-**+₹25.28 per subscriber — about 15% more.**
-
-Two rules this design does not bend:
-
-1. **The app never links here.** That is Play's anti-steering rule. Play Billing stays the only in-app purchase path; traffic to `/checkout` comes from marketing, email and social, never from a button in the app.
-2. **Only the webhook grants premium.** The browser's "payment succeeded" callback is a UI hint that anyone can forge. `POST /checkout/webhook` verifies an HMAC-SHA256 signature over the **raw** request body before writing anything — which is why `app.js` stashes `req.rawBody` for that one path.
-
-The learner signs in on the page with the same Google account they use in the app, so the uid comes from a verified Firebase ID token and rides along in the subscription's `notes` — that is how a renewal ten months later still finds the right account. `premiumExpiry` is shared with the Play path and only ever moves **later**, so holding both subscriptions can never shorten either.
-
-Setup (all outside this repo — until it's done, `/checkout` just says it isn't available):
-
-1. **Razorpay** → Subscriptions → Plans: create a monthly and an annual plan → `RAZORPAY_PLAN_MONTHLY` / `RAZORPAY_PLAN_ANNUAL`.
-2. **Razorpay** → Settings → API Keys → `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`.
-3. **Razorpay** → Settings → Webhooks → `https://<host>/checkout/webhook`, subscribe to `subscription.charged`, `.cancelled`, `.halted`, `.completed` → `RAZORPAY_WEBHOOK_SECRET`. **Without this secret nothing can ever be granted.**
-4. **Firebase** → Project settings → Your apps → **Web** (a separate registration from the Android app) → `FIREBASE_WEB_API_KEY`, `FIREBASE_WEB_AUTH_DOMAIN`, `FIREBASE_WEB_APP_ID`. Add the backend's domain under Authentication → Settings → Authorized domains, or the Google popup is refused.
-5. Optional display labels: `RAZORPAY_PRICE_MONTHLY` / `RAZORPAY_PRICE_ANNUAL` (e.g. `₹200`). Blank shows a dash — the page never guesses an amount.
-
-Recurring charges ride UPI AutoPay / e-NACH / card mandates, which fail more often than Play's billing does. Watch `subscription.halted` in the logs; unlike Play, nobody else is retrying those for you.
-
-*Not chosen: Razorpay via Play's in-app alternative billing (allowed in India). It reduces Google's cut 15% → 11%, so after Razorpay's 2.36% the gain is ₹3.26/subscriber/month — 1.64% — in exchange for keeping both billing paths alive, PCI DSS certification, and reporting every transaction to Google within 24 hours. Revisit past ~3,000 paying subscribers.*
 
 ## Renaming
 

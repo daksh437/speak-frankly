@@ -102,37 +102,31 @@ router.get('/terms', (_req, res) => {
 </ul>
 
 <h2>Free &amp; premium</h2>
-<p>The app is free to use with a daily limit. Premium is an optional paid subscription that removes the limit and unlocks every practice scenario. Who handles the money depends on where and when you subscribed:</p>
+<p>The app is free to use with a daily limit. Premium is an optional paid subscription that removes the limit and unlocks every practice scenario. It is sold in one place only:</p>
 <ul>
-  <li><b>Inside the Android app, and on this website</b> — billed by Razorpay Software Private Limited on our behalf.</li>
-  <li><b>Through Google Play, in an earlier version of the app</b> — billed by Google Play and subject to Google Play's terms. Those subscriptions keep running and are still managed in Play; nothing about them changes.</li>
+  <li><b>Inside the Android app</b> — billed by Google Play. Google is the merchant of record, and Google Play's terms govern the transaction.</li>
 </ul>
-<p>Premium plans are offered monthly, three-monthly, six-monthly and yearly. Prices are shown before you pay and may change; a change never affects a period you have already paid for.</p>
+<p>Prices and any introductory offer are shown by Google Play before you confirm, in your own currency. A price change never affects a period you have already paid for.</p>
 
 <h2 id="refunds">Subscriptions, cancellation and refunds</h2>
 
 <h3>How billing works</h3>
 <ul>
-  <li>Premium <b>renews automatically</b> at the end of each period until you cancel. This is how it is described at checkout before you pay.</li>
-  <li>New subscribers may be charged a small introductory amount for the first day, after which the plan price applies from the next billing date. The introductory amount is shown at checkout before you pay.</li>
-  <li>Renewals are charged to the payment method you authorised. Where the law requires it, your bank or UPI provider notifies you before a recurring debit.</li>
+  <li>Premium <b>renews automatically</b> at the end of each period until you cancel. Google Play states this, and the amount, before you confirm.</li>
+  <li>An introductory offer, where one is running, applies to the first period only; the plan price applies from the next billing date. Google Play shows both amounts before you confirm.</li>
+  <li>Renewals are charged by Google to the payment method on your Google account.</li>
 </ul>
 
 <h3>Cancelling</h3>
 <ul>
-  <li>You may cancel at any time. Cancelling stops future renewals; it does not end the period you have already paid for, and you keep Premium until that period ends.</li>
-  <li>Billed by Razorpay (in the app or on this website): email <a href="mailto:${CONTACT}">${CONTACT}</a> from your account address, or use the cancellation link in your Razorpay subscription email. We stop the mandate, so no further amount is debited.</li>
-  <li>An older subscription billed by Google Play: cancel through Google Play &rarr; Subscriptions.</li>
+  <li>You may cancel at any time in <b>Play Store &rarr; Subscriptions</b>. Cancelling stops future renewals; it does not end the period you have already paid for, and you keep Premium until that period ends.</li>
+  <li>Deleting the app does not cancel a subscription, and neither does deleting your Speak Frankly account. Cancel it in Play.</li>
 </ul>
 
 <h3>Refunds</h3>
 <ul>
-  <li>If you are charged in error — a duplicate charge, or a renewal after you asked us to cancel — tell us and we will refund it in full.</li>
-  <li>For a first-time subscription billed by Razorpay, you may request a refund within <b>2 days</b> of the charge by emailing <a href="mailto:${CONTACT}">${CONTACT}</a>.</li>
-  <li>The introductory first-day amount is <b>not refundable</b>. It buys immediate access for that day, and that access is delivered as soon as it is paid. Cancel before the first full charge and you will not be billed again.</li>
-  <li>We do not refund part-used periods after that window, because the service is delivered as soon as the subscription starts.</li>
-  <li>Approved refunds are returned to the original payment method. Razorpay typically takes 5&ndash;7 working days to settle a refund; the timing after that is your bank's.</li>
-  <li>An older subscription billed by Google Play is refunded under Google Play's refund policy, not this one, because Google is the merchant for those.</li>
+  <li>Purchases are refunded under <b>Google Play's refund policy</b>, not ours, because Google is the merchant. Request a refund through Google Play; Google decides it.</li>
+  <li>If something on our side is at fault — you paid and Premium never activated, for example — write to <a href="mailto:${CONTACT}">${CONTACT}</a> and we will fix the entitlement, and support your refund request to Google where one is due.</li>
 </ul>
 <p>Write to <a href="mailto:${CONTACT}">${CONTACT}</a> for anything to do with a payment. We aim to reply within two working days.</p>
 

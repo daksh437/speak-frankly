@@ -163,9 +163,7 @@
   "trialPaywallThen": "Puis {renewal}",
   "trialPaywallCta": "{days, plural, =1{COMMENCER L'ESSAI D'UN JOUR} other{COMMENCER L'ESSAI DE {days} JOURS}}",
   "trialPaywallSubscribe": "S'ABONNER",
-  "trialPaywallDisclosure": "Vous payez {intro} maintenant, puis {renewal} automatiquement. Les {intro} ne sont pas remboursés. Annulez à tout moment.",
-  "trialPaywallRenewNote": "Renouvelé à {renewal} jusqu'à l'annulation. Annulez à tout moment.",
-  "checkoutPending": "Paiement reçu. Premium s'active — cela peut prendre une minute. Touchez Restaurer s'il ne se débloque pas.",
-  "checkoutFailed": "Le paiement n'a pas abouti. Veuillez réessayer.",
+  "trialPaywallDisclosure": "Vous payez {intro} maintenant, puis {renewal}. Annulez à tout moment dans Google Play.",
+  "trialPaywallRenewNote": "Renouvelé à {renewal} jusqu'à l'annulation. Annulez à tout moment dans Google Play.",
   "restorePurchase": "Restaurer l'achat"
 }

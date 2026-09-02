@@ -1,30 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../config/app_config.dart';
 import '../l10n/app_localizations.dart';
 import '../services/auth_service.dart';
 import '../services/plan_status.dart';
 import '../services/premium_service.dart';
-import '../services/razorpay_checkout.dart';
 import '../theme/app_theme.dart';
 
 /// The hard paywall shown straight after onboarding: one plan, one price, one
 /// button. There is no way past it except subscribing, restoring an existing
 /// subscription, or signing out.
 ///
-/// EVERY NUMBER ON THIS SCREEN COMES FROM THE SERVER. The headline price is the
-/// intro amount from `/checkout/plans` and the struck-through price is that
-/// plan's real recurring price — both already formatted server-side. Changing a
-/// price is a Render env edit, not an app release and a Play review.
+/// EVERY NUMBER ON THIS SCREEN COMES FROM PLAY.
+/// The headline price is the opening pricing phase of the offer Play returned
+/// (e.g. ₹5 for 3 days), and the struck-through price next to it is that same
+/// offer's renewal phase (₹199/month) — both already formatted for the buyer's
+/// country. Nothing is hardcoded, so changing the price or the trial length is
+/// a Play Console edit and no app release.
 ///
-/// It sells the MONTHLY plan and nothing else. A first paywall with four
-/// choices on it is a decision, and a decision is a place to leave. The longer
-/// plans stay on the web checkout page for learners who go looking.
-///
-/// When the price list cannot be loaded — server down, Razorpay not configured
-/// — the button stays dead and the screen says so, rather than showing a price
-/// the checkout would not honour.
+/// When Play returns no intro phase — because this account already used its
+/// trial, or no offer is configured — the screen quietly becomes a plain
+/// subscribe page at the normal price. It never promises a trial Play will not
+/// honour.
 class TrialPaywallScreen extends StatefulWidget {
   const TrialPaywallScreen({super.key, this.onSubscribed});
 
@@ -38,44 +34,41 @@ class TrialPaywallScreen extends StatefulWidget {
 
 class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
   bool _restoring = false;
+  bool _handled = false; // guards against the purchase stream firing twice
 
   @override
   void initState() {
     super.initState();
-    RazorpayCheckout.instance.load();
+    PremiumService.instance.addListener(_onPurchaseState);
+    PremiumService.instance.init();
   }
 
-  void _say(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
-    );
+  @override
+  void dispose() {
+    PremiumService.instance.removeListener(_onPurchaseState);
+    super.dispose();
   }
 
-  Future<void> _subscribe(CheckoutPlan plan) async {
-    final loc = AppLocalizations.of(context)!;
-    final result = await RazorpayCheckout.instance.buy(plan.key);
-    if (!mounted) return;
-    switch (result) {
-      case CheckoutResult.active:
-        widget.onSubscribed?.call();
-      case CheckoutResult.pending:
-        // Paid, but the webhook has not landed. Never call this a failure —
-        // the money has left their account.
-        _say(loc.checkoutPending);
-      case CheckoutResult.cancelled:
-        break; // they closed the sheet; nothing to announce
-      case CheckoutResult.failed:
-        _say(loc.checkoutFailed);
+  Future<void> _onPurchaseState() async {
+    if (_handled || !PremiumService.instance.justActivated) return;
+    _handled = true;
+    // The server is the authority on entitlement, not the purchase stream —
+    // re-read it before letting anyone in.
+    await PlanStatus.instance.refresh();
+    if (mounted) widget.onSubscribed?.call();
+  }
+
+  Future<void> _subscribe() async {
+    final offer = PremiumService.instance.trialOffer;
+    if (offer == null) return;
+    final ok = await PremiumService.instance.buy(offer);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.subsUnavailable)),
+      );
     }
   }
 
-  /// Ask both storefronts again.
-  ///
-  /// Play is still asked because a learner who subscribed through Play before
-  /// this screen moved to Razorpay must not be walled out of what they are
-  /// still paying for. The /access refresh covers the Razorpay side, including
-  /// a webhook that arrived while they were staring at this screen.
   Future<void> _restore() async {
     setState(() => _restoring = true);
     await PremiumService.instance.restore();
@@ -85,33 +78,37 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
     if (PlanStatus.instance.hasPremiumAccess) {
       widget.onSubscribed?.call();
     } else {
-      _say(AppLocalizations.of(context)!.subsUnavailable);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.subsUnavailable)),
+      );
     }
   }
 
-  /// "₹199 per month" — the price plus the period it repeats on, in the
-  /// learner's language where there is a word for it, and in the server's
-  /// wording ('every 3 months') where there is not.
-  String _renewalLabel(AppLocalizations loc, CheckoutPlan plan) {
-    switch (plan.key) {
-      case 'monthly':
-        return '${plan.price} ${loc.perMonth}';
-      case 'annual':
-        return '${plan.price} ${loc.perYear}';
+  /// How long the opening phase lasts, in days — or null when it is measured in
+  /// months or years, which is not a trial and must not be sold as one.
+  static int? _introDays(PlanPhase phase) {
+    final units = phase.totalUnits;
+    if (units <= 0) return null;
+    switch (phase.periodUnit) {
+      case 'D':
+        return units;
+      case 'W':
+        return units * 7;
       default:
-        return plan.per.isEmpty ? plan.price : '${plan.price} ${plan.per}';
+        return null;
     }
   }
 
-  /// The plan this screen sells. Monthly by definition; the first available
-  /// plan only as a fallback, so a misconfigured server shows something
-  /// buyable instead of nothing.
-  CheckoutPlan? _headline(List<CheckoutPlan> plans) {
-    if (plans.isEmpty) return null;
-    for (final p in plans) {
-      if (p.key == 'monthly') return p;
+  /// "₹199 per month" — the price plus the period it repeats on.
+  String _renewalLabel(AppLocalizations loc, PlanPhase renewal) {
+    switch (renewal.periodUnit) {
+      case 'Y':
+        return '${renewal.price} ${loc.perYear}';
+      case 'M':
+        return '${renewal.price} ${loc.perMonth}';
+      default:
+        return renewal.price;
     }
-    return plans.first;
   }
 
   @override
@@ -122,14 +119,13 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
     return Scaffold(
       body: SafeArea(
         child: AnimatedBuilder(
-          animation: RazorpayCheckout.instance,
+          animation: PremiumService.instance,
           builder: (context, _) {
-            final svc = RazorpayCheckout.instance;
-            final plan = svc.configured ? _headline(svc.plans) : null;
-            final trial = plan == null ? null : svc.trial;
-            final days = trial?.days ?? 0;
-            final renewal = plan == null ? '' : _renewalLabel(loc, plan);
-            final headlinePrice = trial?.price ?? plan?.price ?? '';
+            final svc = PremiumService.instance;
+            final offer = svc.trialOffer;
+            final intro = (offer != null && offer.hasIntro) ? offer.opening : null;
+            final days = intro != null ? _introDays(intro) : null;
+            final renewal = offer != null ? _renewalLabel(loc, offer.renewal) : '';
 
             return Column(
               children: [
@@ -176,7 +172,7 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                       const SizedBox(height: 20),
                       Center(
                         child: Text(
-                          days > 0 ? loc.trialPaywallTitle(days) : loc.goPremium,
+                          days != null ? loc.trialPaywallTitle(days) : loc.goPremium,
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                         ),
@@ -190,24 +186,24 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      if (plan == null)
+                      if (offer == null)
                         Center(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Text(
-                              svc.loaded ? loc.subsUnavailable : '…',
+                              svc.hasAnyPlan ? loc.subsUnavailable : '…',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: scheme.onSurfaceVariant),
                             ),
                           ),
                         )
                       else ...[
-                        // The struck-through price is this plan's real
-                        // recurring price, not an invented "was" number.
-                        if (trial != null)
+                        // The struck-through price is the real renewal price of
+                        // this same offer, not an invented "was" number.
+                        if (intro != null)
                           Center(
                             child: Text(
-                              plan.price,
+                              offer.renewal.price,
                               style: TextStyle(
                                 fontSize: 22,
                                 color: scheme.onSurfaceVariant,
@@ -218,7 +214,7 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                         const SizedBox(height: 4),
                         Center(
                           child: Text(
-                            headlinePrice,
+                            (intro ?? offer.renewal).price,
                             style: TextStyle(
                               fontSize: 76,
                               fontWeight: FontWeight.w900,
@@ -227,7 +223,7 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                             ),
                           ),
                         ),
-                        if (days > 0) ...[
+                        if (days != null) ...[
                           const SizedBox(height: 4),
                           Center(
                             child: Text(
@@ -240,6 +236,8 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                               ),
                             ),
                           ),
+                        ],
+                        if (intro != null) ...[
                           const SizedBox(height: 10),
                           Center(
                             child: Text(
@@ -264,52 +262,39 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+                  padding: const EdgeInsets.fromLTRB(24, 4, 24, 18),
                   child: Column(
                     children: [
                       SizedBox(
                         width: double.infinity,
-                        height: 62,
+                        height: 56,
                         child: FilledButton(
-                          // Nothing purchasable → no live button. A live button
-                          // while the price list is still loading, or on a
-                          // server with no Razorpay keys, just walks the
-                          // learner into a failed checkout.
-                          onPressed: (svc.busy || plan == null) ? null : () => _subscribe(plan),
-                          child: svc.busy
+                          // Nothing purchasable → no live button. Play returns
+                          // no offers while they load and in any country the
+                          // subscription isn't sold in; a live button there
+                          // just walks the learner into a failed checkout.
+                          onPressed: (svc.purchasePending || offer == null) ? null : _subscribe,
+                          child: svc.purchasePending
                               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
                               : Text(
-                                  days > 0 ? loc.trialPaywallCta(days) : loc.trialPaywallSubscribe,
+                                  days != null ? loc.trialPaywallCta(days) : loc.trialPaywallSubscribe,
                                   style: const TextStyle(
                                       fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 0.3),
                                 ),
                         ),
                       ),
                       const SizedBox(height: 10),
-                      // Auto-renewal, the amount, that the intro is not
-                      // refundable, and how to cancel — all stated before the
-                      // learner pays. A subscription nobody understood is a
-                      // chargeback with extra steps.
+                      // Auto-renewal, the amount and how to cancel, stated
+                      // before the learner pays — Play requires it, and a
+                      // subscription nobody understood is a refund anyway.
                       Text(
-                        plan == null
+                        offer == null
                             ? loc.subsUnavailable
-                            : trial != null
-                                ? loc.trialPaywallDisclosure(headlinePrice, renewal)
+                            : intro != null
+                                ? loc.trialPaywallDisclosure(intro.price, renewal)
                                 : loc.trialPaywallRenewNote(renewal),
                         textAlign: TextAlign.center,
                         style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11.5, height: 1.4),
-                      ),
-                      const SizedBox(height: 2),
-                      // The full terms have to be reachable from the screen
-                      // that takes the money, not only from a settings page
-                      // this learner has never seen.
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _legalLink(context, 'Terms', AppConfig.termsUrl),
-                          Text(' · ', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11.5)),
-                          _legalLink(context, 'Privacy', AppConfig.privacyUrl),
-                        ],
                       ),
                     ],
                   ),
@@ -317,27 +302,6 @@ class _TrialPaywallScreenState extends State<TrialPaywallScreen> {
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-
-  Widget _legalLink(BuildContext context, String label, String url) {
-    final scheme = Theme.of(context).colorScheme;
-    return TextButton(
-      onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
-      style: TextButton.styleFrom(
-        minimumSize: Size.zero,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11.5,
-          color: scheme.onSurfaceVariant,
-          decoration: TextDecoration.underline,
-          decorationColor: scheme.onSurfaceVariant,
         ),
       ),
     );

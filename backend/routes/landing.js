@@ -3,37 +3,23 @@
  *
  * WHY THIS EXISTS
  * `/` used to return `{"success":true,"message":"Speak Frankly Backend API"}`.
- * That is fine for a machine and useless to a person — and it is what a payment
- * gateway's reviewer sees first. Razorpay declined the domain with "the website
- * must be live with the services/products offered", because a JSON string is
- * not a shop. This page is that shop: what the product is, what the plans cost,
- * what the trial charges, and where the policies are.
+ * That is fine for a machine and useless to a person: it is what anyone who
+ * types the domain sees, and what a reviewer or a curious learner lands on.
+ * This page tells them what the product is and where to get it.
  *
- * Prices are read from the SAME env vars the checkout page uses, so the two can
- * never quote different numbers. Blank shows a dash rather than a guess.
+ * IT QUOTES NO PRICES. Premium is sold only through Google Play, which prices
+ * it per country and runs its own introductory offers. Any number printed
+ * here would be a number for one country on one day, and the checkout would
+ * not honour it. Play states the amount before the buyer confirms; that is
+ * the only place it is true.
  */
 const express = require('express');
-const rzp = require('../services/razorpay');
 
 const router = express.Router();
 
 const APP = 'Speak Frankly';
 const CONTACT = 'instaflow38@gmail.com';
 const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.speakfrankly';
-
-const PRICES = {
-  monthly: (process.env.RAZORPAY_PRICE_MONTHLY || '').trim(),
-  quarterly: (process.env.RAZORPAY_PRICE_QUARTERLY || '').trim(),
-  halfyearly: (process.env.RAZORPAY_PRICE_HALFYEARLY || '').trim(),
-  annual: (process.env.RAZORPAY_PRICE_ANNUAL || '').trim(),
-};
-
-const PLAN_ROWS = [
-  ['annual', 'Yearly', 'per year'],
-  ['halfyearly', '6 months', 'every 6 months'],
-  ['quarterly', '3 months', 'every 3 months'],
-  ['monthly', 'Monthly', 'per month'],
-];
 
 const STYLES = [
   ':root{color-scheme:light dark;--fg:#1a1a1a;--bg:#fff;--muted:#6b6b6b;--seed:#6C5CE7;--card:#f6f5fb;--line:#e3e0f0}',
@@ -55,26 +41,6 @@ const STYLES = [
   'a{color:var(--seed)}',
   '.foot{text-align:center;color:var(--muted);font-size:14px;margin-top:34px}',
 ].join('');
-
-function planTable() {
-  const rows = PLAN_ROWS
-    .filter(([key]) => rzp.availablePlans().includes(key))
-    .map(([key, name, per]) => {
-      const p = PRICES[key] || '&mdash;';
-      return `<tr><td><b>${name}</b></td><td class="price">${p}</td><td>${per}</td></tr>`;
-    })
-    .join('');
-  if (!rows) return '<p>Plans are being updated. Please check back shortly.</p>';
-  return `<table><tr><th>Plan</th><th>Price</th><th>Billed</th></tr>${rows}</table>`;
-}
-
-function trialNote() {
-  const t = rzp.trialInfo();
-  if (!t) return '';
-  const days = t.days === 1 ? '1 day' : `${t.days} days`;
-  return `<div class="box"><b>New subscribers pay &#8377;${t.amount} for the first ${days}</b>,
-    then the plan price above. The subscription renews automatically until you cancel.</div>`;
-}
 
 router.get('/', (_req, res) => {
   res.set('Content-Type', 'text/html; charset=utf-8').send(`<!doctype html>
@@ -110,14 +76,13 @@ understand English but freeze when they have to speak it.</p>
 <p>The app is free to download and use with a daily limit. Premium removes that
 limit and unlocks every scenario. It is a subscription that renews automatically
 until cancelled.</p>
+<p>Premium is bought <b>inside the app</b>, through Google Play. Play shows the
+price in your own currency, and any introductory offer that is running, before
+you confirm — so that is where the amount is stated, not here.</p>
 
-${planTable()}
-${trialNote()}
-
-<a class="cta" href="/checkout">Subscribe to Premium</a>
+<a class="cta" href="${PLAY_URL}">Get Speak Frankly on Google Play</a>
 <p style="text-align:center;color:var(--muted);font-size:14px">
-  Payments are processed by Razorpay. You sign in with the same Google account you
-  use in the app.
+  Payments are handled by Google Play, on the Google account your phone uses.
 </p>
 
 <h2>Cancellation and refunds</h2>
@@ -125,8 +90,6 @@ ${trialNote()}
 already paid for. Refund terms are set out in full in our
 <a href="/terms#refunds">Terms of Service</a>.</p>
 
-<h2>Get the app</h2>
-<p><a href="${PLAY_URL}">Speak Frankly on Google Play</a></p>
 
 <p class="foot">
   <a href="/privacy">Privacy Policy</a> &middot;
