@@ -30,7 +30,10 @@ Object.assign(process.env, {
   // than offered with a blank where the amount goes.
   RAZORPAY_PLAN_QUARTERLY: 'plan_fake_quarterly',
   RAZORPAY_PRICE_MONTHLY: '₹199',
-  RAZORPAY_PRICE_ANNUAL: '₹1,499',
+  // Deliberately bare, the way it was actually typed into Render: the
+  // server has to add the currency or the paywall shows a naked number
+  // next to a formatted one.
+  RAZORPAY_PRICE_ANNUAL: '1,499',
 });
 
 const crypto = require('crypto');
@@ -168,6 +171,9 @@ function authenticatedEvent(uid, chargeAtSec) {
       'every plan carries the key the app posts back',
       d.plans.every((p) => availablePlans().includes(p.key)),
     );
+    const byKey = Object.fromEntries(d.plans.map((p) => [p.key, p.price]));
+    check('a bare amount gets the currency symbol', byKey.annual === '₹1,499');
+    check('an amount that already has one is left alone', byKey.monthly === '₹199');
     check('the trial states its length', d.trial && d.trial.days === 1);
     check('the trial carries a formatted price too', d.trial && d.trial.price === '\u20B92');
 

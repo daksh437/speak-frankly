@@ -16,6 +16,13 @@
       app still installs where it does not.
     -->
     <uses-feature android:name="android.hardware.nfc" android:required="false"/>
+    <!--
+      Same trap, different permission: READ_BASIC_PHONE_STATE (pulled in by the
+      ads SDK to read the network type) makes Play imply a REQUIRED
+      "android.hardware.telephony", which drops Wi-Fi-only tablets. Nothing in
+      an English tutor needs a phone radio, so it is declared optional.
+    -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false"/>
     <application
         android:label="Speak Frankly"
         android:name="${applicationName}"

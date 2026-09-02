@@ -44,13 +44,30 @@ const PLAN_LABELS = {
   annual: { name: 'Yearly', per: 'per year', badge: 'Best value' },
 };
 
+/**
+ * A price label as the buyer should read it.
+ *
+ * These are typed by hand into Render, and in production they were typed as
+ * bare numbers ('199'). That put a server-formatted "₹2" next to a raw
+ * "199" on the same paywall. So: a label made only of digits and separators is
+ * an amount with the currency left off, and gets the symbol. Anything that
+ * already carries one - '₹199', 'Rs 199', '$5' - is passed through
+ * untouched, because guessing at a currency someone spelled out is worse than
+ * printing what they wrote.
+ */
+function priceLabel(raw) {
+  const v = String(raw || '').trim();
+  if (!v) return '';
+  return /^[0-9][0-9,.\s]*$/.test(v) ? `₹${v}` : v;
+}
+
 // Display only. The real amount is whatever the Razorpay plan says; this is a
 // label, so it is left blank rather than guessed when unset.
 const PRICES = {
-  monthly: (process.env.RAZORPAY_PRICE_MONTHLY || '').trim(),
-  quarterly: (process.env.RAZORPAY_PRICE_QUARTERLY || '').trim(),
-  halfyearly: (process.env.RAZORPAY_PRICE_HALFYEARLY || '').trim(),
-  annual: (process.env.RAZORPAY_PRICE_ANNUAL || '').trim(),
+  monthly: priceLabel(process.env.RAZORPAY_PRICE_MONTHLY),
+  quarterly: priceLabel(process.env.RAZORPAY_PRICE_QUARTERLY),
+  halfyearly: priceLabel(process.env.RAZORPAY_PRICE_HALFYEARLY),
+  annual: priceLabel(process.env.RAZORPAY_PRICE_ANNUAL),
 };
 
 // ------------------------------------------------------------------- page
