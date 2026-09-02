@@ -184,7 +184,10 @@ class PremiumService extends ChangeNotifier {
       return;
     }
     _sub ??= _iap.purchaseStream.listen(_onPurchases, onError: (_) {});
-    await _loadProducts();
+    // Unawaited on purpose: the first attempt is awaited, the retries are not,
+    // so a slow billing client delays the price on the paywall rather than the
+    // paywall itself.
+    if (!await _loadProducts()) unawaited(_retryLoadProducts());
     try {
       await _iap.restorePurchases(); // re-grant an active subscription on this account
     } catch (_) {}
@@ -192,14 +195,61 @@ class PremiumService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadProducts() async {
+  /// True once a product query has come back with something to sell.
+  bool _loaded = false;
+
+  /// Guards against two retry chains running at once (init and a screen both
+  /// calling init(), say).
+  bool _retrying = false;
+
+  /// Ask Play what this account can buy.
+  ///
+  /// Returns whether anything came back. A false here is not the same as "this
+  /// country cannot buy": the query also comes back empty on a dropped
+  /// connection, while the billing client is still warming up, or if the offer
+  /// is still a draft in Play Console.
+  Future<bool> _loadProducts() async {
     try {
       final resp = await _iap.queryProductDetails(_ids);
+      final offers = resp.productDetails.map(toOffer).whereType<PlanOffer>().toList();
+      if (offers.isEmpty) return false;
       _offers
         ..clear()
-        ..addAll(resp.productDetails.map(toOffer).whereType<PlanOffer>());
+        ..addAll(offers);
+      _loaded = true;
       notifyListeners();
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Keep asking, in the background, until Play answers.
+  ///
+  /// One failed query used to be final: the catch swallowed it, nothing tried
+  /// again, and the learner sat in front of a hard paywall with no price and a
+  /// dead button until they killed the app. A paywall with nothing on it is a
+  /// locked door, so a moment of bad signal must not be the end of it.
+  ///
+  /// This does NOT block [ready]. The gate should not hold a loader on screen
+  /// for the twelve seconds these attempts take; the paywall shows, and fills
+  /// itself in when an attempt succeeds.
+  ///
+  /// It gives up after the last attempt. Where Play genuinely sells nothing —
+  /// a country the base plan is not available in — no amount of asking will
+  /// change the answer, and retrying forever would just burn the battery.
+  Future<void> _retryLoadProducts() async {
+    if (_retrying || _loaded) return;
+    _retrying = true;
+    try {
+      for (final wait in const [2, 4, 6]) {
+        await Future<void>.delayed(Duration(seconds: wait));
+        if (_loaded) return;
+        if (await _loadProducts()) return;
+      }
+    } finally {
+      _retrying = false;
+    }
   }
 
   /// Flatten one [ProductDetails] into our offer model.
