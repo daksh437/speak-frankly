@@ -55,12 +55,22 @@ class _ClozeGameScreenState extends State<ClozeGameScreen> {
     return items;
   }
 
+  /// XP per correct answer — the same rate the other review games pay.
+  static const int _xpPerCorrect = 2;
+
   void _pick(String option) {
     if (_picked != null) return;
     setState(() => _picked = option);
     final right = option.toLowerCase() == _items[_index].answer.toLowerCase();
-    if (right) _correct++;
-    GamificationService.instance.recordActivity(xpGain: 2);
+    // Only a right answer earns XP. This used to pay out on every tap, so
+    // guessing wrong through all ten items scored the same as knowing all ten
+    // — and XP is what unlocks scenarios, so the ladder could be climbed
+    // without learning anything. The other two quiz games already worked this
+    // way; this one was the odd one out.
+    if (right) {
+      _correct++;
+      GamificationService.instance.recordActivity(xpGain: _xpPerCorrect);
+    }
     Future.delayed(const Duration(milliseconds: 750), () {
       if (!mounted) return;
       if (_index + 1 >= _items.length) {
@@ -191,6 +201,12 @@ class _ClozeGameScreenState extends State<ClozeGameScreen> {
           const Text('Nice work!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           Text('You got $_correct of ${_items.length} right.', style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(color: const Color(0xFFF59E0B).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+            child: Text('+${_correct * _xpPerCorrect} XP  ⭐', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
+          ),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,

@@ -10,10 +10,12 @@ import '../services/account_service.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
+import '../services/sync_service.dart';
 import '../services/user_session.dart';
 import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
 import '../services/notification_service.dart';
+import '../services/plan_status.dart';
 import 'offline_downloads_screen.dart';
 import 'premium_screen.dart';
 import 'placement_test_screen.dart';
@@ -32,7 +34,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _access = ApiService.instance.fetchAccess();
+    // This screen is kept alive in the app's tab stack, so the plan it fetched
+    // on first open was the plan it showed for the rest of the session — a
+    // learner who bought Premium in the next tab came back to "Free plan" and a
+    // pitch to upgrade. Re-fetch whenever the plan is known to have moved.
+    PlanStatus.instance.addListener(_refreshAccess);
     _loadVersion();
+  }
+
+  @override
+  void dispose() {
+    PlanStatus.instance.removeListener(_refreshAccess);
+    super.dispose();
+  }
+
+  void _refreshAccess() {
+    if (!mounted) return;
+    setState(() => _access = ApiService.instance.fetchAccess());
   }
 
   Future<void> _loadVersion() async {
@@ -60,8 +78,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+    controller.dispose();
     if (name != null) {
       await UserSession.instance.setDisplayName(name);
+      // Without this the new name never leaves the device, and the next cloud
+      // pull overwrites it with the stale one this account last synced.
+      SyncService.push();
       if (mounted) setState(() {});
     }
   }
@@ -196,6 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (picked != null) {
       await UserSession.instance.setLevel(picked);
+      SyncService.push(); // the level follows the account, not the device
       if (mounted) setState(() {});
     }
   }

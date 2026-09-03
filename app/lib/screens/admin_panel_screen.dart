@@ -154,6 +154,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   if (degraded)
                     _noteCard('The server could not reach Firestore, so user numbers are unavailable.',
                         const Color(0xFFF59E0B)),
+                  // The server reads a bounded number of user documents to build
+                  // the breakdowns. Past that bound they describe a sample, and
+                  // saying so beats letting them read as the whole picture.
+                  if (_stats['partial'] == true)
+                    _noteCard(
+                        'Total users is exact. The breakdowns below cover the first '
+                        '${_stats['scanned'] ?? 0} accounts only.',
+                        const Color(0xFF0EA5E9)),
 
                   // ---- Plan mix ----
                   const _SectionTitle('Learners'),

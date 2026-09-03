@@ -23,7 +23,15 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _prepare(String uid) async {
     if (_preparing || _readyUid == uid) return;
     _preparing = true;
-    await AccountService.switchTo(uid);
+    try {
+      await AccountService.switchTo(uid);
+    } catch (e) {
+      // Preparation is all best-effort work (cloud pull, local caches). If any
+      // of it throws we still let the learner in on their local data — the
+      // alternative was leaving _preparing true forever, which pinned the app
+      // on the loading spinner with no way out but a reinstall.
+      debugPrint('[AuthGate] session prep failed: $e');
+    }
     if (!mounted) return;
     setState(() {
       _readyUid = uid;

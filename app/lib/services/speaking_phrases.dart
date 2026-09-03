@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_service.dart';
+import 'day_key.dart';
 import 'user_session.dart';
 
 /// Provides the day's speaking-practice phrases. Fetches a fresh AI-generated
@@ -27,11 +28,6 @@ class SpeakingPhrases {
     'I really enjoyed the movie.',
   ];
 
-  static String _today() {
-    final d = DateTime.now();
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
-
   /// Returns today's phrases. [forceRefresh] ignores the daily cache (e.g. a
   /// "new set" button). New AI set is fetched at most once per day otherwise.
   static Future<List<String>> getToday({bool forceRefresh = false}) async {
@@ -46,7 +42,7 @@ class SpeakingPhrases {
     }
 
     // Already fetched today → reuse (unless forced).
-    if (!forceRefresh && cachedDate == _today() && cached.length >= 4) return cached;
+    if (!forceRefresh && cachedDate == todayKey() && cached.length >= 4) return cached;
 
     // Fetch a fresh level/goal-aware set.
     try {
@@ -54,7 +50,7 @@ class SpeakingPhrases {
       final phrases = await ApiService.instance.fetchSpeakingPhrases(level: UserSession.instance.level, goal: goal);
       if (phrases.length >= 4) {
         await p.setString(_kPhrases, jsonEncode(phrases));
-        await p.setString(_kDate, _today());
+        await p.setString(_kDate, todayKey());
         return phrases;
       }
     } catch (_) {/* offline / server error → fall through */}

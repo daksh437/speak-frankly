@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
-import '../services/auth_service.dart';
 import '../services/plan_status.dart';
 import '../services/premium_service.dart';
 import '../theme/app_theme.dart';
@@ -15,14 +14,8 @@ import '../theme/app_theme.dart';
 /// learner anywhere in the world and then failed at checkout. If Play returns
 /// no plans at all — still loading, or the subscription is not available in
 /// this country — the screen says so instead of inventing a price.
-///
-/// When [blocking] is true the screen acts as a hard paywall: no back button,
-/// a sign-out escape hatch, and on success [onSubscribed] is invoked (instead of
-/// popping) so a gate can reveal the app.
 class PremiumScreen extends StatefulWidget {
-  const PremiumScreen({super.key, this.blocking = false, this.onSubscribed});
-  final bool blocking;
-  final VoidCallback? onSubscribed;
+  const PremiumScreen({super.key});
   @override
   State<PremiumScreen> createState() => _PremiumScreenState();
 }
@@ -33,25 +26,34 @@ class _PremiumScreenState extends State<PremiumScreen> {
   /// tells us, and guessing quotes them a price they will not be charged.
   static const String _pricePlaceholder = '—';
 
-  // Which plan the learner has selected. Defaults to annual (best value) when
-  // it's offered, otherwise monthly.
-  String _selected = PremiumService.annualId;
+  /// The plan the learner has TAPPED, or null while they haven't chosen yet.
+  ///
+  /// Null rather than a default, because the default depends on what Play
+  /// returns and Play answers asynchronously. This used to be initialised to
+  /// annual and then corrected in initState by reading `hasAnnual` on the line
+  /// after firing the async load — which is always false that early, so the
+  /// screen fell back to monthly every time and the annual plan, the one badged
+  /// "best value", was never the one preselected.
+  String? _picked;
+
+  /// Annual when Play sells it, monthly otherwise — re-evaluated on every build
+  /// so it settles as soon as the products arrive.
+  String get _selected {
+    final picked = _picked;
+    if (picked != null && PremiumService.instance.canBuy(picked)) return picked;
+    return PremiumService.instance.hasAnnual ? PremiumService.annualId : PremiumService.monthlyId;
+  }
 
   @override
   void initState() {
     super.initState();
     PremiumService.instance.init();
     PlanStatus.instance.refresh(); // know if already premium / on trial
-    // If annual isn't available (product not created yet), fall back to monthly.
-    if (!PremiumService.instance.hasAnnual) _selected = PremiumService.monthlyId;
   }
 
   Future<void> _subscribe() async {
-    final svc = PremiumService.instance;
-    // Guard: if the selected plan isn't available, use whatever is.
-    var plan = _selected;
-    if (plan == PremiumService.annualId && !svc.hasAnnual) plan = PremiumService.monthlyId;
-    final ok = await svc.buy(plan);
+    // _selected only ever names a plan Play is actually selling.
+    final ok = await PremiumService.instance.buy(_selected);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context)!.subsUnavailable)),
@@ -66,15 +68,6 @@ class _PremiumScreenState extends State<PremiumScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(loc.premiumTitle),
-        automaticallyImplyLeading: !widget.blocking,
-        actions: widget.blocking
-            ? [
-                TextButton(
-                  onPressed: () => AuthService.signOut(),
-                  child: Text(loc.signOut),
-                ),
-              ]
-            : null,
       ),
       body: SafeArea(
         child: AnimatedBuilder(
@@ -178,7 +171,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     final scheme = Theme.of(context).colorScheme;
     final selected = _selected == id;
     return InkWell(
-      onTap: () => setState(() => _selected = id),
+      onTap: () => setState(() => _picked = id),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -351,11 +344,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
             width: double.infinity,
             height: 52,
             child: FilledButton(
-              onPressed: () {
-                PlanStatus.instance.refresh();
-                if (widget.onSubscribed != null) {
-                  widget.onSubscribed!();
-                } else if (Navigator.of(context).canPop()) {
+              onPressed: () async {
+                // Refresh FIRST, so clearing the flag reveals the "you are
+                // Premium" status rather than flashing the sales pitch at
+                // someone who just paid.
+                await PlanStatus.instance.refresh();
+                // Leave the celebration behind whether or not there is a route
+                // to pop: on the Premium TAB there isn't one, and without this
+                // the screen stayed on 🎉 for the rest of the session.
+                PremiumService.instance.clearJustActivated();
+                if (context.mounted && Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
                 }
               },

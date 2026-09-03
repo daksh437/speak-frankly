@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_service.dart';
+import 'day_key.dart';
 import 'user_session.dart';
 
 /// One picture-match item: (emoji scene, correct sentence, distractor sentences).
@@ -28,24 +29,19 @@ class PictureMatchData {
     ('🏥', 'She is visiting the doctor.', ['He is going to school.', 'They are at the market.']),
   ];
 
-  static String _today() {
-    final d = DateTime.now();
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
-
   static Future<List<PictureItem>> getToday({bool forceRefresh = false}) async {
     final p = await SharedPreferences.getInstance();
     final cachedDate = p.getString(_kDate);
     final cached = _decode(p.getString(_kItems));
 
-    if (!forceRefresh && cachedDate == _today() && cached.length >= 4) return cached;
+    if (!forceRefresh && cachedDate == todayKey() && cached.length >= 4) return cached;
 
     try {
       final raw = await ApiService.instance.fetchPictureMatch(level: UserSession.instance.level);
       final items = _fromMaps(raw);
       if (items.length >= 4) {
         await p.setString(_kItems, _encode(items));
-        await p.setString(_kDate, _today());
+        await p.setString(_kDate, todayKey());
         return items;
       }
     } catch (_) {/* offline / not deployed → fall through */}

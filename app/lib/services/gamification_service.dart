@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'day_key.dart';
+
 /// Local gamification state: daily streak, XP, and scenarios completed.
 /// ChangeNotifier so the UI updates live (no provider dependency needed).
 /// Stored in prefs for now; can sync to Firestore later.
@@ -46,14 +48,12 @@ class GamificationService extends ChangeNotifier {
     await recordActivity(xpGain: xpGain);
   }
 
-  static String _dateStr(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
   /// Call on any practice activity (e.g. sending a chat message).
   /// Advances the daily streak (consecutive days) and adds XP.
   Future<void> recordActivity({int xpGain = 5}) async {
     final now = DateTime.now();
-    final today = _dateStr(now);
-    final yesterday = _dateStr(now.subtract(const Duration(days: 1)));
+    final today = dayKey(now);
+    final yesterday = dayKey(now.subtract(const Duration(days: 1)));
 
     if (_lastActive != today) {
       if (_lastActive == yesterday) {

@@ -20,6 +20,24 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
 
+  /// Tabs the learner has actually opened.
+  ///
+  /// IndexedStack builds every child, visible or not, so all five screens used
+  /// to run their initState on app launch — including Speak, which fetches the
+  /// day's phrases from the AI. That spent a Gemini call and one of the
+  /// learner's daily aux allowance every single launch, for a tab most of them
+  /// never opened. An unbuilt tab is a cheap placeholder; once opened it is
+  /// built and, as before, kept alive for the rest of the session.
+  final Set<int> _visited = {0};
+
+  static const List<Widget> _tabs = [
+    HomeScreen(),
+    SpeakScreen(),
+    VocabScreen(),
+    PremiumScreen(),
+    ProfileScreen(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -29,12 +47,9 @@ class _MainShellState extends State<MainShell> {
           Expanded(
             child: IndexedStack(
               index: _index,
-              children: const [
-                HomeScreen(),
-                SpeakScreen(),
-                VocabScreen(),
-                PremiumScreen(),
-                ProfileScreen(),
+              children: [
+                for (int i = 0; i < _tabs.length; i++)
+                  _visited.contains(i) ? _tabs[i] : const SizedBox.shrink(),
               ],
             ),
           ),
@@ -51,7 +66,10 @@ class _MainShellState extends State<MainShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) => setState(() {
+          _index = i;
+          _visited.add(i);
+        }),
         destinations: [
           NavigationDestination(icon: const Icon(Icons.chat_bubble_outline_rounded), selectedIcon: const Icon(Icons.chat_bubble_rounded), label: l.navPractice),
           NavigationDestination(icon: const Icon(Icons.mic_none_rounded), selectedIcon: const Icon(Icons.mic_rounded), label: l.navSpeak),

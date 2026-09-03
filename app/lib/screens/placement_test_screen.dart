@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../services/speech_service.dart';
+import '../services/sync_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 
@@ -81,7 +82,10 @@ class _PlacementTestScreenState extends State<PlacementTestScreen> {
   final Map<int, int> _rot = {};
   int _asked = 0;
   _Phase _phase = _Phase.quiz;
-  String _level = 'A2';
+
+  /// Level the grammar/listening quiz settled on. The speaking check is read
+  /// against a phrase at THIS level, so it has to be fixed before that phase.
+  String _quizLevel = 'A2';
 
   // Speaking check state.
   String _spokenText = '';
@@ -106,7 +110,30 @@ class _PlacementTestScreenState extends State<PlacementTestScreen> {
     return list[(_rot[_cur] ?? 0) % list.length];
   }
 
-  String get _phrase => _speakingPhrase[_level] ?? _speakingPhrase['A2']!;
+  String get _phrase => _speakingPhrase[_quizLevel] ?? _speakingPhrase['A2']!;
+
+  /// The level we actually place the learner at.
+  ///
+  /// The quiz result, nudged down one step when the learner DID attempt the
+  /// speaking check and could not read a phrase at their own placed level back
+  /// clearly. The screen has always told learners the test "adapted to your
+  /// answers across grammar, listening and speaking" — until now the speaking
+  /// score was measured, shown, and then thrown away, so a learner who could
+  /// not say a word of it was still placed on their written answers alone.
+  ///
+  /// A skipped check changes nothing, and neither does a check the microphone
+  /// heard nothing at all in — silence is a device problem, not a level.
+  String get _placedLevel {
+    final score = _spokenScore;
+    if (score == null || _spokenText.trim().isEmpty || score >= _speakingFloor) return _quizLevel;
+    final i = _levels.indexOf(_quizLevel);
+    return i > 0 ? _levels[i - 1] : _quizLevel;
+  }
+
+  /// Below this, the reading was too far off to support the written placement.
+  /// Deliberately generous — the recognizer is on-device, and this must never
+  /// punish an accent it simply parsed badly.
+  static const int _speakingFloor = 40;
 
   void _answer(int option) {
     final correct = option == _current.correct;
@@ -119,7 +146,7 @@ class _PlacementTestScreenState extends State<PlacementTestScreen> {
     _asked++;
     if (_asked >= _total) {
       setState(() {
-        _level = _levels[_cur];
+        _quizLevel = _levels[_cur];
         _phase = _Phase.speaking; // then a quick speaking check
       });
     } else {
@@ -344,10 +371,10 @@ class _PlacementTestScreenState extends State<PlacementTestScreen> {
             width: 100,
             height: 100,
             decoration: BoxDecoration(gradient: AppColors.gradient(AppTheme.seed), shape: BoxShape.circle),
-            child: Center(child: Text(_level, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white))),
+            child: Center(child: Text(_placedLevel, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white))),
           ),
           const SizedBox(height: 20),
-          Text('Your level: ${_levelName(_level)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          Text('Your level: ${_levelName(_placedLevel)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           Text('The test adapted to your answers across grammar, listening and speaking. You can change it anytime in Profile.',
               textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13.5, height: 1.35)),
@@ -357,8 +384,11 @@ class _PlacementTestScreenState extends State<PlacementTestScreen> {
             height: 52,
             child: FilledButton(
               onPressed: () async {
-                await UserSession.instance.setLevel(_level);
-                if (context.mounted) Navigator.of(context).pop(_level);
+                await UserSession.instance.setLevel(_placedLevel);
+                // Otherwise the result lives only on this device, and the next
+                // cloud pull replaces it with the level the test just measured.
+                SyncService.push();
+                if (context.mounted) Navigator.of(context).pop(_placedLevel);
               },
               child: const Text('Use this level'),
             ),

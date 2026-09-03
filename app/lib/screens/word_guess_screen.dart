@@ -14,7 +14,17 @@ class WordGuessScreen extends StatefulWidget {
 }
 
 class _WordGuessScreenState extends State<WordGuessScreen> {
+  /// The words this round asks about — only ones that HAVE a meaning to read
+  /// out. A word saved without one (imports arrive that way when the extractor
+  /// returns nothing) fell back to the prompt "Which word did you save?", which
+  /// no learner can answer: the question contains no information about which
+  /// word it means, so the round became pure guessing.
   late final List<SavedWord> _words;
+
+  /// Every saved word, meaning or not — a word with no definition is still a
+  /// perfectly good wrong answer, so the distractor pool stays as wide as it was.
+  late final List<String> _pool;
+
   int _index = 0;
   int _correctCount = 0;
   int? _selected;
@@ -25,14 +35,16 @@ class _WordGuessScreenState extends State<WordGuessScreen> {
   @override
   void initState() {
     super.initState();
-    _words = List.of(VocabularyService.instance.words)..shuffle();
-    _prepare();
+    final all = VocabularyService.instance.words;
+    _pool = all.map((w) => w.word).toList();
+    _words = all.where((w) => w.definition.trim().isNotEmpty).toList()..shuffle();
+    if (_words.isNotEmpty) _prepare();
   }
 
   void _prepare() {
     final target = _words[_index];
-    final others = _words.where((w) => w.word.toLowerCase() != target.word.toLowerCase()).toList()..shuffle();
-    final opts = [target.word, ...others.take(3).map((w) => w.word)]..shuffle();
+    final others = _pool.where((w) => w.toLowerCase() != target.word.toLowerCase()).toList()..shuffle();
+    final opts = [target.word, ...others.take(3)]..shuffle();
     _options = opts;
     _correctIndex = opts.indexOf(target.word);
     _selected = null;
@@ -65,14 +77,41 @@ class _WordGuessScreenState extends State<WordGuessScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Guess the word')),
-      body: SafeArea(child: _done ? _summary(context) : _quiz(context)),
+      body: SafeArea(
+        child: _words.isEmpty
+            ? _noMeanings(context)
+            : (_done ? _summary(context) : _quiz(context)),
+      ),
+    );
+  }
+
+  /// Reachable when every saved word was stored without a meaning — the Words
+  /// tab counts them all, so the game can be opened with nothing to ask about.
+  Widget _noMeanings(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🧠', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 14),
+            const Text('No meanings to quiz you on yet', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('Save a few words from the dictionary (tap a word while chatting) — those come with meanings this game can ask about.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13.5, height: 1.4)),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _quiz(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final target = _words[_index];
-    final def = target.definition.isNotEmpty ? target.definition : 'Which word did you save?';
+    final def = target.definition;
     return Column(
       children: [
         Padding(

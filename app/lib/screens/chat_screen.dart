@@ -44,7 +44,10 @@ class _ChatScreenState extends State<ChatScreen> {
   List<String> _suggestions = [];
   bool _sending = false;
   bool _finishing = false;
-  bool _limitReached = false;
+  /// Set when the server refuses a turn on plan grounds. Holds the server's own
+  /// reason, because a free learner at their daily cap and a paying subscriber
+  /// at the fair-use ceiling need opposite things said to them.
+  DailyLimitException? _limit;
 
   /// Voice-first: the tutor speaks its replies aloud (TTS) so the whole session
   /// is a real spoken conversation. Toggleable (public/quiet places) + persisted.
@@ -184,8 +187,8 @@ class _ChatScreenState extends State<ChatScreen> {
       // Activation: celebrate the learner's very first reply ever — the moment
       // they realise "I can actually do this".
       _maybeCelebrateFirstReply();
-    } on DailyLimitException {
-      setState(() => _limitReached = true);
+    } on DailyLimitException catch (e) {
+      setState(() => _limit = e);
     } catch (_) {
       setState(() => _messages.add(ChatMessage(
           role: 'model', text: "Hmm, I didn't catch that. Could you say it again? 🙂")));
@@ -265,10 +268,10 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          if (_suggestions.isNotEmpty && !_limitReached)
+          if (_suggestions.isNotEmpty && _limit == null)
             _SuggestionBar(suggestions: _suggestions, accent: _accent, onTap: _send, beginner: _isBeginner),
-          if (_limitReached)
-            _LimitBanner(onRewarded: () => setState(() => _limitReached = false))
+          if (_limit != null)
+            _LimitBanner(limit: _limit!, onRewarded: () => setState(() => _limit = null))
           else
             _InputBar(controller: _controller, accent: _accent, onSend: _send, enabled: !_sending),
         ],
@@ -908,8 +911,9 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
 }
 
 class _LimitBanner extends StatefulWidget {
+  final DailyLimitException limit;
   final VoidCallback onRewarded;
-  const _LimitBanner({required this.onRewarded});
+  const _LimitBanner({required this.limit, required this.onRewarded});
   @override
   State<_LimitBanner> createState() => _LimitBannerState();
 }
@@ -917,8 +921,10 @@ class _LimitBanner extends StatefulWidget {
 class _LimitBannerState extends State<_LimitBanner> {
   bool _watching = false;
 
-  /// Free learners can watch a rewarded ad for bonus messages today.
-  bool get _canWatchAd => PlanStatus.instance.planType == 'free' && AdService.instance.isReady;
+  /// Free learners can watch a rewarded ad for bonus messages today. Not
+  /// offered when the server's refusal was one an ad cannot lift.
+  bool get _canWatchAd =>
+      widget.limit.canEarnMore && PlanStatus.instance.planType == 'free' && AdService.instance.isReady;
 
   Future<void> _watchAd() async {
     if (_watching) return;
@@ -945,33 +951,56 @@ class _LimitBannerState extends State<_LimitBanner> {
     final scheme = Theme.of(context).colorScheme;
     final loc = AppLocalizations.of(context)!;
     final streak = GamificationService.instance.streak;
+    final fairUse = widget.limit.isFairUse;
     // Loss-aversion: if the learner has a streak going, lead with what they'd
-    // lose by stopping now — the strongest upsell moment.
-    final headline = streak >= 2 ? loc.streakLimitTitle(streak) : loc.limitReachedTitle;
-    final sub = streak >= 2 ? loc.streakLimitSub : loc.limitReachedSub;
+    // lose by stopping now — the strongest upsell moment. Never to a subscriber
+    // who has hit the fair-use ceiling, though: they have already bought the
+    // thing the upsell sells, so they get the server's own wording and no
+    // Premium button at all.
+    final String headline;
+    final String sub;
+    if (fairUse) {
+      headline = "That's a lot of practice today! 🎉";
+      sub = widget.limit.message.isNotEmpty
+          ? widget.limit.message
+          : "You've hit today's fair-use limit. It resets at midnight UTC.";
+    } else if (streak >= 2) {
+      headline = loc.streakLimitTitle(streak);
+      sub = loc.streakLimitSub;
+    } else {
+      headline = loc.limitReachedTitle;
+      sub = loc.limitReachedSub;
+    }
+    // Hitting a fair-use ceiling is not an error — the learner did nothing
+    // wrong and there is nothing to fix — so it does not get the red treatment
+    // that the "you're out of messages, buy more" states do.
+    final bg = fairUse ? scheme.primaryContainer : scheme.errorContainer;
+    final fg = fairUse ? scheme.onPrimaryContainer : scheme.onErrorContainer;
     return SafeArea(
       top: false,
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.all(12),
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: BorderRadius.circular(18)),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(18)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(headline,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.bold, color: scheme.onErrorContainer)),
+                style: TextStyle(fontWeight: FontWeight.bold, color: fg)),
             const SizedBox(height: 4),
             Text(sub,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.onErrorContainer, fontSize: 13)),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen())),
-              icon: const Text('👑', style: TextStyle(fontSize: 14)),
-              label: Text(loc.upgradeToPremium),
-            ),
+                style: TextStyle(color: fg, fontSize: 13)),
+            if (!fairUse) ...[
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen())),
+                icon: const Text('👑', style: TextStyle(fontSize: 14)),
+                label: Text(loc.upgradeToPremium),
+              ),
+            ],
             if (_canWatchAd) ...[
               const SizedBox(height: 6),
               TextButton.icon(

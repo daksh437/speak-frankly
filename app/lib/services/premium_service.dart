@@ -40,6 +40,19 @@ class PremiumService extends ChangeNotifier {
   bool purchasePending = false;
   bool justActivated = false;
 
+  /// Clear the one-shot "just bought it" flag, so the paywall can go back to
+  /// showing the learner's ongoing Premium status.
+  ///
+  /// It used to be set and never unset. The paywall lives in the app's
+  /// IndexedStack, so it is never rebuilt from scratch — one purchase pinned
+  /// the Premium tab on the celebration screen for the rest of the session, and
+  /// its Done button had no route to pop.
+  void clearJustActivated() {
+    if (!justActivated) return;
+    justActivated = false;
+    notifyListeners();
+  }
+
   ProductDetails? get monthly => _products[monthlyId];
   ProductDetails? get annual => _products[annualId];
 

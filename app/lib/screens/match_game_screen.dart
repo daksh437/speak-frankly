@@ -23,8 +23,12 @@ class _MatchGameScreenState extends State<MatchGameScreen> {
   @override
   void initState() {
     super.initState();
+    // Only words that actually carry a meaning can be matched TO one. Imported
+    // words are saved with whatever meaning the extractor returned, which is
+    // sometimes nothing — and a blank right-hand tile is not a puzzle, it is an
+    // invisible target the learner has to find by elimination.
     final all = List.of(VocabularyService.instance.words)..shuffle();
-    _pairs = all.take(5).toList();
+    _pairs = all.where((w) => w.definition.trim().isNotEmpty).take(5).toList();
     _defOrder = List.generate(_pairs.length, (i) => i)..shuffle();
   }
 
@@ -58,7 +62,32 @@ class _MatchGameScreenState extends State<MatchGameScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Match the words')),
       body: SafeArea(
-        child: _done ? _summary(context) : _board(context),
+        child: _pairs.length < 2
+            ? _notEnough(context)
+            : (_done ? _summary(context) : _board(context)),
+      ),
+    );
+  }
+
+  /// Reachable when the learner's saved words have no meanings attached — the
+  /// Words tab counts them, so the game can be opened with nothing to match.
+  Widget _notEnough(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🧩', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 14),
+            const Text('Not enough words with meanings', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('Save a few more words from the dictionary (tap a word while chatting) to play the matching game.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13.5, height: 1.4)),
+          ],
+        ),
       ),
     );
   }
