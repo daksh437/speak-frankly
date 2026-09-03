@@ -44,15 +44,6 @@ const PLAN_LABELS = {
   annual: { name: 'Yearly', per: 'per year', badge: 'Best value' },
 };
 
-// Display only. The real amount is whatever the Razorpay plan says; this is a
-// label, so it is left blank rather than guessed when unset.
-const PRICES = {
-  monthly: (process.env.RAZORPAY_PRICE_MONTHLY || '').trim(),
-  quarterly: (process.env.RAZORPAY_PRICE_QUARTERLY || '').trim(),
-  halfyearly: (process.env.RAZORPAY_PRICE_HALFYEARLY || '').trim(),
-  annual: (process.env.RAZORPAY_PRICE_ANNUAL || '').trim(),
-};
-
 // ------------------------------------------------------------------- page
 
 /** The trial offer, stated before the buyer pays. Empty when none is configured.
@@ -74,7 +65,7 @@ function planCardsHtml(plans) {
   return plans
     .map((key, i) => {
       const l = PLAN_LABELS[key] || { name: key, per: '', badge: '' };
-      const price = PRICES[key] || '&mdash;';
+      const price = rzp.PRICE_LABELS[key] || '&mdash;';
       const badge = l.badge ? '<span class="badge">' + l.badge + '</span>' : '';
       const checked = i === 0 ? 'checked' : '';
       return [

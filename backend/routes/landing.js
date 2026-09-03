@@ -21,13 +21,6 @@ const APP = 'Speak Frankly';
 const CONTACT = 'instaflow38@gmail.com';
 const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.speakfrankly';
 
-const PRICES = {
-  monthly: (process.env.RAZORPAY_PRICE_MONTHLY || '').trim(),
-  quarterly: (process.env.RAZORPAY_PRICE_QUARTERLY || '').trim(),
-  halfyearly: (process.env.RAZORPAY_PRICE_HALFYEARLY || '').trim(),
-  annual: (process.env.RAZORPAY_PRICE_ANNUAL || '').trim(),
-};
-
 const PLAN_ROWS = [
   ['annual', 'Yearly', 'per year'],
   ['halfyearly', '6 months', 'every 6 months'],
@@ -60,7 +53,7 @@ function planTable() {
   const rows = PLAN_ROWS
     .filter(([key]) => rzp.availablePlans().includes(key))
     .map(([key, name, per]) => {
-      const p = PRICES[key] || '&mdash;';
+      const p = rzp.PRICE_LABELS[key] || '&mdash;';
       return `<tr><td><b>${name}</b></td><td class="price">${p}</td><td>${per}</td></tr>`;
     })
     .join('');

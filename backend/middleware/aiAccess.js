@@ -11,6 +11,7 @@
  * DEV_SKIP_LIMITS=true bypasses all checks for local testing.
  */
 const { getDb } = require('../utils/firestoreAdmin');
+const { toDate, todayDateStr, getNextMidnightUtc } = require('../utils/dates');
 const { authenticate } = require('./auth');
 
 const USERS = 'users';
@@ -53,24 +54,6 @@ const DEV_SKIP_LIMITS = process.env.DEV_SKIP_LIMITS === 'true' || process.env.DE
 
 if (DEV_SKIP_LIMITS) {
   console.warn('[aiAccess] ⚠️ DEV_SKIP_LIMITS enabled — usage limits bypassed. Do NOT use in production.');
-}
-
-function todayDateStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-}
-
-function getNextMidnightUtc() {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString();
-}
-
-function toDate(v) {
-  if (v == null) return null;
-  if (typeof v.toDate === 'function') return v.toDate();
-  if (v instanceof Date) return v;
-  if (typeof v._seconds === 'number') return new Date(v._seconds * 1000);
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /** Resolve plan from dates. premium (paid) > trial (time-limited) > free. */
@@ -403,6 +386,10 @@ async function requireAuxAccess(req, res, next) {
   if (!claim.ok) return deny(claim.error || 'DAILY_LIMIT_REACHED', claim.auxLimit);
 
   req._auxReserved = claim.reserved === true; // only a real reservation is refundable
+  // The aux budget IS this endpoint's authorisation, so say so — wrapAiHandler
+  // refuses to run a handler that nothing has cleared, and an aux route may be
+  // the only gate a request passed through.
+  req.aiAccessAllowed = true;
   next();
 }
 

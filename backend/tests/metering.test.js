@@ -58,6 +58,26 @@ const check = (name, cond) => {
     check('POST /tutor/feedback signed in → 200', ok.status === 200);
     check('POST /tutor/feedback returns a report', !!(ok.data && ok.data.data && ok.data.data.encouragement));
 
+    console.log('\n— which budget each tutor route spends —');
+
+    // Read the actual middleware chain, because the bug this guards against is
+    // invisible without Firestore: /tutor/feedback was mounted under a
+    // router-wide requireAiAccess, which rejects a free learner as soon as
+    // their daily MESSAGES run out — i.e. exactly when the session they want a
+    // report for has just ended. The report is metered by the AUX budget and
+    // must not be gated on the chat allowance as well.
+    const chain = (path) => {
+      const layer = require('../routes/tutor').stack.find((l) => l.route && l.route.path === path);
+      return layer ? layer.route.stack.map((s) => s.name) : [];
+    };
+    const feedbackChain = chain('/feedback');
+    const chatChain = chain('/chat');
+    check('/tutor/feedback is metered by the aux budget', feedbackChain.includes('requireAuxAccess'));
+    check('/tutor/feedback is NOT gated on the daily chat allowance', !feedbackChain.includes('requireAiAccess'));
+    check('/tutor/feedback never claims a chat message', !feedbackChain.includes('requireMessageSlot'));
+    check('/tutor/chat still checks the plan', chatChain.includes('requireAiAccess'));
+    check('/tutor/chat still claims a message', chatChain.includes('requireMessageSlot'));
+
     console.log('\n— reserve / refund bookkeeping —');
 
     // No Firestore configured → every claim is a no-op that must still report

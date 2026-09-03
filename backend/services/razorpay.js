@@ -43,6 +43,20 @@ const PLANS = {
   monthly: (process.env.RAZORPAY_PLAN_MONTHLY || '').trim(),
 };
 
+// Display prices, as written on the shop windows. Both the landing page and
+// the checkout page render these, and they used to declare their own identical
+// copy of this map — two places to edit for one price change, and a silent
+// mismatch between the price a visitor is quoted and the one they are shown at
+// checkout if only one got updated. The AMOUNT CHARGED is never from here: that
+// is whatever the Razorpay plan says. Blank stays blank so a page shows a dash
+// rather than a guess.
+const PRICE_LABELS = {
+  monthly: (process.env.RAZORPAY_PRICE_MONTHLY || '').trim(),
+  quarterly: (process.env.RAZORPAY_PRICE_QUARTERLY || '').trim(),
+  halfyearly: (process.env.RAZORPAY_PRICE_HALFYEARLY || '').trim(),
+  annual: (process.env.RAZORPAY_PRICE_ANNUAL || '').trim(),
+};
+
 // Razorpay requires a finite billing-cycle count. These are just "keep renewing
 // for a very long time" — the learner cancels when they want, and each renewal
 // extends premiumExpiry by one more cycle via the webhook.
@@ -192,5 +206,6 @@ module.exports = {
   verifyWebhookSignature,
   KEY_ID,
   PLANS,
+  PRICE_LABELS,
   hasWebhookSecret: () => !!WEBHOOK_SECRET,
 };
