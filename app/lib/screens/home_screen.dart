@@ -15,7 +15,9 @@ import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/dictionary_sheet.dart';
 import 'admin_panel_screen.dart';
+import 'call_screen.dart';
 import 'chat_screen.dart';
+import 'daily_call.dart';
 import 'picture_match_screen.dart';
 import 'premium_screen.dart';
 import 'stories_list_screen.dart';
@@ -109,6 +111,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _reload() => setState(() => _future = ApiService.instance.fetchScenarios());
 
+  /// Answer the daily call now, without waiting for the notification.
+  Future<void> _startCall() async {
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    final scenario = await pickCallScenario();
+    if (!mounted) return;
+    Navigator.pop(context); // close loader
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallScreen(scenario: scenario)));
+  }
+
   /// Context Generator: ask for any topic, build a scenario, start chatting.
   Future<void> _startCustom() async {
     final controller = TextEditingController();
@@ -198,6 +209,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SliverPadding(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _WordOfDayCard()),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                      sliver: SliverToBoxAdapter(child: _DailyCallCard(onTap: _startCall)),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
@@ -491,6 +506,59 @@ class _TrialBanner extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// The daily call, offered as the first thing on the screen.
+///
+/// It leads because it is the only place in the app where the learner cannot
+/// fall back on typing, and that is the thing they came here to get past.
+class _DailyCallCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _DailyCallCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const green = Color(0xFF16A34A);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: AppColors.gradient(green),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: green.withValues(alpha: 0.3), blurRadius: 18, offset: const Offset(0, 8))],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), shape: BoxShape.circle),
+                child: const Center(child: Icon(Icons.call_rounded, color: Colors.white, size: 24)),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('3-minute call',
+                        style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w800)),
+                    SizedBox(height: 2),
+                    Text('Speaking only — no typing, no keyboard',
+                        style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

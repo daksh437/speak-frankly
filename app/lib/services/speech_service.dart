@@ -98,7 +98,15 @@ class SpeechService extends ChangeNotifier {
 
   /// Start listening. Returns false if speech recognition is unavailable.
   /// [onResult] fires with partial then final transcripts.
-  Future<bool> startListening({required void Function(String text, bool isFinal) onResult}) async {
+  ///
+  /// [pauseFor] is how much silence ends the turn. The default suits a screen
+  /// where the learner is composing an answer at their own pace; a spoken
+  /// conversation needs it shorter, because three seconds of nothing between
+  /// every turn is what makes a call feel broken rather than slow.
+  Future<bool> startListening({
+    required void Function(String text, bool isFinal) onResult,
+    Duration pauseFor = const Duration(seconds: 3),
+  }) async {
     if (!await _ensureStt()) return false;
     lastWords = '';
     lastConfidence = 0.0;
@@ -122,7 +130,7 @@ class SpeechService extends ChangeNotifier {
           cancelOnError: true,
           localeId: 'en_US',
           listenFor: const Duration(seconds: 30),
-          pauseFor: const Duration(seconds: 3),
+          pauseFor: pauseFor,
         ),
       );
       return true;

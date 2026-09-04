@@ -48,6 +48,9 @@ Future<void> main() async {
   runApp(const SpeakFranklyApp());
 }
 
+/// Lets a notification tap push a screen without a BuildContext of its own.
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 class SpeakFranklyApp extends StatelessWidget {
   const SpeakFranklyApp({super.key});
 
@@ -57,6 +60,7 @@ class SpeakFranklyApp extends StatelessWidget {
       valueListenable: LocaleController.locale,
       builder: (context, locale, _) => MaterialApp(
         title: 'Speak Frankly',
+        navigatorKey: appNavigatorKey,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),

@@ -196,6 +196,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await FirebaseAuth.instance.signOut();
   }
 
+  /// "8 PM" for 20. The daily call is scheduled on the hour, because a learner
+  /// choosing a time does not care about the minutes and a picker that offers
+  /// them just makes the decision slower.
+  static String _hourLabel(int hour) {
+    final h = hour % 12 == 0 ? 12 : hour % 12;
+    return '$h ${hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  /// Pick when the call goes out. The only time that works is the one they
+  /// chose themselves, so this is a real setting rather than a fixed 7 PM.
+  Future<void> _pickCallTime() async {
+    final current = NotificationService.instance.hour;
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text('When should your tutor call?',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+            for (final h in const [7, 8, 9, 12, 17, 18, 19, 20, 21, 22])
+              ListTile(
+                title: Text(_hourLabel(h)),
+                trailing: h == current ? Icon(Icons.check_rounded, color: AppTheme.seed) : null,
+                onTap: () => Navigator.pop(ctx, h),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) await NotificationService.instance.setHour(picked);
+  }
+
   Future<void> _changeLevel() async {
     const levels = {'A0': 'Beginner', 'A2': 'Some words', 'B1': 'Conversational', 'B2': 'Advanced'};
     final picked = await showModalBottomSheet<String>(
@@ -284,8 +322,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 builder: (context, _) => SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   secondary: const Icon(Icons.notifications_active_outlined),
-                  title: const Text('Daily reminder'),
-                  subtitle: const Text('A gentle nudge at 7 PM to keep your streak'),
+                  title: const Text('Daily call'),
+                  subtitle: Text('Three minutes of speaking at '
+                      '${_hourLabel(NotificationService.instance.hour)}'),
                   value: NotificationService.instance.enabled,
                   onChanged: (v) async {
                     if (v) {
@@ -295,6 +334,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }
                   },
                 ),
+              ),
+              AnimatedBuilder(
+                animation: NotificationService.instance,
+                builder: (context, _) => NotificationService.instance.enabled
+                    ? _InfoRow(
+                        icon: Icons.schedule_rounded,
+                        label: 'Call time',
+                        value: _hourLabel(NotificationService.instance.hour),
+                        onTap: _pickCallTime,
+                        trailingArrow: true,
+                      )
+                    : const SizedBox.shrink(),
               ),
               if (FirebaseAuth.instance.currentUser?.email != null)
                 _InfoRow(icon: Icons.account_circle_outlined, label: 'Account', value: FirebaseAuth.instance.currentUser!.email!),

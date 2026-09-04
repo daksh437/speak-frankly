@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../services/plan_status.dart';
 import '../widgets/ad_banner.dart';
+import '../services/notification_service.dart';
+import 'call_screen.dart';
+import 'daily_call.dart';
 import 'home_screen.dart';
 import 'premium_screen.dart';
 import 'profile_screen.dart';
@@ -29,6 +32,32 @@ class _MainShellState extends State<MainShell> {
   /// them never opened. An unbuilt tab is a cheap placeholder; once opened it
   /// is built and, as before, kept alive for the rest of the session.
   final Set<int> _visited = {0};
+
+  @override
+  void initState() {
+    super.initState();
+    // Answer a notification tap - both the one that arrives while the app is
+    // open, and the one that launched it, which fired before anything was
+    // listening and was parked for exactly this moment.
+    NotificationService.onAction = _handleAction;
+    final pending = NotificationService.takePendingAction();
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _handleAction(pending));
+    }
+  }
+
+  @override
+  void dispose() {
+    if (NotificationService.onAction == _handleAction) NotificationService.onAction = null;
+    super.dispose();
+  }
+
+  Future<void> _handleAction(String action) async {
+    if (!mounted || action != NotificationService.callAction) return;
+    final scenario = await pickCallScenario();
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallScreen(scenario: scenario)));
+  }
 
   static const List<Widget> _tabs = [
     HomeScreen(),

@@ -13,9 +13,44 @@ class NotificationService extends ChangeNotifier {
   NotificationService._();
 
   static const _kEnabled = 'sf_reminder_enabled';
+  /// Payload on the daily notification: tapping it should open a call, not
+  /// just the app.
+  static const String callAction = 'daily_call';
+
   static const int _id = 1001;
   static const int _trialId = 1002; // one-time "trial ending" reminder
-  static const int _hour = 19; // 7:00 PM local
+  static const _kCallHour = 'sf_call_hour';
+  static const int _defaultHour = 19; // 7:00 PM local
+
+  /// When the daily call goes out, as a local hour. Persisted, because the only
+  /// time that works is the one the learner picked themselves.
+  int hour = _defaultHour;
+
+  /// Set when a notification was tapped before anything could listen for it —
+  /// which is the normal case, since tapping it is usually what launches the
+  /// app. Read and cleared by whoever handles routing.
+  static String? pendingAction;
+
+  /// Fired when a notification is tapped while the app is already running.
+  static void Function(String action)? onAction;
+
+  static void _deliver(String? payload) {
+    final action = (payload ?? '').trim();
+    if (action.isEmpty) return;
+    final handler = onAction;
+    if (handler != null) {
+      handler(action);
+    } else {
+      pendingAction = action;
+    }
+  }
+
+  /// Whatever a notification tap asked for while nobody was listening.
+  static String? takePendingAction() {
+    final a = pendingAction;
+    pendingAction = null;
+    return a;
+  }
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _ready = false;
@@ -24,6 +59,7 @@ class NotificationService extends ChangeNotifier {
   Future<void> init() async {
     final p = await SharedPreferences.getInstance();
     enabled = p.getBool(_kEnabled) ?? true;
+    hour = p.getInt(_kCallHour) ?? _defaultHour;
     try {
       tzdata.initializeTimeZones();
       final name = await FlutterTimezone.getLocalTimezone();
@@ -33,7 +69,18 @@ class NotificationService extends ChangeNotifier {
     try {
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
       const settings = InitializationSettings(android: android);
-      await _plugin.initialize(settings);
+      await _plugin.initialize(
+        settings,
+        onDidReceiveNotificationResponse: (r) => _deliver(r.payload),
+      );
+      // A tap that LAUNCHED the app never reaches the callback above - the
+      // handler is registered after the fact - so the launch details have to be
+      // asked for directly. Without this, tapping the call notification from a
+      // closed app just opened the home screen.
+      final launch = await _plugin.getNotificationAppLaunchDetails();
+      if (launch?.didNotificationLaunchApp ?? false) {
+        _deliver(launch?.notificationResponse?.payload);
+      }
       _ready = true;
     } catch (_) {
       _ready = false;
@@ -67,19 +114,28 @@ class NotificationService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Move the daily call to a different local hour.
+  Future<void> setHour(int newHour) async {
+    hour = newHour.clamp(0, 23);
+    final p = await SharedPreferences.getInstance();
+    await p.setInt(_kCallHour, hour);
+    if (enabled) await _schedule();
+    notifyListeners();
+  }
+
   Future<void> _schedule() async {
     if (!_ready) return;
     try {
       await _plugin.zonedSchedule(
         _id,
-        'Time to practise English 🗣️',
-        "Keep your streak alive — a few minutes goes a long way!",
-        _next7pm(),
+        'Your tutor is calling 📞',
+        'Three minutes of speaking. Tap to answer.',
+        _nextCallTime(),
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_reminder',
             'Daily reminder',
-            channelDescription: 'A gentle daily nudge to practise.',
+            channelDescription: 'Your daily three-minute speaking call.',
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
           ),
@@ -87,6 +143,7 @@ class NotificationService extends ChangeNotifier {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time, // repeat daily
+        payload: callAction,
       );
     } catch (_) {/* best-effort */}
   }
@@ -127,9 +184,9 @@ class NotificationService extends ChangeNotifier {
     } catch (_) {/* best-effort */}
   }
 
-  tz.TZDateTime _next7pm() {
+  tz.TZDateTime _nextCallTime() {
     final now = tz.TZDateTime.now(tz.local);
-    var t = tz.TZDateTime(tz.local, now.year, now.month, now.day, _hour);
+    var t = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour);
     if (t.isBefore(now)) t = t.add(const Duration(days: 1));
     return t;
   }
