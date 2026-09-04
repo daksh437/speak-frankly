@@ -71,6 +71,50 @@ const PAYWALL_FROM = (() => {
   return d;
 })();
 
+// THE FIRST CONVERSATION, FREE.
+//
+// With REQUIRE_PREMIUM on, a new account meets the paywall the moment
+// onboarding ends, having never spoken to the tutor. Nobody pays for something
+// they have not felt, and the one thing that sells this app is the minute
+// somebody realises they just held a conversation in English. This lets them
+// have exactly one, report included, and then asks.
+//
+// A LIFETIME allowance, not a daily one: it is a demonstration, not a free
+// tier. Once spent, the paywall behaves exactly as it does today.
+//
+// Deliberately OFF by default, so turning it on is a decision someone makes on
+// purpose rather than one that arrives with a deploy.
+const FREE_FIRST_SESSION =
+  process.env.FREE_FIRST_SESSION === 'true' || process.env.FREE_FIRST_SESSION === '1';
+// Long enough to be a real conversation rather than a teaser - a scenario runs
+// 6-10 turns before it has gone anywhere - and short enough that the whole
+// giveaway costs a fraction of a rupee at the measured per-message rate.
+const FREE_FIRST_SESSION_MESSAGES = parseInt(process.env.FREE_FIRST_SESSION_MESSAGES || '10', 10);
+
+/** Messages left in the introductory conversation. 0 when spent, or when off. */
+function introRemaining(user) {
+  if (!FREE_FIRST_SESSION) return 0;
+  const used = Number(user && user.introMessagesUsed) || 0;
+  const left = FREE_FIRST_SESSION_MESSAGES - used;
+  return left > 0 ? left : 0;
+}
+
+/**
+ * Is this account inside its one free conversation?
+ *
+ * Only accounts the paywall would otherwise stop. Someone grandfathered onto
+ * the old free tier has nothing to be introduced to, and a subscriber does not
+ * need it.
+ */
+function inIntro(user) {
+  if (!FREE_FIRST_SESSION || !REQUIRE_PREMIUM) return false;
+  if (PAYWALL_FROM) {
+    const created = toDate(user && (user.createdAt || user.created_at));
+    if (!created || created < PAYWALL_FROM) return false; // grandfathered
+  }
+  return introRemaining(user) > 0;
+}
+
 /**
  * Does the hard paywall apply to this account?
  *
@@ -80,6 +124,11 @@ const PAYWALL_FROM = (() => {
  */
 function isPaywalled(user) {
   if (!REQUIRE_PREMIUM) return false;
+  // The free first conversation, while it lasts. Answering "not paywalled"
+  // here rather than inventing a new plan is what makes this work on the build
+  // already installed on people's phones: /access reports paywalled:false and
+  // the app's own gate lets them straight in, with no client change at all.
+  if (inIntro(user)) return false;
   if (!PAYWALL_FROM) return true;
   const created = toDate(user && (user.createdAt || user.created_at));
   if (!created) return false;
@@ -285,6 +334,26 @@ async function getAiAccess(uid, deviceId, email) {
       trialEndsAtUtc,
       user: currentUser,
       error: 'PREMIUM_REQUIRED',
+    };
+  }
+
+  // Inside the free first conversation. Reported as the free plan, because
+  // that is what the learner is - they should still see the ads and the upgrade
+  // prompts a free account sees. Only the numbers differ.
+  if (inIntro(currentUser)) {
+    const left = introRemaining(currentUser);
+    return {
+      allowed: left > 0,
+      paywalled: false,
+      planType: 'free',
+      intro: true,
+      introRemaining: left,
+      dailyUsed: FREE_FIRST_SESSION_MESSAGES - left,
+      dailyLimit: FREE_FIRST_SESSION_MESSAGES,
+      resetAtUtc: null, // a lifetime allowance; nothing resets at midnight
+      trialEndsAtUtc,
+      user: currentUser,
+      error: left > 0 ? null : 'PREMIUM_REQUIRED',
     };
   }
 
@@ -618,6 +687,30 @@ async function reserveAiUsage(uid) {
         return { ok: true, reserved: true, dailyUsed: used + 1, dailyLimit: PREMIUM_DAILY_CAP };
       }
 
+      // The introductory conversation is a LIFETIME count, so it is claimed
+      // here rather than against the daily counter that resets at midnight. The
+      // daily figures still advance, so the admin panel's "messages today"
+      // keeps meaning what it always has.
+      if (inIntro(data)) {
+        const introUsed = Number(data.introMessagesUsed) || 0;
+        if (introUsed >= FREE_FIRST_SESSION_MESSAGES) {
+          return { ok: false, error: 'PREMIUM_REQUIRED', dailyLimit: 0 };
+        }
+        tx.update(ref, {
+          introMessagesUsed: introUsed + 1,
+          dailyAiUsed: used + 1,
+          dailyAiDate: today,
+          totalAiUsed: (typeof data.totalAiUsed === 'number' ? data.totalAiUsed : 0) + 1,
+        });
+        return {
+          ok: true,
+          reserved: true,
+          intro: true,
+          dailyUsed: introUsed + 1,
+          dailyLimit: FREE_FIRST_SESSION_MESSAGES,
+        };
+      }
+
       let limit;
       if (plan === 'trial') {
         limit = TRIAL_DAILY_CAP;
@@ -715,6 +808,11 @@ module.exports = {
   releaseAuxUsage,
   refundAuxIfFallback,
   getAiAccess,
+  isPaywalled,
+  inIntro,
+  introRemaining,
+  FREE_FIRST_SESSION,
+  FREE_FIRST_SESSION_MESSAGES,
   isReviewerEmail,
   ensureReviewerPremium,
   REVIEWER_EMAILS,

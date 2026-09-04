@@ -37,6 +37,23 @@ services:
         value: "0"
       - key: REQUIRE_PREMIUM
         value: "true"
+      # THE FIRST CONVERSATION, FREE. With the paywall above, a new account
+      # meets it the moment onboarding ends, having never spoken to the tutor -
+      # and nobody pays for something they have not felt. Set this to "true" to
+      # give every new account one complete conversation (report included)
+      # before the paywall. A LIFETIME allowance, not a daily one: once spent,
+      # the paywall behaves exactly as it does now.
+      #
+      # OFF here on purpose. Turning it on is a pricing decision, so it should
+      # be made deliberately rather than arrive with a deploy. No new build is
+      # needed either way - /access reports it and the installed app obeys.
+      - key: FREE_FIRST_SESSION
+        value: "false"
+      # How many messages that conversation is worth. A scenario runs 6-10 turns
+      # before it has gone anywhere, so fewer than ~8 is a teaser, not a demo.
+      - key: FREE_FIRST_SESSION_MESSAGES
+        value: "10"
+
       # APP-REVIEW ACCOUNTS — set this before every Play submission.
       # Play rejects a build whose reviewer meets the paywall, and with the
       # settings above a new account meets it immediately. Any address listed
