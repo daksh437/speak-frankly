@@ -52,6 +52,73 @@ const PREMIUM_DAILY_CAP = parseInt(process.env.PREMIUM_DAILY_CAP || '0', 10);
 const REQUIRE_PREMIUM = process.env.REQUIRE_PREMIUM === 'true' || process.env.REQUIRE_PREMIUM === '1';
 const DEV_SKIP_LIMITS = process.env.DEV_SKIP_LIMITS === 'true' || process.env.DEV_SKIP_LIMITS === '1';
 
+// APP-REVIEW ACCOUNTS. Google Play rejects an app whose reviewer cannot reach
+// the full experience without paying: "provide a test account with an active
+// subscription ... or provide a way to bypass all payment gates". This is that
+// bypass, and it is why the whole review path needs no special build.
+//
+// A listed account is simply kept on premium, so every gate that already reads
+// the plan — the daily message cap, the aux budget, offline downloads, the ad
+// banner, the interstitial, the paywall screen — opens on its own. Nothing in
+// the app knows this exists.
+//
+// Matched on the email in the VERIFIED Firebase token, never a claimed header:
+// a bypass that trusted a client-supplied identity would be free premium for
+// anyone who read this file. Empty by default, so it does nothing until the
+// owner sets REVIEWER_EMAILS on the server.
+const REVIEWER_EMAILS = (process.env.REVIEWER_EMAILS || '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+// Long enough that a review account never expires mid-review, or between the
+// submissions that follow it.
+const REVIEWER_PREMIUM_DAYS = parseInt(process.env.REVIEWER_PREMIUM_DAYS || '3650', 10);
+// Re-stamp only when the grant is running low, so this is not a write per request.
+const REVIEWER_RENEW_BELOW_DAYS = 30;
+
+/** Is this a Play/app-store review account? */
+function isReviewerEmail(email) {
+  return !!email && REVIEWER_EMAILS.includes(String(email).trim().toLowerCase());
+}
+
+/**
+ * Keep a review account on premium.
+ *
+ * Writes the entitlement onto the user document rather than special-casing it
+ * at each check, so the transactional reserve paths — which see only a uid —
+ * resolve it as premium too, and the admin panel shows honestly what happened
+ * (`premiumSource: 'reviewer'`, and premiumVerified stays false because nobody
+ * paid). Never blocks: a Firestore failure here must not lock a reviewer out.
+ */
+async function ensureReviewerPremium(uid, email) {
+  if (!uid || !isReviewerEmail(email)) return false;
+  const db = getDb();
+  if (!db) return true; // degraded mode already allows everything through
+  try {
+    const ref = db.collection(USERS).doc(uid);
+    const snap = await ref.get();
+    const current = snap.exists ? toDate(snap.data().premiumExpiry) : null;
+    const renewAt = Date.now() + REVIEWER_RENEW_BELOW_DAYS * 24 * 60 * 60 * 1000;
+    if (current && current.getTime() > renewAt) return true; // still comfortably valid
+    await ref.set(
+      {
+        planType: 'premium',
+        premiumExpiry: new Date(Date.now() + REVIEWER_PREMIUM_DAYS * 24 * 60 * 60 * 1000),
+        premiumSource: 'reviewer',
+        premiumVerified: false, // nobody paid; never count this as revenue
+        email: String(email).toLowerCase(),
+        createdAt: snap.exists ? snap.data().createdAt || new Date() : new Date(),
+      },
+      { merge: true },
+    );
+    console.warn(`[aiAccess] review account ${email} kept on premium (app-store review bypass)`);
+    return true;
+  } catch (e) {
+    console.warn('[aiAccess] ensureReviewerPremium error:', e.message);
+    return true;
+  }
+}
+
 if (DEV_SKIP_LIMITS) {
   console.warn('[aiAccess] ⚠️ DEV_SKIP_LIMITS enabled — usage limits bypassed. Do NOT use in production.');
 }
@@ -122,9 +189,17 @@ async function createTrialUser(uid, deviceId) {
   }
 }
 
-/** Compute access state for a uid. */
-async function getAiAccess(uid, deviceId) {
+/**
+ * Compute access state for a uid.
+ *
+ * [email] is the address from the caller's VERIFIED token, when there is one.
+ * It is used only to recognise an app-review account (see REVIEWER_EMAILS) —
+ * every other decision here comes from the user document.
+ */
+async function getAiAccess(uid, deviceId, email) {
   const resetAtUtc = getNextMidnightUtc();
+  // Before the document is read, so the entitlement it writes is the one we see.
+  if (isReviewerEmail(email)) await ensureReviewerPremium(uid, email);
   const { user, firestoreOk } = await loadUser(uid);
 
   // Degraded mode (no Firestore) — allow through so dev/testing isn't blocked.
@@ -236,8 +311,8 @@ async function grantAdReward(uid) {
  * counter (dailyAuxUsed) so these never eat the learner's chat messages —
  * and never run unbounded either.
  */
-async function getAuxAccess(uid, deviceId) {
-  const base = await getAiAccess(uid, deviceId);
+async function getAuxAccess(uid, deviceId, email) {
+  const base = await getAiAccess(uid, deviceId, email);
   if (base.degraded || !base.user) {
     return { allowed: true, planType: base.planType, auxUsed: 0, auxLimit: DAILY_AUX_FREE, degraded: true };
   }
@@ -366,7 +441,7 @@ async function requireAuxAccess(req, res, next) {
   }
 
   const deviceId = (req.headers['x-device-id'] || '').toString().trim();
-  const access = await getAuxAccess(uid, deviceId);
+  const access = await getAuxAccess(uid, deviceId, req.authEmail);
   req.auxAccess = access;
 
   const deny = (code, dailyLimit) => res.status(403).json({
@@ -410,7 +485,7 @@ async function requireAiAccess(req, res, next) {
   }
 
   const deviceId = (req.headers['x-device-id'] || '').toString().trim();
-  const access = await getAiAccess(uid, deviceId);
+  const access = await getAiAccess(uid, deviceId, req.authEmail);
   req.uid = uid;
   req.aiAccess = access;
 
@@ -609,6 +684,9 @@ module.exports = {
   refundAuxIfFallback,
   getAiAccess,
   getAuxAccess,
+  isReviewerEmail,
+  ensureReviewerPremium,
+  REVIEWER_EMAILS,
   grantAdReward,
   resolvePlan,
   DAILY_MESSAGES_FREE,

@@ -37,6 +37,13 @@ services:
         value: "30"
       - key: DAILY_AUX_TRIAL
         value: "80"
+      # App-store review accounts. Google Play rejects a submission whose
+      # reviewer hits a paywall; any address listed here is kept on premium
+      # server-side, which opens every plan gate at once. Set it in the Render
+      # dashboard (sync: false) to the address you put in Play Console ->
+      # Sign in details, and keep the two in step for every submission.
+      - key: REVIEWER_EMAILS
+        sync: false
       # Rewarded ads: bonus messages per ad, and how many ads/day count.
       - key: REWARD_MESSAGES
         value: "5"

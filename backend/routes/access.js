@@ -37,7 +37,10 @@ async function touchProfile(req, user) {
  */
 router.get('/', requireAuth, async (req, res) => {
   const deviceId = (req.headers['x-device-id'] || '').toString().trim();
-  const access = await getAiAccess(req.uid, deviceId);
+  // req.authEmail (verified token only) lets an app-review account be resolved
+  // as premium here too, so the app's own premium-gated UI — offline packs, the
+  // ad banner, the paywall screen — opens for the reviewer without a purchase.
+  const access = await getAiAccess(req.uid, deviceId, req.authEmail);
   const { user, ...safe } = access; // never leak the full user doc
   touchProfile(req, user).catch(() => {}); // fire-and-forget, never blocks the plan check
   return res.json({ success: true, data: safe });
