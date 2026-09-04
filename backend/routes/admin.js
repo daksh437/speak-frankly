@@ -17,6 +17,7 @@ const {
   TRIAL_DAYS,
   REQUIRE_PREMIUM,
 } = require('../middleware/aiAccess');
+const { toDate, dayStr } = require('../utils/dates');
 const { getAiStats, MODEL, MODELS, hasKey } = require('../utils/geminiClient');
 const { getAuthStats } = require('../middleware/auth');
 
@@ -25,17 +26,6 @@ const router = express.Router();
 const USERS = 'users';
 const REPORTS = 'ai_reports';
 const DEVICES = 'trial_devices';
-
-const dayStr = (d) => d.toISOString().slice(0, 10);
-
-function toDate(v) {
-  if (v == null) return null;
-  if (typeof v.toDate === 'function') return v.toDate();
-  if (v instanceof Date) return v;
-  if (typeof v._seconds === 'number') return new Date(v._seconds * 1000);
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
 
 const iso = (v) => {
   const d = toDate(v);
@@ -50,6 +40,11 @@ const iso = (v) => {
  * the true total; null renders as a dash, which is the honest answer.
  */
 const COUNT_SCAN_CAP = 1000;
+
+// How many user documents the dashboard will read to build its breakdowns.
+// Well past the point where the panel stops being read one row at a time, and
+// low enough that a refresh can never turn into an unbounded bill.
+const USER_SCAN_CAP = 5000;
 
 async function countOf(db, name, filter) {
   try {
@@ -157,7 +152,16 @@ router.get('/stats', async (req, res) => {
     const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const snap = await db.collection(USERS).get();
+    // Every figure below except `total` has to be derived per document, because
+    // a plan is resolved from dates rather than stored - so this reads user
+    // documents, and it used to read ALL of them, unbounded, on every refresh.
+    // That is a full collection transfer billed per document, and it grows with
+    // the thing it is measuring. Capped now, with the truth about the cap
+    // reported alongside (see `partial`) rather than a smaller number passed
+    // off as the whole picture.
+    const snap = await db.collection(USERS).limit(USER_SCAN_CAP).get();
+    const scanned = snap.size;
+    const partial = scanned >= USER_SCAN_CAP;
     const s = {
       total: 0, premium: 0, trial: 0, free: 0,
       premiumVerified: 0, premiumGranted: 0,
@@ -208,16 +212,22 @@ router.get('/stats', async (req, res) => {
       if (u.email) s.withEmail++;
     });
 
-    const [reportsTotal, reportsNew, trialDevices] = await Promise.all([
+    const [reportsTotal, reportsNew, trialDevices, userTotal] = await Promise.all([
       countOf(db, REPORTS),
       countOf(db, REPORTS, ['status', '==', 'new']),
       countOf(db, DEVICES),
+      // The aggregate count is the real total even when the scan was capped -
+      // it is answered server-side without shipping the documents.
+      countOf(db, USERS),
     ]);
+    if (typeof userTotal === 'number') s.total = userTotal;
 
     res.json({
       success: true,
       data: {
         ...s,
+        scanned,
+        partial,
         reportsTotal,
         reportsNew,
         trialDevices,

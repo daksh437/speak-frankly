@@ -20,12 +20,25 @@ const REPORTS = 'ai_reports';
 // Cheap in-memory spam guard (per instance): a real learner reports a handful of
 // lines, not hundreds. Keeps a flood from writing unbounded documents.
 const MAX_PER_HOUR = 20;
+const WINDOW_MS = 60 * 60 * 1000;
 const hits = new Map(); // uid -> { count, windowStart }
+
+// Expired windows are dropped on a timer, because nothing else ever removed
+// them: an entry was added for every uid that ever reported and kept for the
+// life of the process, so the guard against unbounded documents was itself an
+// unbounded map. unref() keeps it from holding the process (or a test run) open.
+const sweep = setInterval(() => {
+  const cutoff = Date.now() - WINDOW_MS;
+  for (const [uid, h] of hits) {
+    if (h.windowStart < cutoff) hits.delete(uid);
+  }
+}, WINDOW_MS);
+if (typeof sweep.unref === 'function') sweep.unref();
 
 function overLimit(uid) {
   const now = Date.now();
   const h = hits.get(uid);
-  if (!h || now - h.windowStart > 60 * 60 * 1000) {
+  if (!h || now - h.windowStart > WINDOW_MS) {
     hits.set(uid, { count: 1, windowStart: now });
     return false;
   }

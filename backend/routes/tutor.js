@@ -12,24 +12,26 @@ const router = express.Router();
 router.use(rateLimit({ windowMs: 60_000, max: 30, name: 'tutor' }));
 
 // Every tutor AI call is metered by the plan (trial/free/premium).
-router.use((req, res, next) => {
-  req._aiEndpoint = `/tutor${req.path}`;
-  requireAiAccess(req, res, next);
-});
+// /chat is metered by the plan (trial/free/premium) and CLAIMS one of today's
+// messages before the AI runs, in a transaction — see requireMessageSlot.
+router.post(
+  '/chat',
+  requireAiAccess,
+  requireMessageSlot,
+  wrapAiHandler(chat, (req) => buildAiFallback('/tutor/chat', req.body)),
+);
 
-// /chat CLAIMS one of today's messages before the AI runs, in a transaction —
-// see requireMessageSlot.
-router.post('/chat', requireMessageSlot, wrapAiHandler(chat, (req) => buildAiFallback('/tutor/chat', req.body)));
-
-// /feedback used to be free: requireAiAccess checked the plan but nothing was
-// ever claimed or counted, so a signed-in learner who never chatted sat at
-// dailyUsed = 0 forever and could call this in a loop — an unbounded Gemini
-// endpoint (6k chars in, 600 tokens out, per call) on our bill.
+// /feedback is metered against the AUX budget: an end-of-session report should
+// not cost one of the daily messages, but it cannot be free either — it is an
+// unbounded Gemini endpoint (6k chars in, 600 tokens out, per call). A real
+// learner spends one per session; a script runs out. A report served from the
+// canned fallback refunds the slot.
 //
-// It is now metered against the AUX budget rather than chat messages: an
-// end-of-session report still shouldn't cost one of the 8 daily messages, but
-// it can't be free either. A real learner spends one per session; a script runs
-// out. A report served from the canned fallback refunds the slot.
+// requireAiAccess deliberately does NOT run here. It used to, mounted on the
+// whole router, and it rejects a free learner the moment their daily MESSAGES
+// are gone — which is exactly when a session ends and the report is asked for.
+// Every learner who used their full allowance got an empty report; the ones who
+// practised most never saw one at all.
 router.post('/feedback', requireAuxAccess, wrapAiHandler(feedback, (req) => buildAiFallback('/tutor/feedback', req.body)));
 
 module.exports = router;
