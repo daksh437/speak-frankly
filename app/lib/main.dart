@@ -7,6 +7,7 @@ import 'services/ad_service.dart';
 import 'services/analytics_service.dart';
 import 'services/api_service.dart';
 import 'services/gamification_service.dart';
+import 'services/progress_history.dart';
 import 'services/locale_controller.dart';
 import 'services/notification_service.dart';
 import 'services/sync_service.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
   LocaleController.setFromLanguage(UserSession.instance.nativeLanguage);
   await GamificationService.instance.load();
   await VocabularyService.instance.load();
+  await ProgressHistory.instance.load();
 
   // Initialize Firebase (needed for Google sign-in + Firestore). If it fails,
   // AuthGate shows the login screen (the user can't proceed without an account).

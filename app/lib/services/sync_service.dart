@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'api_service.dart';
 import 'gamification_service.dart';
+import 'progress_history.dart';
 import 'user_session.dart';
 import 'vocabulary_service.dart';
 
@@ -31,6 +32,7 @@ class SyncService {
     if (_started) return;
     _started = true;
     GamificationService.instance.addListener(_schedulePush);
+    ProgressHistory.instance.addListener(_schedulePush);
     VocabularyService.instance.addListener(_schedulePush);
   }
 
@@ -58,6 +60,7 @@ class SyncService {
       if (data.isEmpty) return;
       await GamificationService.instance.mergeFrom(data);
       await VocabularyService.instance.mergeFrom(data['savedWords'] as List?);
+      await ProgressHistory.instance.mergeFrom(data['progressDays'] as Map<String, dynamic>?);
       await UserSession.instance.applyCloudProfile(data);
     } catch (_) {/* offline / not deployed → no-op */}
   }
@@ -81,6 +84,10 @@ class SyncService {
     try {
       final payload = GamificationService.instance.toMap();
       payload['savedWords'] = VocabularyService.instance.toJsonList();
+      // Snapshot today's retained-word count as we go, so the mastery trend has
+      // a reading for every day the learner was active.
+      await ProgressHistory.instance.recordWordsMastered(VocabularyService.instance.masteredCount);
+      payload['progressDays'] = ProgressHistory.instance.toCloud();
       payload.addAll(UserSession.instance.profileToCloud());
       await ApiService.instance.saveProgress(payload);
     } catch (_) {/* best-effort */}

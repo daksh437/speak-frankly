@@ -8,6 +8,7 @@ import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/gamification_service.dart';
 import '../services/plan_status.dart';
+import '../services/progress_history.dart';
 import '../services/rate_prompt.dart';
 import '../services/speech_service.dart';
 import '../services/user_session.dart';
@@ -87,8 +88,17 @@ class _ChatScreenState extends State<ChatScreen> {
     // correction density (few mistakes → level up; many → level down).
     (String, bool, String)? suggestion;
     final userMsgs = _messages.where((m) => m.isUser).toList();
+    final totalCorrections = userMsgs.fold<int>(0, (s, m) => s + m.corrections.length);
+    // The same two numbers the level nudge below is derived from. They were
+    // computed and thrown away every session; kept now, they are what lets the
+    // app eventually show someone that they are making fewer mistakes than they
+    // used to - the one thing that keeps a learner from quietly giving up.
+    ProgressHistory.instance.recordSession(
+      turns: userMsgs.length,
+      corrections: totalCorrections,
+    );
     if (userMsgs.length >= 4) {
-      final corrections = userMsgs.fold<int>(0, (s, m) => s + m.corrections.length);
+      final corrections = totalCorrections;
       final ratio = corrections / userMsgs.length;
       final cur = UserSession.instance.level;
       if (ratio < 0.3 && _nextLevel(cur) != cur) {

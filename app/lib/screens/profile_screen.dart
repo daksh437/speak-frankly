@@ -15,10 +15,12 @@ import '../services/vocabulary_service.dart';
 import '../theme/app_theme.dart';
 import '../services/notification_service.dart';
 import '../services/plan_status.dart';
+import '../services/progress_history.dart';
 import '../services/sync_service.dart';
 import 'offline_downloads_screen.dart';
 import 'premium_screen.dart';
 import 'placement_test_screen.dart';
+import 'progress_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -248,6 +250,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
           const SizedBox(height: 18),
+          const _ProgressEntry(),
+          const SizedBox(height: 18),
           const _FluencyMap(),
           const SizedBox(height: 18),
           const _Badges(),
@@ -358,6 +362,88 @@ class _ProfileHeader extends StatelessWidget {
           IconButton(onPressed: onEditName, icon: const Icon(Icons.edit_rounded, color: Colors.white)),
         ],
       ),
+    );
+  }
+}
+
+/// Doorway to the outcome view, with its headline already on the card.
+///
+/// The fluency map below this shows how much the learner has DONE. This shows
+/// whether it worked, which is the question that actually decides whether they
+/// keep the app - so it goes first, and it says something real even before
+/// there is enough data for a trend.
+class _ProgressEntry extends StatelessWidget {
+  const _ProgressEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: ProgressHistory.instance,
+      builder: (context, _) {
+        final h = ProgressHistory.instance;
+        final trend = h.thenAndNow();
+        final now = trend?.$2.sentencesPerMistake;
+        final then = trend?.$1.sentencesPerMistake;
+        final improved = then != null && now != null && now > then;
+
+        final String line;
+        if (trend == null) {
+          final togo = h.sessionsUntilTrend;
+          line = togo > 0
+              ? '$togo more ${togo == 1 ? 'conversation' : 'conversations'} and your trend appears'
+              : 'A few more days and your trend appears';
+        } else if (improved) {
+          line = '1 mistake every ${now.round()} sentences, up from ${then.round()}';
+        } else {
+          line = '1 mistake every ${now!.round()} ${now.round() == 1 ? 'sentence' : 'sentences'}';
+        }
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProgressScreen()),
+            ),
+            borderRadius: BorderRadius.circular(18),
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: AppColors.gradient(AppTheme.seed),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(color: AppTheme.seed.withValues(alpha: 0.28), blurRadius: 16, offset: const Offset(0, 7)),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), shape: BoxShape.circle),
+                    child: Center(
+                      child: Icon(improved ? Icons.trending_up_rounded : Icons.insights_rounded,
+                          color: Colors.white, size: 22),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Your progress',
+                            style: TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 2),
+                        Text(line, style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

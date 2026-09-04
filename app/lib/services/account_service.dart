@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'gamification_service.dart';
+import 'progress_history.dart';
 import 'locale_controller.dart';
 import 'premium_service.dart';
 import 'sync_service.dart';
@@ -34,6 +35,7 @@ class AccountService {
       SyncService.suspend();
       await GamificationService.instance.reset();
       await VocabularyService.instance.reset();
+      await ProgressHistory.instance.reset();
       await UserSession.instance.resetProfile();
       await p.setString(_kSyncedUid, uid);
       await SyncService.pullAndApply();
@@ -68,6 +70,7 @@ class AccountService {
     await p.remove(_kSyncedUid);
     await GamificationService.instance.reset();
     await VocabularyService.instance.reset();
+    await ProgressHistory.instance.reset();
     await UserSession.instance.resetProfile();
   }
 

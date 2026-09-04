@@ -21,6 +21,11 @@ async function getProgress(uid) {
       speakingReps: d.speakingReps || 0,
       lastActive: d.lastActive || '',
       savedWords: Array.isArray(d.savedWords) ? d.savedWords : [],
+      // Day-by-day outcome history (mistakes per turn, pronunciation, mastered
+      // words). Kept server-side so the trend survives a reinstall - a trend
+      // that resets is worse than none, because the one thing it exists to
+      // prove is that the last month was not wasted.
+      progressDays: (d.progressDays && typeof d.progressDays === 'object') ? d.progressDays : {},
       // Per-account profile so onboarding/level follow the Google account.
       onboarded: d.onboarded === true,
       level: d.level || '',
@@ -38,6 +43,70 @@ async function getProgress(uid) {
 // higher of each (GamificationService.mergeFrom), so a lower number arriving
 // here is not a correction — it is a client that has lost its local copy.
 const MONOTONIC = ['streak', 'xp', 'scenariosCompleted', 'speakingReps'];
+
+// One entry per day, and the client keeps 90. The cap is a little looser than
+// that so a clock change or a timezone move cannot silently start dropping a
+// learner's history, and it stops a malformed client from growing the document
+// without bound.
+const MAX_PROGRESS_DAYS = 200;
+const DAY_FIELDS = ['s', 't', 'c', 'ps', 'pc', 'wm'];
+
+/** Keep only well-formed, numeric day entries, newest kept if over the cap. */
+function clampProgressDays(raw) {
+  const out = {};
+  const dates = Object.keys(raw)
+    .filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k))
+    .sort()
+    .slice(-MAX_PROGRESS_DAYS);
+  for (const date of dates) {
+    const v = raw[date];
+    if (!v || typeof v !== 'object') continue;
+    const day = {};
+    for (const f of DAY_FIELDS) {
+      const n = Number(v[f]);
+      day[f] = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+    }
+    out[date] = day;
+  }
+  return out;
+}
+
+/**
+ * A day's numbers only grow while that day is happening, so a lower reading is
+ * a client that has lost its copy, not a correction. Taking the higher of each
+ * field makes a re-sent day a no-op - which is what lets this sync with no
+ * de-duplication at all - and means a fresh install cannot flatten the history
+ * it is about to download.
+ */
+function mergeProgressDays(incoming, existing) {
+  if (!existing || typeof existing !== 'object') return incoming;
+  const merged = { ...incoming };
+  for (const [date, was] of Object.entries(existing)) {
+    if (!was || typeof was !== 'object') continue;
+    const now = merged[date];
+    if (!now) {
+      merged[date] = was; // a day this client never had
+      continue;
+    }
+    const day = {};
+    for (const f of DAY_FIELDS) {
+      const a = Number(now[f]) || 0;
+      const b = Number(was[f]) || 0;
+      day[f] = a > b ? a : b;
+    }
+    // Pronunciation is a sum over a count; taking each independently would
+    // invent an average. The reading with more attempts behind it wins.
+    if ((Number(was.pc) || 0) > (Number(now.pc) || 0)) {
+      day.pc = Number(was.pc) || 0;
+      day.ps = Number(was.ps) || 0;
+    } else {
+      day.pc = Number(now.pc) || 0;
+      day.ps = Number(now.ps) || 0;
+    }
+    merged[date] = day;
+  }
+  return merged;
+}
 
 /**
  * Refuse a write that would destroy progress, and keep the rest of it.
@@ -64,6 +133,9 @@ function guardProgress(update, existing) {
       dropped.push(key);
     }
   }
+  if (update.progressDays) {
+    update.progressDays = mergeProgressDays(update.progressDays, existing.progressDays);
+  }
   const hadWords = Array.isArray(existing.savedWords) ? existing.savedWords.length : 0;
   const nowWords = Array.isArray(update.savedWords) ? update.savedWords.length : 0;
   if (hadWords > 0 && nowWords === 0) {
@@ -85,6 +157,9 @@ async function saveProgress(uid, body) {
     lastActive: String(data.lastActive || ''),
     savedWords: Array.isArray(data.savedWords) ? data.savedWords.slice(0, 500) : [],
   };
+  if (data.progressDays && typeof data.progressDays === 'object' && !Array.isArray(data.progressDays)) {
+    update.progressDays = clampProgressDays(data.progressDays);
+  }
   if (typeof data.onboarded === 'boolean') update.onboarded = data.onboarded;
   if (data.level != null) update.level = String(data.level);
   if (data.goal != null) update.goal = String(data.goal);
@@ -110,4 +185,4 @@ async function saveProgress(uid, body) {
   }
 }
 
-module.exports = { getProgress, saveProgress, guardProgress };
+module.exports = { getProgress, saveProgress, guardProgress, mergeProgressDays, clampProgressDays };

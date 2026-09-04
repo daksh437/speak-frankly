@@ -17,7 +17,7 @@
  *
  * Usage: node tests/progress-guard.test.js
  */
-const { guardProgress } = require('../controllers/progressController');
+const { guardProgress, mergeProgressDays, clampProgressDays } = require('../controllers/progressController');
 
 let failures = 0;
 const check = (name, cond) => {
@@ -111,6 +111,81 @@ console.log('\n— the profile fields are never touched —');
   check('level survives the guard', update.level === 'B1');
   check('display name survives the guard', update.displayName === 'Daksh');
   check('onboarded survives the guard', update.onboarded === true);
+}
+
+console.log('\n- the day-by-day outcome history -');
+
+{
+  const c = clampProgressDays({
+    '2026-09-04': { s: 1, t: 8, c: 2, ps: 80, pc: 1, wm: 5 },
+    'not-a-date': { s: 9 },
+    '2026-9-4': { s: 9 },
+    '2026-09-03': { s: '2', t: -4, c: null, ps: 1.9, pc: 1, wm: 0 },
+  });
+  check('a malformed key is dropped', c['not-a-date'] === undefined);
+  check('an unpadded date is dropped', c['2026-9-4'] === undefined);
+  check('a numeric string is coerced', c['2026-09-03'].s === 2);
+  check('a negative count becomes 0', c['2026-09-03'].t === 0);
+  check('a null count becomes 0', c['2026-09-03'].c === 0);
+  check('a fraction is floored', c['2026-09-03'].ps === 1);
+  check('a good day survives intact', c['2026-09-04'].t === 8 && c['2026-09-04'].wm === 5);
+}
+
+{
+  // A reinstalled client knows only today, and knows less of it than the
+  // server does. Neither the missing days nor the fuller day may be lost.
+  const incoming = { '2026-09-04': { s: 1, t: 8, c: 2, ps: 0, pc: 0, wm: 0 } };
+  const existing = {
+    '2026-09-04': { s: 3, t: 20, c: 2, ps: 170, pc: 2, wm: 9 },
+    '2026-09-01': { s: 2, t: 10, c: 5, ps: 0, pc: 0, wm: 3 },
+  };
+  const m = mergeProgressDays(incoming, existing);
+  check('a day the client never had is kept', m['2026-09-01'].t === 10);
+  check('the fuller reading of a shared day wins', m['2026-09-04'].t === 20);
+  check('sessions take the higher count', m['2026-09-04'].s === 3);
+  check('mastered words take the higher count', m['2026-09-04'].wm === 9);
+}
+
+{
+  // Pronunciation is a sum over a count. Taking each field's max separately
+  // would pair a big sum with a small count and invent an average.
+  const m = mergeProgressDays(
+    { '2026-09-04': { s: 1, t: 5, c: 1, ps: 95, pc: 1, wm: 0 } },
+    { '2026-09-04': { s: 1, t: 5, c: 1, ps: 120, pc: 3, wm: 0 } },
+  );
+  check('the reading with more attempts wins the sum', m['2026-09-04'].ps === 120);
+  check('...and its count comes with it', m['2026-09-04'].pc === 3);
+  check('so the average stays real', m['2026-09-04'].ps / m['2026-09-04'].pc === 40);
+}
+
+{
+  const m = mergeProgressDays({ '2026-09-04': { s: 1, t: 9, c: 1, ps: 0, pc: 0, wm: 0 } }, null);
+  check('no stored history means the incoming one stands', m['2026-09-04'].t === 9);
+}
+
+{
+  // Re-sending the same day changes nothing, which is what lets this sync
+  // without any de-duplication.
+  const day = { '2026-09-04': { s: 2, t: 12, c: 3, ps: 150, pc: 2, wm: 4 } };
+  const once = mergeProgressDays(day, day);
+  const twice = mergeProgressDays(once, once);
+  check('re-sending a day is a no-op', JSON.stringify(twice) === JSON.stringify(day));
+}
+
+{
+  const many = {};
+  for (let i = 1; i <= 260; i++) {
+    const d = new Date(Date.UTC(2026, 0, i));
+    many[d.toISOString().slice(0, 10)] = { s: 1, t: 1, c: 0, ps: 0, pc: 0, wm: 0 };
+  }
+  const c = clampProgressDays(many);
+  check('the history is capped', Object.keys(c).length === 200);
+  check('and it is the NEWEST days that are kept', c[Object.keys(many).sort().pop()] !== undefined);
+}
+
+{
+  const guarded = guardProgress({ ...wipe(), progressDays: {} }, { ...established, progressDays: { '2026-09-01': { s: 2, t: 10, c: 5, ps: 0, pc: 0, wm: 3 } } });
+  check('a wipe cannot empty the history either', guarded.update.progressDays['2026-09-01'].t === 10);
 }
 
 if (failures) {

@@ -107,6 +107,14 @@ class VocabularyService extends ChangeNotifier {
 
   int get dueCount => dueWords.length;
 
+  /// Words the learner has actually retained, not merely saved.
+  ///
+  /// Box 3 is the first interval measured in weeks (7 days), so reaching it
+  /// means the word survived several spaced reviews rather than one lucky
+  /// recall. This is the honest answer to "how much vocabulary do I have now",
+  /// which a raw saved-words count is not.
+  int get masteredCount => _words.where((w) => w.box >= 3).length;
+
   /// Words that have a usable example sentence for the Cloze game.
   List<SavedWord> get clozeWords => _words.where((w) => w.hasCloze).toList();
 

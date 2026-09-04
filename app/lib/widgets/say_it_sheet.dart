@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
 import '../services/gamification_service.dart';
+import '../services/progress_history.dart';
 import '../services/speech_service.dart';
 import '../theme/app_theme.dart';
 import 'pronunciation_chips.dart';
@@ -103,6 +104,7 @@ class _SayItSheetState extends State<_SayItSheet> {
     // happens — and it counts towards the speaking stat either way.
     final xp = result.score >= 85 ? 10 : (result.score >= 60 ? 6 : 2);
     GamificationService.instance.recordSpeaking(xpGain: xp);
+    ProgressHistory.instance.recordPronunciation(result.score);
     AnalyticsService.log('say_it_attempt', {'score': result.score, 'source': widget.source});
     setState(() => _result = result);
   }
