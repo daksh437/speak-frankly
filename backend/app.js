@@ -30,7 +30,7 @@ const vocabRoutes = require('./routes/vocab');
 const { hasKey, MODEL, MODELS, getAiStats } = require('./utils/geminiClient');
 const { getInitStatus } = require('./utils/firestoreAdmin');
 const { getAuthStats, REQUIRE_AUTH_TOKEN } = require('./middleware/auth');
-const { DEV_SKIP_LIMITS, DAILY_MESSAGES_FREE, REQUIRE_PREMIUM } = require('./middleware/aiAccess');
+const { DEV_SKIP_LIMITS, DAILY_MESSAGES_FREE, REQUIRE_PREMIUM, REVIEWER_EMAILS } = require('./middleware/aiAccess');
 const { rateLimit } = require('./middleware/rateLimit');
 
 const app = express();
@@ -85,6 +85,11 @@ app.get('/health', (_req, res) =>
     startedAt: STARTED_AT,
     ai: getAiStats(),
     auth: getAuthStats(),
+    // Whether the app-store review bypass is armed. A count, never the
+    // addresses — /health is public. Play rejects a submission whose reviewer
+    // hits the paywall, and the only way to tell a set env var from an unset
+    // one used to be to sign in as the reviewer and try.
+    reviewerAccounts: REVIEWER_EMAILS.length,
   }));
 
 app.use('/', require('./routes/legal')); // GET /privacy, /terms (public HTML)
@@ -132,6 +137,7 @@ function startServer() {
     console.log(`🔥 Firestore: ${fb.firestoreReady ? `ready (${fb.projectId})` : 'degraded / not configured'}`);
     console.log(`🔐 Auth: ${REQUIRE_AUTH_TOKEN ? 'ID token REQUIRED' : 'ID token preferred, legacy x-user-uid still accepted'}`);
     console.log(`🎫 Plan: ${REQUIRE_PREMIUM ? 'premium required for AI (no free tier)' : `free ${DAILY_MESSAGES_FREE} msg/day`} → premium unlimited`);
+    console.log(`🧪 Review accounts: ${REVIEWER_EMAILS.length ? `${REVIEWER_EMAILS.length} on premium (${REVIEWER_EMAILS.join(', ')})` : 'none — set REVIEWER_EMAILS before submitting to Play'}`);
     if (DEV_SKIP_LIMITS) console.log('⚠️  DEV_SKIP_LIMITS on — limits bypassed.');
     console.log(`📊 Health: http://localhost:${PORT}/health`);
   });

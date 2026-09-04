@@ -37,6 +37,15 @@ services:
         value: "0"
       - key: REQUIRE_PREMIUM
         value: "true"
+      # APP-REVIEW ACCOUNTS — set this before every Play submission.
+      # Play rejects a build whose reviewer meets the paywall, and with the
+      # settings above a new account meets it immediately. Any address listed
+      # here is kept on premium server-side, which opens every gate at once, so
+      # a rejected submission is fixed with an env var and a redeploy rather
+      # than a new build. Use the SAME address as Play Console -> App content ->
+      # Sign in details, and keep the two in step.
+      - key: REVIEWER_EMAILS
+        sync: false
       # WHO the paywall applies to. Accounts created on or after this date
       # meet it; everyone already using the app keeps the free tier they
       # signed up for. Set this to the moment you flip REQUIRE_PREMIUM on.
