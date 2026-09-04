@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -40,6 +41,78 @@ class _LoginScreenState extends State<LoginScreen> {
       await AuthService.signInWithGoogle();
       // AuthGate's authStateChanges stream handles navigation on success.
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.signInFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Email + password, for app-store review. Not a route a learner has an
+  /// account for — see AuthService.signInWithEmail for why it exists at all.
+  Future<void> _signInWithEmail() async {
+    final emailCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    final creds = await showDialog<(String, String)>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign in with email'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: emailCtrl,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: passCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Password'),
+              onSubmitted: (_) => Navigator.pop(ctx, (emailCtrl.text, passCtrl.text)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, (emailCtrl.text, passCtrl.text)),
+            child: const Text('Sign in'),
+          ),
+        ],
+      ),
+    );
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    if (creds == null || creds.$1.trim().isEmpty || creds.$2.isEmpty || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      await AuthService.signInWithEmail(creds.$1, creds.$2);
+      // AuthGate's authStateChanges stream handles navigation on success.
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        // The real reason, not a generic failure: whoever is typing here is
+        // following instructions, and "wrong password" versus "no such account"
+        // is the difference between retyping and asking for new credentials.
+        final msg = switch (e.code) {
+          'invalid-email' => 'That email address is not valid.',
+          'user-not-found' || 'invalid-credential' || 'wrong-password' =>
+            'Email or password is incorrect.',
+          'user-disabled' => 'That account has been disabled.',
+          'too-many-requests' => 'Too many attempts. Wait a moment and try again.',
+          'operation-not-allowed' => 'Email sign-in is not enabled for this app.',
+          _ => 'Could not sign in. Please try again.',
+        };
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context)!.signInFailed)),
@@ -118,7 +191,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 6),
+                // The reviewer's way in. Small on purpose: a learner has no
+                // account to sign in with and should not be invited to look for
+                // one, but an app-store reviewer following written instructions
+                // finds it immediately - and Google Sign-In is exactly what
+                // keeps failing on their test devices.
+                TextButton(
+                  onPressed: _busy ? null : _signInWithEmail,
+                  child: Text('Sign in with email',
+                      style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5)),
+                ),
+                const SizedBox(height: 6),
                 Wrap(
                   alignment: WrapAlignment.center,
                   crossAxisAlignment: WrapCrossAlignment.center,
