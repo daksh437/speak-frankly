@@ -10,7 +10,15 @@ import '../theme/app_theme.dart';
 /// Tap-a-word → dictionary card (meaning, phonetic, audio, L1 translation).
 /// Premium bottom sheet so it doesn't interrupt the conversation.
 void showDictionarySheet(BuildContext context, String word) {
-  final cleaned = word.replaceAll(RegExp(r'[^A-Za-z\-]'), '').toLowerCase();
+  // Spaces survive. They used to be stripped along with the punctuation,
+  // which was fine for a tapped word but silently welded multi-word entries
+  // together - Word of the Day sends phrases like "by the way", and the sheet
+  // went off and failed to look up "bytheway", then said so to the learner.
+  final cleaned = word
+      .replaceAll(RegExp(r"[^A-Za-z\- ]"), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim()
+      .toLowerCase();
   if (cleaned.isEmpty) return;
   showModalBottomSheet(
     context: context,

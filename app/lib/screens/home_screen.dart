@@ -23,6 +23,20 @@ import 'stories_list_screen.dart';
 /// XP needed to unlock the scenario at [index] (first two are always open).
 int _unlockXp(int index) => index < 2 ? 0 : (index - 1) * 60;
 
+/// Required XP per scenario id, keyed off the library's original order.
+///
+/// Built once and shared by every surface that offers a scenario. The unlock
+/// used to be computed only where the main list rendered, from the card's
+/// position in that list - so "Recommended for you", which draws from the same
+/// library, started any scenario it showed regardless of the ladder.
+Map<String, int> _unlockLadder(List<Scenario> all) {
+  final ladder = <String, int>{};
+  for (var i = 0; i < all.length; i++) {
+    ladder[all[i].id] = _unlockXp(i);
+  }
+  return ladder;
+}
+
 /// Keywords per onboarding goal → used to surface scenarios relevant to the
 /// learner ("Recommended for you"). Matched against title/theme/keywords/desc.
 const Map<String, List<String>> _goalKeywords = {
@@ -123,6 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+    controller.dispose();
     if (topic == null || topic.trim().isEmpty || !mounted) return;
 
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
@@ -162,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
               animation: GamificationService.instance,
               builder: (context, _) {
                 final xp = GamificationService.instance.xp;
+                final unlock = _unlockLadder(scenarios);
                 final levels = (scenarios.map((s) => s.level).toSet().toList()..sort());
                 final filtered = _applyFilters(scenarios);
                 // Personalized picks (only when not searching/filtering).
@@ -214,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     if (recommended.isNotEmpty)
-                      SliverToBoxAdapter(child: _RecommendedStrip(scenarios: recommended)),
+                      SliverToBoxAdapter(child: _RecommendedStrip(scenarios: recommended, unlock: unlock, xp: xp)),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                       sliver: SliverToBoxAdapter(
@@ -249,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 14),
                           itemBuilder: (_, i) {
                             final s = filtered[i];
-                            final needed = _unlockXp(scenarios.indexOf(s)); // stable unlock by original order
+                            final needed = unlock[s.id] ?? 0;
                             final locked = xp < needed;
                             return _ScenarioCard(
                               scenario: s,
@@ -652,7 +668,12 @@ class _ScenarioFilters extends StatelessWidget {
 /// learner's goal (personalization, BRD §6.1).
 class _RecommendedStrip extends StatelessWidget {
   final List<Scenario> scenarios;
-  const _RecommendedStrip({required this.scenarios});
+
+  /// Required XP per scenario id, and the learner's XP - a recommendation is
+  /// still a locked scenario if they haven't earned it yet.
+  final Map<String, int> unlock;
+  final int xp;
+  const _RecommendedStrip({required this.scenarios, required this.unlock, required this.xp});
 
   @override
   Widget build(BuildContext context) {
@@ -682,15 +703,19 @@ class _RecommendedStrip extends StatelessWidget {
               final s = scenarios[i];
               final accent = AppColors.forScenario(s.theme);
               final isLight = Theme.of(context).brightness == Brightness.light;
+              final needed = unlock[s.id] ?? 0;
+              final locked = xp < needed;
               return SizedBox(
                 width: 160,
                 child: Material(
                   color: isLight ? Colors.white : const Color(0xFF1E1B26),
                   borderRadius: BorderRadius.circular(18),
                   child: InkWell(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => ChatScreen(scenario: s)),
-                    ),
+                    onTap: locked
+                        ? () => _showLocked(context, needed, xp)
+                        : () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => ChatScreen(scenario: s)),
+                            ),
                     borderRadius: BorderRadius.circular(18),
                     child: Ink(
                       padding: const EdgeInsets.all(14),
@@ -707,7 +732,11 @@ class _RecommendedStrip extends StatelessWidget {
                             width: 42,
                             height: 42,
                             decoration: BoxDecoration(color: accent.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
-                            child: Center(child: Text(s.emoji, style: const TextStyle(fontSize: 22))),
+                            child: Center(
+                              child: locked
+                                  ? Icon(Icons.lock_rounded, size: 20, color: accent)
+                                  : Text(s.emoji, style: const TextStyle(fontSize: 22)),
+                            ),
                           ),
                           const Spacer(),
                           Text(s.title,
@@ -715,7 +744,8 @@ class _RecommendedStrip extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
                           const SizedBox(height: 2),
-                          Text(s.level, style: TextStyle(fontSize: 11.5, color: accent, fontWeight: FontWeight.w700)),
+                          Text(locked ? '🔒 $needed XP' : s.level,
+                              style: TextStyle(fontSize: 11.5, color: accent, fontWeight: FontWeight.w700)),
                         ],
                       ),
                     ),
