@@ -6,6 +6,7 @@ import '../services/gamification_service.dart';
 import '../services/speaking_phrases.dart';
 import '../services/speech_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/pronunciation_chips.dart';
 
 /// Shadowing practice. Hear a phrase (TTS), then "shadow" it — repeat it aloud
 /// while a live waveform shows your voice — and get a pronunciation score from
@@ -311,47 +312,12 @@ class _ResultCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(l.wordByWord, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5)),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [for (final w in result!.words) _WordChip(w)],
-            ),
+            PronunciationChips(result!.words),
           ],
           if (label.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700)),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-/// One target word, tinted by how well it was pronounced: green = clear,
-/// amber = close (heard, but slightly off), red = missed.
-class _WordChip extends StatelessWidget {
-  final WordScore word;
-  const _WordChip(this.word);
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color c, IconData? icon) = switch (word.verdict) {
-      WordVerdict.good => (AppColors.success, Icons.check_rounded),
-      WordVerdict.close => (const Color(0xFFF59E0B), null),
-      WordVerdict.missed => (const Color(0xFFEF4444), Icons.close_rounded),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: c.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[Icon(icon, size: 13, color: c), const SizedBox(width: 3)],
-          Text(word.word, style: TextStyle(color: c, fontWeight: FontWeight.w600, fontSize: 13.5)),
         ],
       ),
     );

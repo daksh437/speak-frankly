@@ -13,6 +13,7 @@ import '../services/speech_service.dart';
 import '../services/user_session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dictionary_sheet.dart';
+import '../widgets/say_it_sheet.dart';
 import 'premium_screen.dart';
 import 'session_report_screen.dart';
 
@@ -337,7 +338,7 @@ class _MessageBubble extends StatelessWidget {
               : _TappableWords(text: message.text, color: scheme.onSurface),
         ),
         if (!isUser) _TutorActions(text: message.text, accent: accent, scenarioId: scenarioId),
-        ...message.corrections.map((c) => _CorrectionCard(correction: c)),
+        ...message.corrections.map((c) => _CorrectionCard(correction: c, accent: accent)),
         const SizedBox(height: 10),
       ],
     );
@@ -464,6 +465,20 @@ class _TutorActionsState extends State<_TutorActions> {
                 color: widget.accent,
                 onTap: () => SpeechService.instance.speak(widget.text),
               ),
+              const SizedBox(width: 6),
+              // Shadowing the tutor's own line. The target is known, so this is
+              // a real assessment rather than a transcript graded against itself.
+              _ActionChip(
+                icon: Icons.mic_rounded,
+                label: 'Repeat',
+                color: widget.accent,
+                onTap: () => showSayItSheet(
+                  context,
+                  phrase: widget.text,
+                  accent: widget.accent,
+                  source: 'tutor_line',
+                ),
+              ),
               if (showTranslate) const SizedBox(width: 6),
               if (showTranslate)
                 _ActionChip(
@@ -588,9 +603,17 @@ class _TappableWords extends StatelessWidget {
   }
 }
 
+/// The tutor's fix for something the learner just said, with a mic to say the
+/// fixed version back.
+///
+/// The mic is the point. A correction the learner only READS is a note; one
+/// they say out loud is a rep — and because the app knows the sentence it just
+/// asked for, the pronunciation can actually be scored against it (which free
+/// conversation can never be, having no reference to score against).
 class _CorrectionCard extends StatelessWidget {
   final Correction correction;
-  const _CorrectionCard({required this.correction});
+  final Color accent;
+  const _CorrectionCard({required this.correction, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -618,6 +641,13 @@ class _CorrectionCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: Color(0xFFB45309)),
                 ),
               ),
+              const SizedBox(width: 6),
+              _SayItButton(
+                phrase: correction.better,
+                accent: accent,
+                source: 'correction',
+                color: amber,
+              ),
             ],
           ),
           if (correction.reason.isNotEmpty)
@@ -629,6 +659,38 @@ class _CorrectionCard extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// A small mic that opens the say-it sheet for a phrase the app already knows.
+class _SayItButton extends StatelessWidget {
+  final String phrase;
+  final Color accent;
+  final String source;
+  final Color color;
+  const _SayItButton({required this.phrase, required this.accent, required this.source, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.16),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: () => showSayItSheet(context, phrase: phrase, accent: accent, source: source),
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.mic_rounded, size: 13, color: color),
+              const SizedBox(width: 3),
+              Text('Say it', style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
       ),
     );
   }
