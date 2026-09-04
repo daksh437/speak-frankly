@@ -25,6 +25,9 @@ class _ClozeItem {
 
 class _ClozeGameScreenState extends State<ClozeGameScreen> {
   late final List<_ClozeItem> _items;
+  /// XP per correct answer - the same rate the other review games pay.
+  static const int _xpPerCorrect = 2;
+
   int _index = 0;
   int _correct = 0;
   String? _picked;
@@ -59,8 +62,14 @@ class _ClozeGameScreenState extends State<ClozeGameScreen> {
     if (_picked != null) return;
     setState(() => _picked = option);
     final right = option.toLowerCase() == _items[_index].answer.toLowerCase();
-    if (right) _correct++;
-    GamificationService.instance.recordActivity(xpGain: 2);
+    // Only a right answer earns XP. This used to pay out on every tap, so
+    // guessing wrong through all ten items scored the same as knowing all ten -
+    // and XP is what unlocks scenarios, so the ladder could be climbed without
+    // learning anything. The other two quiz games already worked this way.
+    if (right) {
+      _correct++;
+      GamificationService.instance.recordActivity(xpGain: _xpPerCorrect);
+    }
     Future.delayed(const Duration(milliseconds: 750), () {
       if (!mounted) return;
       if (_index + 1 >= _items.length) {

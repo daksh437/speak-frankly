@@ -135,7 +135,21 @@ class ApiService {
         .timeout(_timeout);
 
     if (res.statusCode == 403) {
-      throw DailyLimitException();
+      // Carry the server's reason through. A 403 here is one of three very
+      // different things - the free daily cap, the hard paywall, or a PAYING
+      // subscriber hitting the fair-use ceiling - and the server writes a
+      // message for each. Collapsing them lost that, so a premium learner was
+      // told their "free limit" was up and offered an upgrade they had bought.
+      Map<String, dynamic> errBody;
+      try {
+        errBody = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {
+        errBody = const {};
+      }
+      throw DailyLimitException(
+        code: (errBody['code'] ?? errBody['error'] ?? '').toString(),
+        message: (errBody['message'] ?? '').toString(),
+      );
     }
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final data = (body['data'] as Map<String, dynamic>?) ?? {};
@@ -294,7 +308,8 @@ class ApiService {
   /// Dictionary card for a word, optionally translated into [target] language.
   Future<DictionaryCard?> lookupWord(String word, {String? target}) async {
     final res = await _client
-        .get(_u('/dictionary/$word', target != null ? {'target': target} : null), headers: await _authHeaders())
+        .get(_u('/dictionary/${Uri.encodeComponent(word)}', target != null ? {'target': target} : null),
+            headers: await _authHeaders())
         .timeout(_timeout);
     if (res.statusCode == 404) return null;
     final body = jsonDecode(res.body) as Map<String, dynamic>;
@@ -412,7 +427,23 @@ class AdminApiException implements Exception {
   String toString() => 'AdminApiException($status): $message';
 }
 
+/// The tutor refused a turn because of the caller's plan or allowance.
+///
+/// [code] is the server's own: `DAILY_LIMIT_REACHED` (free cap, an ad reward
+/// can lift it), `PREMIUM_REQUIRED` (the hard paywall), or `FAIR_USE_LIMIT` -
+/// which only a paying subscriber can ever see, and which must never be
+/// answered with an upsell.
 class DailyLimitException implements Exception {
+  final String code;
+  final String message;
+  const DailyLimitException({this.code = '', this.message = ''});
+
+  /// The learner already pays; nothing here is for sale to them.
+  bool get isFairUse => code == 'FAIR_USE_LIMIT';
+
+  /// Watching a rewarded ad can buy more messages today.
+  bool get canEarnMore => code.isEmpty || code == 'DAILY_LIMIT_REACHED';
+
   @override
-  String toString() => 'Daily free limit reached';
+  String toString() => 'DailyLimitException(${code.isEmpty ? 'DAILY_LIMIT_REACHED' : code})';
 }

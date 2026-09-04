@@ -53,7 +53,14 @@ class _StoryScreenState extends State<StoryScreen> {
 
   Future<void> _speak(String text) => SpeechService.instance.speak(text);
 
+  /// Guards against a second tap landing while the first is still being
+  /// applied. Two taps used to push the story two nodes forward at once and
+  /// bank the XP twice, with the skipped tutor line never spoken.
+  bool _choosing = false;
+
   void _choose(StoryChoice choice) {
+    if (_choosing || _finished) return;
+    _choosing = true;
     setState(() {
       _messages.add(_Msg(_Kind.learner, choice.text, good: choice.good));
       if (choice.note != null) _messages.add(_Msg(_Kind.note, choice.note!, good: choice.good));
@@ -74,6 +81,7 @@ class _StoryScreenState extends State<StoryScreen> {
     setState(() {
       _node = next;
       _messages.add(_Msg(_Kind.tutor, next.tutor));
+      _choosing = false;
     });
     _speak(next.tutor);
     _scrollDown();

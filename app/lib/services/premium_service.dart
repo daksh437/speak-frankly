@@ -130,6 +130,19 @@ class PremiumService extends ChangeNotifier {
   bool purchasePending = false;
   bool justActivated = false;
 
+  /// Clear the one-shot "just bought it" flag, so a paywall can go back to
+  /// showing the learner's ongoing Premium status.
+  ///
+  /// It is set on a successful purchase and was never unset. The Premium screen
+  /// lives in the app's IndexedStack, so it is never rebuilt from scratch - one
+  /// purchase pinned that tab on the celebration screen for the rest of the
+  /// session, and its Done button had no route to pop.
+  void clearJustActivated() {
+    if (!justActivated) return;
+    justActivated = false;
+    notifyListeners();
+  }
+
   /// Every offer Play returned, flattened. One product id can appear more than
   /// once (base plan + each eligible offer).
   final List<PlanOffer> _offers = [];

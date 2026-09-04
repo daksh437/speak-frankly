@@ -34,6 +34,45 @@ async function getProgress(uid) {
   }
 }
 
+// Counters that only ever go up. The app merges cloud state by taking the
+// higher of each (GamificationService.mergeFrom), so a lower number arriving
+// here is not a correction — it is a client that has lost its local copy.
+const MONOTONIC = ['streak', 'xp', 'scenariosCompleted', 'speakingReps'];
+
+/**
+ * Refuse a write that would destroy progress, and keep the rest of it.
+ *
+ * The app clears its local stores on sign-out and on an account switch, and
+ * clearing them notifies the sync listeners — which then push the emptied state
+ * back here under the uid the client is still sending. Every counter goes to
+ * zero and the word list to empty, and the learner's history is gone. The fix
+ * on the client is to suspend syncing around the wipe, but that only helps
+ * builds people have actually installed; this guard protects every existing
+ * install, today, and stays as the backstop afterwards.
+ *
+ * The rule is the one the client already believes: these counters only rise.
+ * A saved-word list is allowed to shrink (words get deleted on purpose) but not
+ * to vanish in one write, which is the signature of a wipe rather than an edit.
+ */
+function guardProgress(update, existing) {
+  if (!existing) return { update, dropped: [] };
+  const dropped = [];
+  for (const key of MONOTONIC) {
+    const was = Number(existing[key]) || 0;
+    if (was > (Number(update[key]) || 0)) {
+      delete update[key];
+      dropped.push(key);
+    }
+  }
+  const hadWords = Array.isArray(existing.savedWords) ? existing.savedWords.length : 0;
+  const nowWords = Array.isArray(update.savedWords) ? update.savedWords.length : 0;
+  if (hadWords > 0 && nowWords === 0) {
+    delete update.savedWords;
+    dropped.push('savedWords');
+  }
+  return { update, dropped };
+}
+
 async function saveProgress(uid, body) {
   const db = getDb();
   if (!db || !uid) return { ok: false };
@@ -51,13 +90,24 @@ async function saveProgress(uid, body) {
   if (data.goal != null) update.goal = String(data.goal);
   if (data.nativeLanguage != null) update.nativeLanguage = String(data.nativeLanguage);
   if (data.displayName != null) update.displayName = String(data.displayName);
+  const ref = db.collection(USERS).doc(uid);
   try {
-    await db.collection(USERS).doc(uid).set(update, { merge: true });
-    return { ok: true };
+    // Read-then-write in a transaction: two pushes racing must not let the
+    // second one through on a stale view of what the learner had.
+    const dropped = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const guarded = guardProgress(update, snap.exists ? snap.data() : null);
+      tx.set(ref, guarded.update, { merge: true });
+      return guarded.dropped;
+    });
+    if (dropped.length) {
+      console.warn(`[progress] refused to lower ${dropped.join(', ')} for ${uid} (kept the stored values)`);
+    }
+    return { ok: true, guarded: dropped.length > 0 };
   } catch (e) {
     console.warn('[progress] save error:', e.message);
     return { ok: false };
   }
 }
 
-module.exports = { getProgress, saveProgress };
+module.exports = { getProgress, saveProgress, guardProgress };

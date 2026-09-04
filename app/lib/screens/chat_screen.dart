@@ -44,7 +44,11 @@ class _ChatScreenState extends State<ChatScreen> {
   List<String> _suggestions = [];
   bool _sending = false;
   bool _finishing = false;
-  bool _limitReached = false;
+
+  /// Set when the server refuses a turn on plan grounds. Holds the server's own
+  /// reason, because a free learner at their daily cap and a paying subscriber
+  /// at the fair-use ceiling need opposite things said to them.
+  DailyLimitException? _limit;
 
   /// Voice-first: the tutor speaks its replies aloud (TTS) so the whole session
   /// is a real spoken conversation. Toggleable (public/quiet places) + persisted.
@@ -96,7 +100,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) return;
     setState(() => _finishing = false);
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => SessionReportScreen(feedback: feedback, xpEarned: 20, levelSuggestion: suggestion)),
+      MaterialPageRoute(
+        builder: (_) => SessionReportScreen(feedback: feedback, xpEarned: 20, levelSuggestion: suggestion),
+      ),
     );
   }
 
@@ -125,11 +131,13 @@ class _ChatScreenState extends State<ChatScreen> {
     if (p.getBool(_kFirstReply) ?? false) return;
     await p.setBool(_kFirstReply, true);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(AppLocalizations.of(context)!.firstReplyWin),
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 5),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.firstReplyWin),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   Future<void> _toggleVoice() async {
@@ -184,11 +192,12 @@ class _ChatScreenState extends State<ChatScreen> {
       // Activation: celebrate the learner's very first reply ever — the moment
       // they realise "I can actually do this".
       _maybeCelebrateFirstReply();
-    } on DailyLimitException {
-      setState(() => _limitReached = true);
+    } on DailyLimitException catch (e) {
+      setState(() => _limit = e);
     } catch (_) {
-      setState(() => _messages.add(ChatMessage(
-          role: 'model', text: "Hmm, I didn't catch that. Could you say it again? 🙂")));
+      setState(
+        () => _messages.add(ChatMessage(role: 'model', text: "Hmm, I didn't catch that. Could you say it again? 🙂")),
+      );
     } finally {
       setState(() => _sending = false);
       _scrollDown();
@@ -198,8 +207,11 @@ class _ChatScreenState extends State<ChatScreen> {
   void _scrollDown() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
-        _scroll.animateTo(_scroll.position.maxScrollExtent + 160,
-            duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+        _scroll.animateTo(
+          _scroll.position.maxScrollExtent + 160,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOut,
+        );
       }
     });
   }
@@ -214,7 +226,10 @@ class _ChatScreenState extends State<ChatScreen> {
             Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(color: _accent.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: _accent.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Center(child: Text(widget.scenario.emoji, style: const TextStyle(fontSize: 20))),
             ),
             const SizedBox(width: 10),
@@ -223,9 +238,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(widget.scenario.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
-                  Text('AI tutor · ${widget.scenario.level}',
-                      style: TextStyle(fontSize: 11.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(
+                    widget.scenario.title,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'AI tutor · ${widget.scenario.level}',
+                    style: TextStyle(fontSize: 11.5, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
                 ],
               ),
             ),
@@ -242,7 +263,9 @@ class _ChatScreenState extends State<ChatScreen> {
             _finishing
                 ? const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 18),
-                    child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+                    child: Center(
+                      child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
                   )
                 : Padding(
                     padding: const EdgeInsets.only(right: 6),
@@ -252,8 +275,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (widget.scenario.keywords.isNotEmpty)
-            _KeywordsStrip(keywords: widget.scenario.keywords, accent: _accent),
+          if (widget.scenario.keywords.isNotEmpty) _KeywordsStrip(keywords: widget.scenario.keywords, accent: _accent),
           Expanded(
             child: ListView.builder(
               controller: _scroll,
@@ -265,10 +287,10 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          if (_suggestions.isNotEmpty && !_limitReached)
+          if (_suggestions.isNotEmpty && _limit == null)
             _SuggestionBar(suggestions: _suggestions, accent: _accent, onTap: _send, beginner: _isBeginner),
-          if (_limitReached)
-            _LimitBanner(onRewarded: () => setState(() => _limitReached = false))
+          if (_limit != null)
+            _LimitBanner(limit: _limit!, onRewarded: () => setState(() => _limit = null))
           else
             _InputBar(controller: _controller, accent: _accent, onSend: _send, enabled: !_sending),
         ],
@@ -361,9 +383,9 @@ class _TutorActionsState extends State<_TutorActions> {
       _show = true;
     });
     if (t.isEmpty && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.translationUnavailable)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.translationUnavailable)));
     }
   }
 
@@ -399,10 +421,7 @@ class _TutorActionsState extends State<_TutorActions> {
               alignment: Alignment.centerRight,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                child: TextButton(
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  child: Text(l.cancelLabel),
-                ),
+                child: TextButton(onPressed: () => Navigator.of(sheetContext).pop(), child: Text(l.cancelLabel)),
               ),
             ),
           ],
@@ -423,9 +442,7 @@ class _TutorActionsState extends State<_TutorActions> {
       _reporting = false;
       _reported = ok;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? l.reportThanks : l.reportFailed)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? l.reportThanks : l.reportFailed)));
   }
 
   @override
@@ -538,7 +555,10 @@ class _ActionChip extends StatelessWidget {
                   ? SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2, color: color))
                   : Icon(icon, size: 15, color: color),
               const SizedBox(width: 4),
-              Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+              ),
             ],
           ),
         ),
@@ -593,16 +613,20 @@ class _CorrectionCard extends StatelessWidget {
               const Icon(Icons.auto_awesome_rounded, size: 15, color: amber),
               const SizedBox(width: 6),
               Flexible(
-                child: Text(correction.better,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: Color(0xFFB45309))),
+                child: Text(
+                  correction.better,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: Color(0xFFB45309)),
+                ),
               ),
             ],
           ),
           if (correction.reason.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 3, left: 21),
-              child: Text(correction.reason,
-                  style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              child: Text(
+                correction.reason,
+                style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
             ),
         ],
       ),
@@ -634,8 +658,10 @@ class _SuggestionBar extends StatelessWidget {
               children: [
                 Icon(Icons.touch_app_rounded, size: 14, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 6),
-                Text('Not sure what to say? Tap a reply',
-                    style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                Text(
+                  'Not sure what to say? Tap a reply',
+                  style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                ),
               ],
             ),
           ),
@@ -661,7 +687,10 @@ class _SuggestionBar extends StatelessWidget {
                           children: [
                             Icon(Icons.north_east_rounded, size: 14, color: accent),
                             const SizedBox(width: 6),
-                            Text(s, style: TextStyle(color: accent, fontWeight: FontWeight.w600, fontSize: 13)),
+                            Text(
+                              s,
+                              style: TextStyle(color: accent, fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
                           ],
                         ),
                       ),
@@ -697,8 +726,10 @@ class _KeywordsStrip extends StatelessWidget {
               children: [
                 Icon(Icons.school_rounded, size: 14, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 6),
-                Text('Words to learn — tap to look up',
-                    style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                Text(
+                  'Words to learn — tap to look up',
+                  style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                ),
               ],
             ),
           ),
@@ -719,7 +750,10 @@ class _KeywordsStrip extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          child: Text(w, style: TextStyle(color: accent, fontWeight: FontWeight.w600, fontSize: 12.5)),
+                          child: Text(
+                            w,
+                            style: TextStyle(color: accent, fontWeight: FontWeight.w600, fontSize: 12.5),
+                          ),
                         ),
                       ),
                     ),
@@ -773,19 +807,21 @@ class _InputBarState extends State<_InputBar> {
       return;
     }
     await s.stopSpeaking(); // don't record the tutor's own voice
-    final ok = await s.startListening(onResult: (text, isFinal) {
-      widget.controller.text = text;
-      widget.controller.selection = TextSelection.collapsed(offset: text.length);
-      if (isFinal) {
-        s.stopListening();
-        final t = text.trim();
-        if (t.isNotEmpty) widget.onSend(t); // auto-send the spoken reply
-      }
-    });
+    final ok = await s.startListening(
+      onResult: (text, isFinal) {
+        widget.controller.text = text;
+        widget.controller.selection = TextSelection.collapsed(offset: text.length);
+        if (isFinal) {
+          s.stopListening();
+          final t = text.trim();
+          if (t.isNotEmpty) widget.onSend(t); // auto-send the spoken reply
+        }
+      },
+    );
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Speech recognition is not available on this device.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Speech recognition is not available on this device.')));
     }
   }
 
@@ -839,7 +875,13 @@ class _InputBarState extends State<_InputBar> {
                     decoration: BoxDecoration(
                       gradient: AppColors.gradient(color),
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: listening ? 18 : 12, offset: const Offset(0, 4))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.45),
+                          blurRadius: listening ? 18 : 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Icon(icon, color: Colors.white, size: listening ? 30 : 26),
                   ),
@@ -861,7 +903,8 @@ class _TypingBubble extends StatefulWidget {
 }
 
 class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat();
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+    ..repeat();
 
   @override
   void dispose() {
@@ -880,8 +923,14 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
         decoration: BoxDecoration(
           color: isLight ? Colors.white : const Color(0xFF23202B),
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18), topRight: Radius.circular(18), bottomRight: Radius.circular(18), bottomLeft: Radius.circular(4)),
-          boxShadow: isLight ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))] : null,
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
+          ),
+          boxShadow: isLight
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]
+              : null,
         ),
         child: AnimatedBuilder(
           animation: _c,
@@ -895,7 +944,11 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
                   padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: Transform.scale(
                     scale: scale,
-                    child: Container(width: 8, height: 8, decoration: BoxDecoration(color: widget.accent, shape: BoxShape.circle)),
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(color: widget.accent, shape: BoxShape.circle),
+                    ),
                   ),
                 );
               }),
@@ -908,8 +961,9 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
 }
 
 class _LimitBanner extends StatefulWidget {
+  final DailyLimitException limit;
   final VoidCallback onRewarded;
-  const _LimitBanner({required this.onRewarded});
+  const _LimitBanner({required this.limit, required this.onRewarded});
   @override
   State<_LimitBanner> createState() => _LimitBannerState();
 }
@@ -918,25 +972,29 @@ class _LimitBannerState extends State<_LimitBanner> {
   bool _watching = false;
 
   /// Free learners can watch a rewarded ad for bonus messages today.
-  bool get _canWatchAd => PlanStatus.instance.planType == 'free' && AdService.instance.isReady;
+  /// Not offered when the server's refusal is one an ad cannot lift.
+  bool get _canWatchAd =>
+      widget.limit.canEarnMore && PlanStatus.instance.planType == 'free' && AdService.instance.isReady;
 
   Future<void> _watchAd() async {
     if (_watching) return;
     setState(() => _watching = true);
-    await AdService.instance.showRewarded(onReward: () async {
-      final ok = await ApiService.instance.rewardAd(); // server grants the bonus
-      if (!mounted) return;
-      if (ok) {
-        widget.onRewarded(); // reveal the input again
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('+5 messages added — keep practising! 🎉')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You've used all ad rewards for today.")),
-        );
-      }
-    });
+    await AdService.instance.showRewarded(
+      onReward: () async {
+        final ok = await ApiService.instance.rewardAd(); // server grants the bonus
+        if (!mounted) return;
+        if (ok) {
+          widget.onRewarded(); // reveal the input again
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('+5 messages added — keep practising! 🎉')));
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("You've used all ad rewards for today.")));
+        }
+      },
+    );
     if (mounted) setState(() => _watching = false);
   }
 
@@ -947,31 +1005,57 @@ class _LimitBannerState extends State<_LimitBanner> {
     final streak = GamificationService.instance.streak;
     // Loss-aversion: if the learner has a streak going, lead with what they'd
     // lose by stopping now — the strongest upsell moment.
-    final headline = streak >= 2 ? loc.streakLimitTitle(streak) : loc.limitReachedTitle;
-    final sub = streak >= 2 ? loc.streakLimitSub : loc.limitReachedSub;
+    final fairUse = widget.limit.isFairUse;
+    // Never upsell a subscriber who has hit the fair-use ceiling: they have
+    // already bought the thing the upsell sells, so they get the server's own
+    // wording and no Premium button at all.
+    final String headline;
+    final String sub;
+    if (fairUse) {
+      headline = "That's a lot of practice today! 🎉";
+      sub = widget.limit.message.isNotEmpty
+          ? widget.limit.message
+          : "You've hit today's fair-use limit. It resets at midnight UTC.";
+    } else if (streak >= 2) {
+      headline = loc.streakLimitTitle(streak);
+      sub = loc.streakLimitSub;
+    } else {
+      headline = loc.limitReachedTitle;
+      sub = loc.limitReachedSub;
+    }
+    // Hitting a fair-use ceiling is not an error - the learner did nothing
+    // wrong - so it does not get the red treatment the "buy more" states do.
+    final bg = fairUse ? scheme.primaryContainer : scheme.errorContainer;
+    final fg = fairUse ? scheme.onPrimaryContainer : scheme.onErrorContainer;
     return SafeArea(
       top: false,
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.all(12),
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: BorderRadius.circular(18)),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(18)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(headline,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.bold, color: scheme.onErrorContainer)),
-            const SizedBox(height: 4),
-            Text(sub,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.onErrorContainer, fontSize: 13)),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen())),
-              icon: const Text('👑', style: TextStyle(fontSize: 14)),
-              label: Text(loc.upgradeToPremium),
+            Text(
+              headline,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, color: fg),
             ),
+            const SizedBox(height: 4),
+            Text(
+              sub,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: fg, fontSize: 13),
+            ),
+            if (!fairUse) ...[
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PremiumScreen())),
+                icon: const Text('👑', style: TextStyle(fontSize: 14)),
+                label: Text(loc.upgradeToPremium),
+              ),
+            ],
             if (_canWatchAd) ...[
               const SizedBox(height: 6),
               TextButton.icon(
@@ -979,8 +1063,10 @@ class _LimitBannerState extends State<_LimitBanner> {
                 icon: _watching
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('🎬', style: TextStyle(fontSize: 14)),
-                label: Text(_watching ? 'Loading…' : 'Watch a short ad → +5 messages',
-                    style: TextStyle(color: scheme.onErrorContainer, fontWeight: FontWeight.w600)),
+                label: Text(
+                  _watching ? 'Loading…' : 'Watch a short ad → +5 messages',
+                  style: TextStyle(color: scheme.onErrorContainer, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ],

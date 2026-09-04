@@ -35,7 +35,23 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   // Which plan the learner has selected. Defaults to annual (best value) when
   // it's offered, otherwise monthly.
-  String _selected = PremiumService.annualId;
+  /// The plan the learner has TAPPED, or null while they haven't chosen yet.
+  ///
+  /// Null rather than a default, because the default depends on what Play
+  /// returns and Play answers asynchronously. This used to be initialised to
+  /// annual and then corrected in initState by reading `hasAnnual` on the line
+  /// after firing the async load - which is always false that early, so the
+  /// screen fell back to monthly every time and the annual plan, the one badged
+  /// best value, was never the one preselected.
+  String? _picked;
+
+  /// Annual when Play sells it, monthly otherwise - re-evaluated on every build
+  /// so it settles as soon as the products arrive.
+  String get _selected {
+    final picked = _picked;
+    if (picked != null && PremiumService.instance.canBuy(picked)) return picked;
+    return PremiumService.instance.hasAnnual ? PremiumService.annualId : PremiumService.monthlyId;
+  }
 
   @override
   void initState() {
@@ -43,14 +59,13 @@ class _PremiumScreenState extends State<PremiumScreen> {
     PremiumService.instance.init();
     PlanStatus.instance.refresh(); // know if already premium / on trial
     // If annual isn't available (product not created yet), fall back to monthly.
-    if (!PremiumService.instance.hasAnnual) _selected = PremiumService.monthlyId;
   }
 
   Future<void> _subscribe() async {
     final svc = PremiumService.instance;
     // Guard: if the selected plan isn't available, use whatever is.
-    var plan = _selected;
-    if (plan == PremiumService.annualId && !svc.hasAnnual) plan = PremiumService.monthlyId;
+    // _selected only ever names a plan Play is actually selling.
+    final plan = _selected;
     final ok = await svc.buyProduct(plan);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -188,7 +203,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     final scheme = Theme.of(context).colorScheme;
     final selected = _selected == id;
     return InkWell(
-      onTap: () => setState(() => _selected = id),
+      onTap: () => setState(() => _picked = id),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -361,8 +376,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
             width: double.infinity,
             height: 52,
             child: FilledButton(
-              onPressed: () {
-                PlanStatus.instance.refresh();
+              onPressed: () async {
+                // Refresh FIRST, so clearing the flag reveals the "you are
+                // Premium" status rather than flashing the sales pitch at
+                // someone who just paid.
+                await PlanStatus.instance.refresh();
+                // Leave the celebration behind whether or not there is a route
+                // to pop: on the Premium TAB there is none, and without this the
+                // screen stayed on the success page for the rest of the session.
+                PremiumService.instance.clearJustActivated();
+                if (!context.mounted) return;
                 if (widget.onSubscribed != null) {
                   widget.onSubscribed!();
                 } else if (Navigator.of(context).canPop()) {
