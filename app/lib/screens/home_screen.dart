@@ -210,10 +210,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _WordOfDayCard()),
                     ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                      sliver: SliverToBoxAdapter(child: _DailyCallCard(onTap: _startCall)),
-                    ),
+                    if (kDailyCallEnabled)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                        sliver: SliverToBoxAdapter(child: _DailyCallCard(onTap: _startCall)),
+                      ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                       sliver: SliverToBoxAdapter(child: _TalkAboutAnythingCard(onTap: _startCustom)),

@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../screens/daily_call.dart' show kDailyCallEnabled;
+
 /// Daily practice reminder via a local scheduled notification. Fires once a day
 /// at a fixed local time to bring the learner back and protect their streak.
 /// Best-effort: if notifications aren't permitted, everything no-ops quietly.
@@ -128,14 +130,14 @@ class NotificationService extends ChangeNotifier {
     try {
       await _plugin.zonedSchedule(
         _id,
-        'Your tutor is calling 📞',
-        'Three minutes of speaking. Tap to answer.',
+        'Time to practise English 🗣️',
+        'Keep your streak alive — a few minutes goes a long way!',
         _nextCallTime(),
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_reminder',
             'Daily reminder',
-            channelDescription: 'Your daily three-minute speaking call.',
+            channelDescription: 'A gentle daily nudge to practise.',
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
           ),
@@ -143,7 +145,9 @@ class NotificationService extends ChangeNotifier {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time, // repeat daily
-        payload: callAction,
+        // Only carry the call payload while the call ships. Without this the
+        // reminder would deep-link into a screen the build does not offer.
+        payload: kDailyCallEnabled ? callAction : null,
       );
     } catch (_) {/* best-effort */}
   }

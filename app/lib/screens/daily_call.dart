@@ -2,6 +2,20 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/user_session.dart';
 
+/// Whether the daily call ships.
+///
+/// The screen, the scenario picker and the notification routing are all built
+/// and tested — what has not been proved is the FEEL. Every turn carries a gap
+/// while the recogniser settles and the model answers, and a gap that reads as
+/// thoughtful in a chat can read as a dropped line in a call. That is not
+/// something code review can settle; it needs a few real three-minute
+/// conversations on a real phone.
+///
+/// So it stays off for this release, which is a review resubmission and the
+/// wrong moment to put an untested headline feature at the top of the home
+/// screen. Flip this to true — nothing else — to ship it.
+const bool kDailyCallEnabled = false;
+
 /// Which conversation the daily call should be about.
 ///
 /// The call has to start the moment it is answered — a picker between the

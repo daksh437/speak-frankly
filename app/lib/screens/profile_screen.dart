@@ -217,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Text('When should your tutor call?',
+              child: Text('When should we remind you?',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ),
             for (final h in const [7, 8, 9, 12, 17, 18, 19, 20, 21, 22])
@@ -322,9 +322,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 builder: (context, _) => SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   secondary: const Icon(Icons.notifications_active_outlined),
-                  title: const Text('Daily call'),
-                  subtitle: Text('Three minutes of speaking at '
-                      '${_hourLabel(NotificationService.instance.hour)}'),
+                  title: const Text('Daily reminder'),
+                  subtitle: Text('A nudge at ${_hourLabel(NotificationService.instance.hour)} '
+                      'to keep your streak'),
                   value: NotificationService.instance.enabled,
                   onChanged: (v) async {
                     if (v) {
@@ -340,7 +340,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 builder: (context, _) => NotificationService.instance.enabled
                     ? _InfoRow(
                         icon: Icons.schedule_rounded,
-                        label: 'Call time',
+                        label: 'Reminder time',
                         value: _hourLabel(NotificationService.instance.hour),
                         onTap: _pickCallTime,
                         trailingArrow: true,

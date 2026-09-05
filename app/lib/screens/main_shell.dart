@@ -53,7 +53,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   Future<void> _handleAction(String action) async {
-    if (!mounted || action != NotificationService.callAction) return;
+    if (!mounted || !kDailyCallEnabled || action != NotificationService.callAction) return;
     final scenario = await pickCallScenario();
     if (!mounted) return;
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallScreen(scenario: scenario)));
