@@ -26,15 +26,19 @@ services:
         sync: false
       - key: DAILY_MESSAGES_FREE
         value: "8"
-      # HARD PAYWALL. Nobody gets AI without a paid subscription: TRIAL_DAYS=0
-      # means a new account never resolves to the "trial" plan, and
-      # REQUIRE_PREMIUM then refuses every AI call from a free one. The trial
-      # learners DO get is the paid one in Play (₹4 for 3 days, then ₹200/month),
-      # which arrives here as real premium via purchase verification.
+      # ONE FREE DAY, THEN PAYWALL. A new account gets TRIAL_DAYS days of
+      # unlimited AI (the "trial" plan — no card, no payment), so the learner
+      # feels a real day of the tutor before being asked to pay. When it ends
+      # they drop to the free plan, and REQUIRE_PREMIUM then refuses every AI
+      # call — the hard paywall. The paid offer they meet there lives in Play
+      # (₹5 for 3 days, then ₹199/month), which arrives here as real premium via
+      # purchase verification.
       #
-      # To go back to freemium: TRIAL_DAYS=3 and REQUIRE_PREMIUM=false.
+      # TRIAL_DAYS is a dial, not a build: try 1, 3, 7 and keep whatever
+      # converts. To go fully freemium instead: TRIAL_DAYS=3 and
+      # REQUIRE_PREMIUM=false.
       - key: TRIAL_DAYS
-        value: "0"
+        value: "1"
       - key: REQUIRE_PREMIUM
         value: "true"
       # THE FIRST CONVERSATION, FREE. With the paywall above, a new account
